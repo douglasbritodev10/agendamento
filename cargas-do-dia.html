@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargas do Dia | Móveis Simonetti</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-agendada { background: #e3f2fd; color: #1976d2; }
+        .status-recebido { background: #e8f5e9; color: #2e7d32; }
+        .status-atrasada { background: #ffebee; color: #d32f2f; }
+        .status-progresso { background: #fff3e0; color: #ef6c00; }
+
+        .btn-status {
+            padding: 5px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            background: white;
+        }
+        .btn-status:hover { background: #f5f5f5; }
+        
+        .tabela-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-x: auto; margin-top: 20px; }
+        
+        .filtros-operacionais { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }
+        .filtros-operacionais input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
+        <div class="nav-links">
+            <a href="inicial.html" style="color:white; text-decoration:none; margin-right:15px;">⬅ Voltar</a>
+            <strong>Monitoramento em Tempo Real</strong>
+        </div>
+    </nav>
+
+    <main class="container">
+        <header class="header-operacional">
+            <h1>Cargas e Recebimentos</h1>
+            <p>Listagem de cargas agendadas para hoje e monitoramento de status.</p>
+        </header>
+
+        <section class="filtros-operacionais">
+            <input type="text" id="filtroRapido" placeholder="🔍 Filtrar por Senha, Fornecedor ou Transportadora...">
+            <button class="btn-primary" onclick="window.print()">🖨️ Exportar PDF</button>
+        </section>
+
+        <div class="tabela-container">
+            <table id="tabelaCargas">
+                <thead>
+                    <tr>
+                        <th>Senha</th>
+                        <th>Fornecedor</th>
+                        <th>Transporte</th>
+                        <th>Status Atual</th>
+                        <th>Volumes</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela">
+                    </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script type="module" src="js/cargas-do-dia.js"></script>
+</body>
+</html>
