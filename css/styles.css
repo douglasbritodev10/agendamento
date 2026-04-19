@@ -1,43 +1,152 @@
+/* VARIÁVEIS DO SISTEMA */
 :root {
     --vermelho: #D32F2F;
+    --vermelho-dark: #B71C1C;
     --preto: #212121;
     --fundo: #F5F5F5;
     --branco: #FFFFFF;
+    --cinza-texto: #666;
+    --borda: #DDD;
 }
 
+/* RESET E BASE */
+* { box-sizing: border-box; }
+
 body {
-    font-family: 'Segoe UI', sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--fundo);
     margin: 0;
     color: var(--preto);
+    line-height: 1.6;
 }
 
+/* NAVEGAÇÃO */
 .navbar {
     background: var(--vermelho);
     color: white;
-    padding: 15px 5%;
+    padding: 12px 5%;
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-.logo span { font-weight: bold; background: white; color: var(--vermelho); padding: 2px 8px; border-radius: 4px; margin-left: 5px; }
-
-.container { padding: 40px 5%; max-width: 1200px; margin: auto; }
-
-h1 { font-weight: 300; margin-bottom: 5px; }
-
-header p { color: #666; margin-bottom: 30px; }
-
-button {
-    background: white;
-    color: var(--vermelho);
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    font-weight: bold;
-    cursor: pointer;
+.logo { font-size: 1.2rem; display: flex; align-items: center; }
+.logo span { 
+    font-weight: bold; 
+    background: white; 
+    color: var(--vermelho); 
+    padding: 2px 8px; 
+    border-radius: 4px; 
+    margin-left: 8px; 
 }
 
-button:hover { background: #eee; }
+/* CONTAINER PRINCIPAL */
+.container { 
+    padding: 30px 5%; 
+    max-width: 1300px; 
+    margin: auto; 
+}
+
+/* CABEÇALHOS */
+h1 { font-weight: 300; margin-bottom: 5px; color: var(--preto); }
+h3 { color: var(--vermelho); margin-top: 0; }
+header p { color: var(--cinza-texto); margin-bottom: 30px; font-size: 0.95rem; }
+
+/* TABELAS (Padrão para Cargas, Ajustes e Histórico) */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--branco);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+th {
+    background: var(--preto);
+    color: var(--branco);
+    text-align: left;
+    padding: 15px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #EEE;
+    font-size: 0.9rem;
+}
+
+tr:hover { background: #F9F9F9; }
+
+/* BOTÕES */
+button, .btn-primary {
+    background: var(--vermelho);
+    color: var(--branco);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s ease;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+button:hover {
+    background: var(--vermelho-dark);
+    transform: translateY(-1px);
+}
+
+/* BOTÕES DE SAIR/SECUNDÁRIOS */
+.btn-sair {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    margin-left: 15px;
+}
+
+.btn-sair:hover {
+    background: white;
+    color: var(--vermelho);
+}
+
+/* FORMULÁRIOS E INPUTS */
+input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--vermelho);
+    box-shadow: 0 0 5px rgba(211, 47, 47, 0.2);
+}
+
+/* BADGES DE STATUS (Usadas no Monitoramento e Ajustes) */
+.badge {
+    padding: 4px 10px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+/* RESPONSIVIDADE PARA CELULAR */
+@media (max-width: 768px) {
+    .navbar { flex-direction: column; gap: 10px; text-align: center; }
+    .container { padding: 20px 3%; }
+    table { font-size: 0.8rem; }
+    th, td { padding: 8px; }
+}
+
+/* CONFIGURAÇÃO PARA IMPRESSÃO (PDF) */
+@media print {
+    .navbar, button, .filtros-historico, .filtros-operacionais { display: none !important; }
+    .container { width: 100%; padding: 0; }
+    table { box-shadow: none; border: 1px solid #000; }
+}
