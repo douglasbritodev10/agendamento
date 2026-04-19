@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Ajustes | Móveis Simonetti</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .container-ajustes { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
+        .card-ajuste { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .form-ajuste { display: flex; flex-direction: column; gap: 15px; position: sticky; top: 20px; }
+        textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; resize: none; font-family: inherit; }
+        .badge-ajuste { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .ajuste-pendente { background: #fff3e0; color: #ef6c00; }
+        .ajuste-conserto { background: #f3e5f5; color: #7b1fa2; }
+        .ajuste-ok { background: #e8f5e9; color: #2e7d32; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
+        <a href="inicial.html" style="color:white; text-decoration:none; font-weight:bold;">⬅ VOLTAR</a>
+    </nav>
+
+    <main class="container">
+        <header style="margin-bottom: 25px;">
+            <h1>🛠️ Gestão de Ajustes e Ocorrências</h1>
+            <p>Registre problemas, notas fiscais e necessidades de conserto para cargas recebidas.</p>
+        </header>
+
+        <div class="container-ajustes">
+            <section class="card-ajuste">
+                <table id="tabelaAjustes">
+                    <thead>
+                        <tr>
+                            <th>Senha</th>
+                            <th>Fornecedor</th>
+                            <th>Status Ajuste</th>
+                            <th>Nota Fiscal</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoAjustes">
+                        </tbody>
+                </table>
+            </section>
+
+            <section class="card-ajuste form-ajuste" id="painelEdicao" style="display: none;">
+                <h3 style="color:#D32F2F; margin:0;">Editar Ajuste</h3>
+                <p id="labelSenha" style="font-weight:bold; font-size:0.9rem; margin-bottom:10px;"></p>
+                
+                <div class="form-group">
+                    <label>Status do Ajuste</label>
+                    <select id="statusAjuste">
+                        <option value="Sem ajuste">Sem ajuste</option>
+                        <option value="Sobre ajuste">Sobre ajuste</option>
+                        <option value="Conserto">Conserto</option>
+                        <option value="Pendente">Pendente</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Nota Fiscal</label>
+                    <input type="text" id="notaFiscal" placeholder="Nº da NF">
+                </div>
+
+                <div class="form-group">
+                    <label>Observações / Avarias</label>
+                    <textarea id="obsAjuste" rows="5" placeholder="Descreva o problema aqui..."></textarea>
+                </div>
+
+                <button class="btn-primary" id="btnSalvarAjuste" style="background:#212121; color:white;">SALVAR ALTERAÇÕES</button>
+                <button onclick="document.getElementById('painelEdicao').style.display='none'" style="background:none; border:none; color:grey; cursor:pointer;">Cancelar</button>
+            </section>
+        </div>
+    </main>
+
+    <script type="module" src="js/ajustes.js"></script>
+</body>
+</html>
