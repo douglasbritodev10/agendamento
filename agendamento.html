@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Agendamento | Móveis Simonetti</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Estilos específicos para esta página */
+        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card-form { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.75rem; font-weight: bold; color: #D32F2F; margin-bottom: 5px; text-transform: uppercase; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; transition: 0.3s; }
+        input:focus { border-color: #D32F2F; outline: none; box-shadow: 0 0 5px rgba(211, 47, 47, 0.2); }
+        
+        /* Área de Produtos */
+        .item-header { display: grid; grid-template-columns: 100px 1fr 80px 45px; gap: 10px; margin-bottom: 10px; font-weight: bold; font-size: 0.7rem; color: #666; }
+        .item-row { display: grid; grid-template-columns: 100px 1fr 80px 45px; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .btn-add-item { background: #212121; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
+        .btn-del { background: #ff4444; color: white; border: none; height: 38px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        .btn-save-all { background: #D32F2F; color: white; width: 100%; font-size: 1.1rem; padding: 18px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 30px; transition: 0.3s; }
+        .btn-save-all:hover { background: #b71c1c; transform: translateY(-2px); }
+        .btn-save-all:disabled { background: #ccc; cursor: not-allowed; }
+
+        @media (max-width: 768px) { .grid-form { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
+        <a href="inicial.html" style="color:white; text-decoration:none; font-weight:bold;">⬅ VOLTAR AO PAINEL</a>
+    </nav>
+
+    <main class="container">
+        <header style="margin-bottom: 25px;">
+            <h1 style="font-weight: 300;">Novo Agendamento de Carga</h1>
+            <p style="color: #666;">Preencha os dados abaixo para gerar a senha e registrar a logística.</p>
+        </header>
+        
+        <div class="grid-form">
+            <section class="card-form">
+                <h3 style="color: #D32F2F; margin-bottom: 20px; border-bottom: 2px solid #f5f5f5; padding-bottom: 10px;">📊 Dados Principais</h3>
+                
+                <div class="form-group">
+                    <label>Senha de Agendamento</label>
+                    <input type="text" id="senhaAgendamento" readonly style="background:#f9f9f9; font-weight:bold; color:#D32F2F; border: 2px dashed #D32F2F;">
+                </div>
+
+                <div class="grid-form" style="grid-template-columns: 1fr 1fr;">
+                    <div class="form-group"><label>Data Prevista</label><input type="date" id="dataCarga"></div>
+                    <div class="form-group"><label>Central / Destino</label><input type="text" id="central" placeholder="Ex: CD 01"></div>
+                </div>
+
+                <div class="form-group"><label>Fornecedor</label><input type="text" id="fornecedor" placeholder="Nome da empresa/fornecedor"></div>
+                <div class="form-group"><label>Carga / Transporte</label><input type="text" id="transporte" placeholder="Ex: Placa ou Nome da Transportadora"></div>
+
+                <div class="grid-form" style="grid-template-columns: 1fr 1fr;">
+                    <div class="form-group"><label>Ordem de Compra (OC)</label><input type="text" id="ordemCompra" placeholder="Nº da OC"></div>
+                    <div class="form-group"><label>Total de Volumes</label><input type="number" id="volumes" placeholder="Qtd Total"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Produto</label>
+                    <select id="tipoProduto">
+                        <option value="Móveis">Móveis</option>
+                        <option value="Eletro">Eletro</option>
+                        <option value="Estofados">Estofados</option>
+                        <option value="Diversos">Diversos</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="card-form">
+                <h3 style="color: #D32F2F; margin-bottom: 20px; border-bottom: 2px solid #f5f5f5; padding-bottom: 10px;">📦 Itens da Carga</h3>
+                <div class="item-header">
+                    <div>CÓDIGO</div><div>DESCRIÇÃO</div><div>QTD</div><div></div>
+                </div>
+                <div id="listaItens">
+                    </div>
+                <button type="button" class="btn-add-item" onclick="addLinhaItem()">+ ADICIONAR PRODUTO</button>
+            </section>
+        </div>
+
+        <button class="btn-save-all" id="btnFinalizar">FINALIZAR E SALVAR AGENDAMENTO</button>
+    </main>
+
+    <script>
+        function addLinhaItem() {
+            const container = document.getElementById('listaItens');
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `
+                <input type="text" class="prod-id" placeholder="Cód">
+                <input type="text" class="prod-desc" placeholder="Ex: Roupeiro 6P">
+                <input type="number" class="prod-qtd" placeholder="0">
+                <button type="button" class="btn-del" onclick="this.parentElement.remove()">X</button>
+            `;
+            container.appendChild(div);
+        }
+
+        // Garante uma linha inicial
+        window.addEventListener('DOMContentLoaded', () => {
+            addLinhaItem();
+        });
+    </script>
+
+    <script type="module" src="js/agendamento.js"></script>
+</body>
+</html>
