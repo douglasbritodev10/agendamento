@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Primeiro Acesso | Móveis Simonetti</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body { background: #212121; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; font-family: sans-serif; }
+        .setup-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); padding: 40px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); width: 380px; text-align: center; }
+        h2 { font-weight: 300; margin-bottom: 10px; }
+        p { font-size: 0.9rem; opacity: 0.7; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #D32F2F; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="setup-card">
+        <h2>Olá! Bem-vindo.</h2>
+        <p>Complete seu cadastro para acessar o sistema.</p>
+        <input type="text" id="novoNome" placeholder="Seu Nome Completo">
+        <input type="password" id="novaSenha" placeholder="Defina uma nova senha">
+        <input type="password" id="confirmaSenha" placeholder="Confirme a senha">
+        <button id="btnFinalizarCadastro">CONCLUIR E ENTRAR</button>
+    </div>
+    <script type="module" src="js/primeiro-acesso.js"></script>
+</body>
+</html>
