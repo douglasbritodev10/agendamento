@@ -4,55 +4,48 @@ import { getFirestore, collection, query, getDocs } from "https://www.gstatic.co
 const db = getFirestore(app);
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Recupera dados do LocalStorage
     const nivel = localStorage.getItem('nivelAcesso');
     const email = localStorage.getItem('usuarioEmail');
+    const nome = localStorage.getItem('usuarioNome');
 
-    // 2. Proteção de Rota: Se não houver nível, volta para o login
     if (!nivel) {
         window.location.href = "index.html";
         return;
     }
 
-    // 3. Atualiza a Interface com os dados do usuário
-    document.getElementById('userName').innerText = email;
+    // Exibe o nome ou email no topo
+    document.getElementById('userName').innerText = nome || email;
 
-    // Se for ADM, mostra o card de gestão de usuários
+    // Controle de privilégios para o card de Gestão
     if (nivel === 'ADM') {
         const cardAdmin = document.getElementById('cardAdmin');
         if (cardAdmin) cardAdmin.style.display = 'flex';
     }
 
-    // 4. Atualiza Data Atual
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('dataAtual').innerText = new Date().toLocaleDateString('pt-BR', options);
 
-    // 5. Carrega os dados do Dashboard
     await carregarIndicadores();
 });
 
 async function carregarIndicadores() {
     try {
         const q = query(collection(db, "agendamentos"));
-        const querySnapshot = await getDocs(q);
+        const snap = await getDocs(q);
         
-        let total = 0;
-        let atrasadas = 0;
-        let progresso = 0;
+        let total = 0, atrasadas = 0, progresso = 0;
 
-        querySnapshot.forEach((doc) => {
+        snap.forEach((doc) => {
             const status = doc.data().status;
             total++;
-            // Note: Verifique se os textos batem exatamente com o que está no seu Firestore
             if (status === 'Atrasada') atrasadas++;
-            if (status === 'Em recebimento' || status === 'Em progresso') progresso++;
+            if (status === 'Em recebimento') progresso++;
         });
 
         document.getElementById('resumoTotal').innerText = total;
         document.getElementById('resumoAtrasadas').innerText = atrasadas;
         document.getElementById('resumoProgresso').innerText = progresso;
-
     } catch (e) {
-        console.error("Erro ao carregar indicadores:", e);
+        console.error("Erro indicadores:", e);
     }
 }
