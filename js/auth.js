@@ -15,44 +15,27 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
     }
 
     try {
-        // 1. Tenta autenticar o usuário
         const userCred = await signInWithEmailAndPassword(auth, email, pass);
         const uid = userCred.user.uid;
 
-        // 2. Busca o nível de acesso no Firestore
+        // Busca o perfil no banco
         const userDoc = await getDoc(doc(db, "users", uid));
 
         if (userDoc.exists()) {
             const userData = userDoc.data();
-
-            // 3. Salva os dados localmente para uso na inicial.html
+            // Salva sessão
             localStorage.setItem('nivelAcesso', userData.nivelAcesso);
             localStorage.setItem('usuarioEmail', email);
-            localStorage.setItem('usuarioNome', userData.nome || email); // Caso tenha o campo 'nome'
-
-            // 4. Redireciona
+            localStorage.setItem('usuarioNome', userData.nome || email);
+            
             window.location.href = "inicial.html";
         } else {
-            console.error("Erro: Documento do usuário não encontrado no Firestore (coleção 'users').");
-            alert("Erro interno: Perfil de usuário não configurado.");
+            // Se o login deu certo mas não tem documento no Firestore, é o primeiro acesso
+            window.location.href = "primeiro-acesso.html";
         }
 
     } catch (error) {
-        console.error("Erro detalhado:", error.code, error.message);
-        
-        // Mensagens amigáveis para erros comuns
-        switch (error.code) {
-            case 'auth/user-not-found':
-                alert("E-mail não cadastrado.");
-                break;
-            case 'auth/wrong-password':
-                alert("Senha incorreta.");
-                break;
-            case 'auth/invalid-email':
-                alert("E-mail inválido.");
-                break;
-            default:
-                alert("Falha no login! Verifique suas credenciais.");
-        }
+        console.error("Erro no login:", error.code);
+        alert("E-mail ou senha inválidos.");
     }
 });
