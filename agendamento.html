@@ -3,132 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Agendamento | Móveis Simonetti</title>
+    <title>Sistema de Agendamento | Móveis Simonetti</title>
     <link rel="stylesheet" href="css/styles.css">
-    <style>
-        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card-form { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.75rem; font-weight: bold; color: #D32F2F; margin-bottom: 5px; text-transform: uppercase; }
-        .item-row { display: grid; grid-template-columns: 80px 1fr 80px 40px; gap: 10px; margin-bottom: 10px; align-items: center; }
-        .btn-del { background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; height: 38px; }
-        .btn-add-item { background: #212121; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; }
-        .btn-save-all { width: 100%; padding: 15px; background: #D32F2F; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 20px; }
-        .area-tabela { margin-top: 40px; background: white; padding: 20px; border-radius: 12px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th { background: #f5f5f5; text-align: left; padding: 12px; font-size: 0.8rem; color: #666; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
     <nav class="navbar">
+        <div class="nav-left">
+            <a href="inicial.html" style="color:white; text-decoration:none;">⬅ <span id="nomeUsuarioLogado">DBRITO</span></a>
+        </div>
         <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
-        <a href="inicial.html" style="color:white; text-decoration:none;">⬅ Voltar</a>
+        <div class="nav-right">
+            <button class="btn-sair" onclick="window.location.href='index.html'">SAIR</button>
+        </div>
     </nav>
 
     <main class="container">
+        <h2 style="text-align: center; color: var(--vermelho); margin-top: 0;">CONTROLE DE AGENDAMENTOS</h2>
+
         <div class="grid-form">
             <section class="card-form">
-                <h3 style="color: #D32F2F; margin-bottom: 20px;">📅 Dados do Agendamento</h3>
+                <h3 id="tituloForm">📅 Novo Agendamento</h3>
+                <input type="hidden" id="editandoId">
                 
                 <div class="form-group">
                     <label>Senha de Agendamento</label>
-                    <input type="text" id="senhaAgendamento" readonly style="background: #f9f9f9; font-weight: bold; color: #333;">
+                    <input type="text" id="senhaAgendamento" readonly style="background: #eee;">
                 </div>
 
-                <div class="form-group">
-                    <label>Data</label>
-                    <input type="date" id="dataCarga">
-                </div>
-
-                <div class="form-group">
-                    <label>Central</label>
-                    <select id="central">
-                        <option value="PINHEIROS">PINHEIROS</option>
-                        <option value="SERRA">SERRA</option>
-                        <option value="BUERAREMA">BUERAREMA</option>
-                        <option value="CANCELADA">CANCELADA</option>
-                        <option value="CONQUISTA">CONQUISTA</option>
-                        <option value="EUNÁPOLIS">EUNÁPOLIS</option>
-                        <option value="TEXEIRA">TEXEIRA</option>
-                    </select>
+                <div class="grid-campos" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="dataCarga">
+                    </div>
+                    <div class="form-group">
+                        <label>Central</label>
+                        <select id="central">
+                            <option value="PINHEIROS">PINHEIROS</option>
+                            <option value="SERRA">SERRA</option>
+                            <option value="BUERAREMA">BUERAREMA</option>
+                            <option value="CANCELADA">CANCELADA</option>
+                            <option value="CONQUISTA">CONQUISTA</option>
+                            <option value="EUNÁPOLIS">EUNÁPOLIS</option>
+                            <option value="TEXEIRA">TEXEIRA</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label>Cargas (Campo Livre)</label>
-                    <input type="text" id="cargaTransporte" placeholder="Digite as informações da carga">
+                    <input type="text" id="cargaTransporte">
                 </div>
 
                 <div class="form-group">
-                    <label>Pedido de Compra</label>
-                    <input type="text" id="pedidoCompra" placeholder="Nº do pedido">
+                    <label>Fornecedor <button onclick="window.abrirModalFornecedor()" style="padding:2px 5px; font-size:10px;">GERENCIAR</button></label>
+                    <select id="fornecedorSelect"></select>
                 </div>
 
-                <div class="form-group">
-                    <label>Fornecedor</label>
-                    <select id="fornecedor">
-                        <option value="FORNECEDOR PADRAO">FORNECEDOR PADRAO</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Tipo de Produto</label>
-                    <input type="text" id="tipoProduto">
+                <div class="grid-campos" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Pedido de Compra</label>
+                        <input type="text" id="pedidoCompra">
+                    </div>
+                    <div class="form-group">
+                        <label>Volumes</label>
+                        <input type="text" id="volumes">
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label>Linha de Separação</label>
                     <select id="linhaSeparacao">
                         <option value="EMBALADO">EMBALADO</option>
-                        <option value="EMBALADO 1">EMBALADO 1</option>
                         <option value="GRANDEZA 1">GRANDEZA 1</option>
                         <option value="GRANDEZA 2">GRANDEZA 2</option>
-                        <option value="GRANDEZA 3">GRANDEZA 3</option>
-                        <option value="GRANDEZA 4">GRANDEZA 4</option>
-                        <option value="GRANDEZA 5">GRANDEZA 5</option>
-                        <option value="GRANDEZA 6">GRANDEZA 6</option>
-                        <option value="GRANDEZA 7">GRANDEZA 7</option>
-                        <option value="GRANDEZA 8">GRANDEZA 8</option>
-                        <option value="GRANDEZA 9">GRANDEZA 9</option>
-                        <option value="GRANDEZA 10">GRANDEZA 10</option>
                         <option value="MIUDEZA 1">MIUDEZA 1</option>
                     </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Volumes</label>
-                    <input type="text" id="volumes">
                 </div>
             </section>
 
             <section class="card-form">
-                <h3 style="color: #D32F2F; margin-bottom: 20px;">📦 Composição da Carga</h3>
-                <div id="listaItens">
-                    </div>
+                <h3>📦 Composição da Carga</h3>
+                <div id="listaItens"></div>
                 <button type="button" class="btn-add-item" onclick="window.addLinhaItem()">+ ADICIONAR PRODUTO</button>
+                <button class="btn-save-all" id="btnFinalizar">SALVAR AGENDAMENTO</button>
+                <button id="btnCancelarEdicao" style="display:none; background:gray; width:100%; margin-top:10px;">CANCELAR EDIÇÃO</button>
             </section>
         </div>
 
-        <button class="btn-save-all" id="btnFinalizar">FINALIZAR E SALVAR AGENDAMENTO</button>
-
         <section class="area-tabela">
-            <h3>📋 Últimos Agendamentos</h3>
-            <table>
+            <div class="filtros-header" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;">
+                <div>
+                    <label>Início</label>
+                    <input type="date" id="filtroDataInicio" style="width: 150px;">
+                </div>
+                <div>
+                    <label>Fim</label>
+                    <input type="date" id="filtroDataFim" style="width: 150px;">
+                </div>
+                <div style="flex: 1;">
+                    <label>Busca Geral</label>
+                    <input type="text" id="buscaGeral" placeholder="Senha, Fornecedor ou Carga...">
+                </div>
+                <button onclick="window.exportarExcel()" style="background:#2e7d32;">EXCEL</button>
+                <button onclick="window.exportarPDF()" style="background:#c62828;">PDF</button>
+            </div>
+
+            <table id="tabelaAgendamentos">
                 <thead>
                     <tr>
+                        <th><input type="checkbox" id="selecionarTodos"></th>
                         <th>SENHA</th>
                         <th>DATA</th>
                         <th>CENTRAL</th>
-                        <th>CARGAS</th>
                         <th>FORNECEDOR</th>
+                        <th>CARGA</th>
                         <th>AÇÕES</th>
                     </tr>
                 </thead>
-                <tbody id="corpoTabelaAgendamentos"></tbody>
+                <tbody id="corpoTabela"></tbody>
             </table>
         </section>
     </main>
+
+    <div id="modalFornecedor" class="modal">
+        <div class="modal-content">
+            <h3>Gerenciar Fornecedores</h3>
+            <input type="text" id="novoFornecedorNome" placeholder="Nome do Fornecedor">
+            <button onclick="window.salvarFornecedor()">ADICIONAR</button>
+            <hr>
+            <ul id="listaFornecedoresModal" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
+            <button onclick="document.getElementById('modalFornecedor').style.display='none'" style="background:gray;">FECHAR</button>
+        </div>
+    </div>
+
+    <div id="modalComposicao" class="modal">
+        <div class="modal-content">
+            <h3 id="tituloModalComp">Composição</h3>
+            <table border="1" style="width:100%; border-collapse: collapse;">
+                <thead><tr><th>Cód</th><th>Descrição</th><th>Qtd</th></tr></thead>
+                <tbody id="corpoModalComp"></tbody>
+            </table>
+            <br>
+            <button onclick="document.getElementById('modalComposicao').style.display='none'">FECHAR</button>
+        </div>
+    </div>
 
     <script type="module" src="js/agendamento.js"></script>
 </body>
