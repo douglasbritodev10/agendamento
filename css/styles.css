@@ -20,18 +20,35 @@ body {
     line-height: 1.6;
 }
 
-/* NAVEGAÇÃO */
+/* NAVEGAÇÃO AJUSTADA (Cantos Esquerdo e Direito) */
 .navbar {
     background: var(--vermelho);
     color: white;
-    padding: 12px 5%;
+    padding: 0 5%;
+    height: 65px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
-.logo { font-size: 1.2rem; display: flex; align-items: center; }
+.nav-left, .nav-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.nav-right { justify-content: flex-end; }
+
+.logo {
+    flex: 1;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
 .logo span { 
     font-weight: bold; 
     background: white; 
@@ -51,35 +68,20 @@ body {
 /* CABEÇALHOS */
 h1 { font-weight: 300; margin-bottom: 5px; color: var(--preto); }
 h3 { color: var(--vermelho); margin-top: 0; }
-header p { color: var(--cinza-texto); margin-bottom: 30px; font-size: 0.95rem; }
 
-/* TABELAS (Padrão para Cargas, Ajustes e Histórico) */
-table {
+/* CARDS E FORMULÁRIOS */
+.card-form { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.form-group { margin-bottom: 15px; }
+label { display: block; font-size: 0.75rem; font-weight: bold; color: var(--vermelho); margin-bottom: 5px; text-transform: uppercase; }
+
+input, select, textarea {
     width: 100%;
-    border-collapse: collapse;
-    background: var(--branco);
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
-}
-
-th {
-    background: var(--preto);
-    color: var(--branco);
-    text-align: left;
-    padding: 15px;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-}
-
-td {
-    padding: 12px 15px;
-    border-bottom: 1px solid #EEE;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
     font-size: 0.9rem;
 }
-
-tr:hover { background: #F9F9F9; }
 
 /* BOTÕES */
 button, .btn-primary {
@@ -92,61 +94,30 @@ button, .btn-primary {
     cursor: pointer;
     transition: 0.3s ease;
     text-transform: uppercase;
-    font-size: 0.8rem;
 }
 
-button:hover {
-    background: var(--vermelho-dark);
-    transform: translateY(-1px);
-}
-
-/* BOTÕES DE SAIR/SECUNDÁRIOS */
 .btn-sair {
     background: rgba(255,255,255,0.2);
     color: white;
-    margin-left: 15px;
+    border: 1px solid rgba(255,255,255,0.3);
 }
 
-.btn-sair:hover {
-    background: white;
-    color: var(--vermelho);
-}
+.btn-sair:hover { background: white; color: var(--vermelho); }
 
-/* FORMULÁRIOS E INPUTS */
-input, select, textarea {
+/* TABELAS */
+table {
     width: 100%;
-    padding: 12px;
-    margin: 8px 0;
-    border: 1px solid var(--borda);
-    border-radius: 6px;
-    font-size: 0.9rem;
+    border-collapse: collapse;
+    background: var(--branco);
+    border-radius: 10px;
+    overflow: hidden;
 }
 
-input:focus, select:focus {
-    outline: none;
-    border-color: var(--vermelho);
-    box-shadow: 0 0 5px rgba(211, 47, 47, 0.2);
-}
+th { background: var(--preto); color: var(--branco); padding: 15px; font-size: 0.85rem; text-align: left; }
+td { padding: 12px 15px; border-bottom: 1px solid #EEE; font-size: 0.9rem; }
 
-/* BADGES DE STATUS (Usadas no Monitoramento e Ajustes) */
-.badge {
-    padding: 4px 10px;
-    border-radius: 50px;
-    font-size: 0.75rem;
-    font-weight: bold;
-}
-
-/* RESPONSIVIDADE PARA CELULAR */
+/* RESPONSIVIDADE */
 @media (max-width: 768px) {
-    .navbar { flex-direction: column; gap: 10px; text-align: center; }
-    .container { padding: 20px 3%; }
-    table { font-size: 0.8rem; }
-    th, td { padding: 8px; }
-}
-
-/* CONFIGURAÇÃO PARA IMPRESSÃO (PDF) */
-@media print {
-    .navbar, button, .filtros-historico, .filtros-operacionais { display: none !important; }
-    .container { width: 100%; padding: 0; }
-    table { box-shadow: none; border: 1px solid #000; }
+    .nav-left span { display: none; } /* Esconde o nome no celular para não amontoar */
+    .logo { font-size: 0.9rem; }
 }
