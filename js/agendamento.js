@@ -7,13 +7,14 @@ import {
 const db = getFirestore(app);
 const usuarioNome = localStorage.getItem('usuarioNome') || "DBRITO";
 let itensCargaTmp = []; 
+let senhaAbertaNoModal = ""; // Para saber qual agenda estamos editando no modal
 
 const getDataBR = () => {
     const d = new Date();
     return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 };
 
-// Inicialização de campos
+// Inicialização
 document.getElementById('dataAgendamento').value = getDataBR();
 document.getElementById('buscaInicio').value = getDataBR();
 document.getElementById('buscaFim').value = getDataBR();
@@ -31,7 +32,7 @@ async function gerarSenha() {
     document.getElementById('senhaAgendamento').value = String(num).padStart(2, '0') + "-SM";
 }
 
-// --- LEITURA DO EXCEL ---
+// --- IMPORTAR EXCEL ---
 document.getElementById('inputExcel').addEventListener('change', (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
@@ -42,17 +43,17 @@ document.getElementById('inputExcel').addEventListener('change', (e) => {
         const data = XLSX.utils.sheet_to_json(ws);
         
         itensCargaTmp = data.map(row => ({
-            codigo: row.Codigo || row.CODIGO || row.cod || "",
-            descricao: row.Descricao || row.DESCRICAO || row.desc || "",
-            qtd: row.Qtd || row.QTD || row.qtd || 0
+            codigo: row.Codigo || row.CODIGO || row.cod || "N/A",
+            descricao: row.Descricao || row.DESCRICAO || row.desc || "SEM DESCRIÇÃO",
+            qtd: parseInt(row.Qtd || row.QTD || row.qtd || 0)
         }));
-        alert(`${itensCargaTmp.length} itens importados com sucesso!`);
+        alert(`${itensCargaTmp.length} itens carregados! Termine de preencher o formulário.`);
     };
     reader.readAsBinaryString(file);
 });
 
-// --- SALVAR/ATUALIZAR ---
-async function salvarAgenda(status, isUpdate = false) {
+// --- SALVAR AGENDAMENTO ---
+async function salvarAgenda(status) {
     const senha = document.getElementById('senhaAgendamento').value;
     const fornecedor = document.getElementById('selectFornecedor').value;
 
@@ -64,6 +65,7 @@ async function salvarAgenda(status, isUpdate = false) {
         central: document.getElementById('central').value,
         fornecedor: fornecedor,
         cargas: document.getElementById('cargas').value,
+        pedido: document.getElementById('pedido').value,
         tipoProduto: document.getElementById('tipoProduto').value.toUpperCase(),
         linhaSeparacao: document.getElementById('linhaSeparacao').value,
         status: status,
@@ -73,11 +75,11 @@ async function salvarAgenda(status, isUpdate = false) {
     };
 
     await setDoc(doc(db, "agendamentos", senha), dados, { merge: true });
-    alert("Operação realizada com sucesso!");
+    alert(status === "Rascunho" ? "Rascunho Salvo!" : "Agendamento Finalizado!");
     resetaForm();
 }
 
-// --- MONITORAMENTO ---
+// --- CARREGAR DADOS E MONITORAR ---
 function carregarDados() {
     onSnapshot(query(collection(db, "agendamentos"), orderBy("timestamp", "desc")), (snap) => {
         const corpo = document.getElementById('corpoTabela');
@@ -91,24 +93,36 @@ function carregarDados() {
         snap.forEach(d => {
             const ag = d.data();
             const classe = getClasseTipo(ag.tipoProduto);
+            const dataFormat = ag.data.split('-').reverse().join('/');
 
             if (ag.status === "Rascunho") {
                 rascunhos.innerHTML += `
                     <tr>
                         <td><b>${ag.senhaAgendamento}</b></td>
+                        <td>${dataFormat}</td>
+                        <td>${ag.central}</td>
+                        <td>${ag.cargas || '-'}</td>
+                        <td>${ag.pedido || '-'}</td>
                         <td>${ag.fornecedor}</td>
-                        <td style="text-align:right">
-                            <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Composição"><i class="fas fa-boxes"></i></button>
-                            <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <td>${ag.tipoProduto}</td>
+                        <td>
+                            <button onclick="verComp('${ag.senhaAgendamento}')"><i class="fas fa-boxes"></i></button>
+                            <button onclick="editarAg('${ag.senhaAgendamento}')"><i class="fas fa-edit"></i></button>
                         </td>
                     </tr>`;
             } else {
-                if (ag.data >= dIni && ag.data <= dFim && (ag.fornecedor.toLowerCase().includes(termo) || ag.senhaAgendamento.toLowerCase().includes(termo))) {
+                if (ag.data >= dIni && ag.data <= dFim && 
+                   (ag.fornecedor.toLowerCase().includes(termo) || 
+                    ag.senhaAgendamento.toLowerCase().includes(termo) || 
+                    (ag.pedido && ag.pedido.includes(termo)))) {
+                    
                     corpo.innerHTML += `
                         <tr class="${classe}">
                             <td><b>${ag.senhaAgendamento}</b></td>
-                            <td>${ag.data.split('-').reverse().join('/')}</td>
+                            <td>${dataFormat}</td>
                             <td>${ag.central}</td>
+                            <td>${ag.cargas || '-'}</td>
+                            <td>${ag.pedido || '-'}</td>
                             <td>${ag.fornecedor}</td>
                             <td>${ag.tipoProduto}</td>
                             <td>
@@ -122,116 +136,161 @@ function carregarDados() {
     });
 }
 
-// --- GESTÃO DE FORNECEDORES ---
-async function carregarFornecedores() {
-    onSnapshot(collection(db, "fornecedores"), (snap) => {
-        const select = document.getElementById('selectFornecedor');
-        const lista = document.getElementById('listaForn');
-        
-        if (select) select.innerHTML = '<option value="">Selecione...</option>';
-        if (lista) lista.innerHTML = "";
-
-        snap.forEach(d => {
-            const f = d.data().nome;
-            if (select) select.innerHTML += `<option value="${f}">${f}</option>`;
-            if (lista) {
-                lista.innerHTML += `<li style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee; align-items:center;">
-                    ${f} <i class="fas fa-trash" style="color:red; cursor:pointer;" onclick="removerForn('${d.id}')"></i>
-                </li>`;
-            }
-        });
-    });
-}
-
-window.abrirFornecedor = () => {
-    document.getElementById('modalFornecedor').style.display = 'flex';
-};
-
-document.getElementById('btnAddForn').onclick = async () => {
-    const input = document.getElementById('nomeNovoForn');
-    const nome = input.value.toUpperCase().trim();
-    if (!nome) return alert("Digite o nome do fornecedor!");
-
-    await addDoc(collection(db, "fornecedores"), { nome: nome });
-    input.value = "";
-};
-
-window.removerForn = async (id) => {
-    if (confirm("Deseja excluir este fornecedor?")) {
-        await deleteDoc(doc(db, "fornecedores", id));
-    }
-};
-
-// --- FUNÇÕES AUXILIARES ---
+// --- EDIÇÃO DE ITENS NO MODAL ---
 window.verComp = async (senha) => {
+    senhaAbertaNoModal = senha;
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const docFound = snap.docs.find(x => x.id === senha);
-    if (!docFound) return;
-    const ag = docFound.data();
-    const corpo = document.getElementById('corpoItensComp');
-    corpo.innerHTML = "";
-
-    if (!ag.composicao || ag.composicao.length === 0) {
-        corpo.innerHTML = "<tr><td colspan='3' style='padding:10px'>Sem itens importados.</td></tr>";
-    } else {
-        ag.composicao.forEach(item => {
-            corpo.innerHTML += `<tr><td>${item.codigo}</td><td>${item.descricao}</td><td>${item.qtd}</td></tr>`;
-        });
-    }
+    const d = snap.docs.find(x => x.id === senha).data();
+    itensCargaTmp = d.composicao || [];
+    renderizarItensModal();
     document.getElementById('tituloComp').innerText = "Carga: " + senha;
     document.getElementById('modalComp').style.display = 'flex';
 };
 
+function renderizarItensModal() {
+    const corpo = document.getElementById('corpoItensComp');
+    corpo.innerHTML = "";
+    let total = 0;
+
+    itensCargaTmp.forEach((item, index) => {
+        total += parseInt(item.qtd);
+        corpo.innerHTML += `
+            <tr>
+                <td>${item.codigo}</td>
+                <td>${item.descricao}</td>
+                <td>${item.qtd}</td>
+                <td><button onclick="removerItemLocal(${index})" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+    });
+    document.getElementById('totalPecas').innerText = total;
+}
+
+window.adicionarItemManual = () => {
+    const cod = document.getElementById('itemCod').value;
+    const desc = document.getElementById('itemDesc').value;
+    const qtd = document.getElementById('itemQtd').value;
+
+    if (!desc || !qtd) return alert("Preencha descrição e quantidade!");
+
+    itensCargaTmp.push({
+        codigo: cod || "N/A",
+        descricao: desc.toUpperCase(),
+        qtd: parseInt(qtd)
+    });
+
+    document.getElementById('itemCod').value = "";
+    document.getElementById('itemDesc').value = "";
+    document.getElementById('itemQtd').value = "";
+    renderizarItensModal();
+};
+
+window.removerItemLocal = (index) => {
+    itensCargaTmp.splice(index, 1);
+    renderizarItensModal();
+};
+
+document.getElementById('btnSalvarEdicaoItens').onclick = async () => {
+    await updateDoc(doc(db, "agendamentos", senhaAbertaNoModal), {
+        composicao: itensCargaTmp
+    });
+    alert("Itens da carga atualizados!");
+    fecharModais();
+};
+
+// --- ORDENAÇÃO DE TABELA ---
+window.ordenarTabela = (n) => {
+    const table = document.getElementById("tabelaAgendas");
+    let switching = true, shouldSwitch, dir = "asc", switchcount = 0;
+    while (switching) {
+        switching = false;
+        let rows = table.rows;
+        for (var i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            let x = rows[i].getElementsByTagName("TD")[n];
+            let y = rows[i + 1].getElementsByTagName("TD")[n];
+            if (dir == "asc") {
+                if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) { shouldSwitch = true; break; }
+            } else if (dir == "desc") {
+                if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) { shouldSwitch = true; break; }
+            }
+        }
+        if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true; switchcount++;
+        } else {
+            if (switchcount == 0 && dir == "asc") { dir = "desc"; switching = true; }
+        }
+    }
+};
+
+// --- FORNECEDORES ---
+async function carregarFornecedores() {
+    onSnapshot(collection(db, "fornecedores"), (snap) => {
+        const select = document.getElementById('selectFornecedor');
+        const lista = document.getElementById('listaForn');
+        select.innerHTML = '<option value="">Selecione...</option>';
+        lista.innerHTML = "";
+        snap.forEach(d => {
+            const f = d.data().nome;
+            select.innerHTML += `<option value="${f}">${f}</option>`;
+            lista.innerHTML += `<li style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;">${f} <i class="fas fa-trash" style="color:red; cursor:pointer;" onclick="removerForn('${d.id}')"></i></li>`;
+        });
+    });
+}
+
+window.abrirFornecedor = () => document.getElementById('modalFornecedor').style.display = 'flex';
+document.getElementById('btnAddForn').onclick = async () => {
+    const nome = document.getElementById('nomeNovoForn').value.toUpperCase().trim();
+    if (nome) await addDoc(collection(db, "fornecedores"), { nome });
+    document.getElementById('nomeNovoForn').value = "";
+};
+window.removerForn = async (id) => { if (confirm("Excluir?")) await deleteDoc(doc(db, "fornecedores", id)); };
+
+// --- AUXILIARES ---
 const getClasseTipo = (tipo) => {
     const t = (tipo || "").toUpperCase();
-    if (['ARMARIO','COMODA','COZINHA','ROUPEIRO'].some(x => t.includes(x))) return 'tipo-amarelo';
+    if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) return 'tipo-amarelo';
     if (t.includes('MESA')) return 'tipo-verde';
-    if (['CELULAR','NOTEBOOK'].some(x => t.includes(x))) return 'tipo-azul';
+    if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) return 'tipo-azul';
     return '';
 };
 
 window.editarAg = async (senha) => {
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const docFound = snap.docs.find(x => x.id === senha);
-    if (!docFound) return;
-    const d = docFound.data();
-    
+    const d = snap.docs.find(x => x.id === senha).data();
     document.getElementById('senhaAgendamento').value = d.senhaAgendamento;
     document.getElementById('dataAgendamento').value = d.data;
     document.getElementById('central').value = d.central;
     document.getElementById('selectFornecedor').value = d.fornecedor;
+    document.getElementById('pedido').value = d.pedido || "";
+    document.getElementById('cargas').value = d.cargas || "";
     document.getElementById('tipoProduto').value = d.tipoProduto;
-    document.getElementById('cargas').value = d.cargas;
     document.getElementById('linhaSeparacao').value = d.linhaSeparacao || "EMBALADO";
     itensCargaTmp = d.composicao || [];
-
     document.getElementById('btnSalvar').style.display = 'none';
     document.getElementById('btnRascunho').style.display = 'none';
     document.getElementById('btnAtualizar').style.display = 'block';
 };
 
 window.resetaForm = () => {
-    itensCargaTmp = [];
-    document.getElementById('inputExcel').value = "";
+    document.getElementById('pedido').value = "";
     document.getElementById('cargas').value = "";
     document.getElementById('tipoProduto').value = "";
+    document.getElementById('inputExcel').value = "";
+    itensCargaTmp = [];
     document.getElementById('btnSalvar').style.display = 'block';
     document.getElementById('btnRascunho').style.display = 'block';
     document.getElementById('btnAtualizar').style.display = 'none';
     gerarSenha();
 };
 
-// --- INICIALIZAÇÃO ---
-window.addEventListener('DOMContentLoaded', () => { 
-    gerarSenha(); 
-    carregarDados(); 
-    carregarFornecedores(); 
-});
+window.fecharModais = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
 
+// Eventos
+window.addEventListener('DOMContentLoaded', () => { gerarSenha(); carregarDados(); carregarFornecedores(); });
 document.getElementById('btnSalvar').onclick = () => salvarAgenda("Agendada");
 document.getElementById('btnRascunho').onclick = () => salvarAgenda("Rascunho");
-document.getElementById('btnAtualizar').onclick = () => salvarAgenda("Agendada", true);
+document.getElementById('btnAtualizar').onclick = () => salvarAgenda("Agendada");
 document.getElementById('buscaGeral').oninput = carregarDados;
 document.getElementById('buscaInicio').onchange = carregarDados;
 document.getElementById('buscaFim').onchange = carregarDados;
-window.fecharModais = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
