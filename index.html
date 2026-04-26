@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Móveis Simonetti</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            background: #212121;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+        .login-card h2 { color: white; font-weight: 300; margin-bottom: 5px; }
+        .login-card h2 span { color: #D32F2F; font-weight: bold; }
+        .login-card p { color: #aaa; font-size: 0.9rem; margin-bottom: 25px; }
+        
+        .input-group { position: relative; margin-bottom: 15px; }
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.3s;
+        }
+        .input-group input:focus { border-color: #D32F2F; background: rgba(255,255,255,0.15); }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #D32F2F;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+        button:hover { background: #B71C1C; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo-container" style="margin-bottom: 20px;">
+            <h2 style="font-size: 1.8rem;">MÓVEIS <span>SIMONETTI</span></h2>
+        </div>
+        <p>Acesse o Portal Logístico</p>
+        
+        <div class="input-group">
+            <input type="text" id="loginField" placeholder="E-mail ou Usuário" autocomplete="username">
+        </div>
+        <div class="input-group">
+            <input type="password" id="passwordField" placeholder="Senha" autocomplete="current-password">
+        </div>
+        
+        <button id="btnLogin">ENTRAR NO SISTEMA</button>
+    </div>
+
+    <script type="module" src="js/auth.js"></script>
+</body>
+</html>
