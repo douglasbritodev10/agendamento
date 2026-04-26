@@ -105,90 +105,83 @@ window.copiarRascunhosSelecionados = () => {
     navigator.clipboard.write(data).then(() => alert("Copiado em formato comprimido!"));
 };
 
-// --- EXPORTAR PDF (BÁSICO VS COMPLETO) ---
+window.toggleSelectAll = (el) => {
+    // Seleciona apenas os checkboxes que estão visíveis na tabela de agendamentos definitivos
+    const checkboxes = document.querySelectorAll('#corpoTabela .check-export');
+    checkboxes.forEach(c => c.checked = el.checked);
+};
+
 window.exportarPDF = async (modo) => {
     const { jsPDF } = window.jspdf;
     const docPdf = new jsPDF('p', 'mm', 'a4');
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     
-    if (selecionados.length === 0) return alert("Selecione agendamentos na tabela!");
+    if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const snap = await getDocs(collection(db, "agendamentos"));
     const agendas = [];
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
+
+    // --- ESTILIZAÇÃO DO CABEÇALHO (Inspirado no print) ---
+    docPdf.setFillColor(192, 0, 0); // Vermelho Simonetti
+    docPdf.rect(0, 0, 210, 25, 'F');
+    docPdf.setFontSize(18);
+    docPdf.setTextColor(255, 255, 255);
+    docPdf.text("MÓVEIS SIMONETTI - AGENDAMENTO", 14, 16);
     
-    // Cabeçalho
-    docPdf.setFontSize(16);
-    docPdf.setTextColor(211, 47, 47);
-    docPdf.text("MÓVEIS SIMONETTI - GESTÃO DE CARGAS", 14, 15);
     docPdf.setFontSize(10);
+    docPdf.text(`TOTAL DE AGENDAMENTOS: ${agendas.length}`, 14, 32);
     docPdf.setTextColor(100);
-    docPdf.text(`Total de Agendamentos: ${agendas.length} | Emitido em: ${new Date().toLocaleString()}`, 14, 22);
+    docPdf.text(`Emitido em: ${new Date().toLocaleString()}`, 150, 32);
 
-    let currentY = 28;
+    let currentY = 38;
 
-    const head = [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'PEDIDO', 'FORNECEDOR', 'TIPO']];
-    const body = agendas.map(a => [
-        a.senhaAgendamento, 
-        a.data.split('-').reverse().join('/'), 
-        a.central, 
-        a.cargas || '-', 
-        a.pedido || '-', 
-        a.fornecedor, 
-        a.tipoProduto
-    ]);
+    agendas.forEach((ag, index) => {
+        // Verifica se precisa de nova página
+        if (currentY > 260) { docPdf.addPage(); currentY = 20; }
 
-    docPdf.autoTable({
-        head: head,
-        body: body,
-        startY: currentY,
-        theme: 'grid',
-        headStyles: { fillGray: 200, textColor: 50, fontSize: 8 },
-        styles: { fontSize: 8, cellPadding: 2 },
-        didParseCell: function(data) {
-            if (data.section === 'body') {
-                const tipo = data.row.raw[6]; 
-                const cores = getCoresPorTipo(tipo);
-                if (cores.bg !== '#FFFFFF') {
-                    data.cell.styles.fillColor = cores.rgb;
-                    data.cell.styles.textColor = (cores.text === '#FFFFFF') ? 255 : 0;
-                }
-            }
+        // Tabela da Carga (Cabeçalho Vermelho para cada carga)
+        docPdf.autoTable({
+            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO']],
+            body: [[
+                ag.senhaAgendamento, 
+                ag.data.split('-').reverse().join('/'), 
+                ag.central, 
+                ag.cargas || '-', 
+                ag.fornecedor, 
+                ag.tipoProduto
+            ]],
+            startY: currentY,
+            theme: 'grid',
+            headStyles: { fillGray: 50, fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
+            styles: { fontSize: 8, halign: 'center' },
+            columnStyles: { 0: { fontStyle: 'bold' } }
+        });
+
+        currentY = docPdf.lastAutoTable.finalY;
+
+        // Se for modo completo, desenha a composição logo abaixo
+        if (modo === 'completo' && ag.composicao && ag.composicao.length > 0) {
+            docPdf.autoTable({
+                head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
+                body: ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]),
+                startY: currentY,
+                margin: { left: 25 }, // Recuo para parecer sub-item
+                tableWidth: 160,
+                theme: 'plain',
+                headStyles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 7 },
+                styles: { fontSize: 7 },
+            });
+            currentY = docPdf.lastAutoTable.finalY + 10;
+        } else {
+            currentY += 5;
         }
     });
 
-    if (modo === 'completo') {
-        let finalY = docPdf.lastAutoTable.finalY + 10;
-        docPdf.setFontSize(12);
-        docPdf.text("DETALHAMENTO DA COMPOSIÇÃO", 14, finalY);
-        
-        agendas.forEach(ag => {
-            if (ag.composicao && ag.composicao.length > 0) {
-                finalY += 7;
-                docPdf.setFontSize(9);
-                docPdf.setTextColor(0);
-                docPdf.text(`Carga: ${ag.senhaAgendamento} - ${ag.fornecedor}`, 14, finalY);
-                
-                const compBody = ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]);
-                docPdf.autoTable({
-                    head: [['Cód', 'Descrição do Item', 'Qtd']],
-                    body: compBody,
-                    startY: finalY + 2,
-                    margin: { left: 20 },
-                    tableWidth: 150,
-                    styles: { fontSize: 7 },
-                    headStyles: { fillGray: 240 }
-                });
-                finalY = docPdf.lastAutoTable.finalY + 5;
-            }
-        });
-    }
-
-    docPdf.save(`Simonetti_${modo.toUpperCase()}_${getDataBR()}.pdf`);
+    docPdf.save(`Relatorio_Simonetti_${modo.toUpperCase()}.pdf`);
 };
 
-// --- EXPORTAR EXCEL ---
-window.exportarExcel = async () => {
+window.exportarExcel = async (modo) => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
@@ -200,7 +193,7 @@ window.exportarExcel = async () => {
             const d = doc.data();
             const base = {
                 Senha: d.senhaAgendamento,
-                Data: d.data,
+                Data: d.data.split('-').reverse().join('/'),
                 Central: d.central,
                 Cargas: d.cargas,
                 Pedido: d.pedido,
@@ -208,9 +201,10 @@ window.exportarExcel = async () => {
                 Tipo: d.tipoProduto
             };
 
-            if (d.composicao && d.composicao.length > 0) {
+            // Se for completo, expande as linhas para cada item
+            if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
                 d.composicao.forEach(item => {
-                    rows.push({ ...base, Item_Cod: item.codigo, Item_Desc: item.descricao, Item_Qtd: item.qtd });
+                    rows.push({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
                 });
             } else {
                 rows.push(base);
@@ -220,8 +214,8 @@ window.exportarExcel = async () => {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Agendamentos_Completos");
-    XLSX.writeFile(wb, `Logistica_Simonetti_${getDataBR()}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
+    XLSX.writeFile(wb, `Simonetti_Export_${modo.toUpperCase()}.xlsx`);
 };
 
 // --- CARREGAR E MONITORAR (REAL-TIME) ---
