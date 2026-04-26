@@ -51,7 +51,7 @@
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
 
         .secao-rascunho { border: 2px dashed #607D8B; background: #f8f9fb; padding: 15px; border-radius: 12px; margin-top: 20px; }
-
+        
         @media (max-width: 1024px) {
             .container { grid-template-columns: 1fr; }
             .export-actions { width: 100%; justify-content: space-between; }
@@ -73,7 +73,7 @@
             <section class="card">
                 <div class="card-header">
                     <h3>Dados da Agenda</h3>
-                    <button onclick="resetaForm()" style="border:none; background:none; cursor:pointer; color:#666;"><i class="fas fa-sync"></i></button>
+                    <button onclick="resetaForm()" title="Resetar e Gerar Nova Senha" style="border:none; background:none; cursor:pointer; color:#666;"><i class="fas fa-sync-alt"></i></button>
                 </div>
                 <div class="form-group">
                     <label>Senha Agendamento</label>
@@ -109,7 +109,7 @@
                 </div>                
                 <div class="form-group">
                     <label>Tipo de Produto</label>
-                    <input type="text" id="tipoProduto">
+                    <input type="text" id="tipoProduto" placeholder="Ex: ROUPEIRO, MESA...">
                 </div>
                 <div class="form-group">
                     <label>Linha de Separação</label>
@@ -127,7 +127,7 @@
                         <option value="MIUDEZA 1">MIUDEZA 1</option>
                         <option value="EMBALADO">EMBALADO</option>
                         <option value="EMBALADO 1">EMBALADO 1</option>  
-                    </select>
+                        </select>
                 </div>
 
                 <div class="form-group" style="border: 1px dashed var(--vermelho); padding: 10px; border-radius: 8px;">
@@ -145,7 +145,7 @@
             <div class="filter-bar">
                 <div class="form-group" style="margin:0; flex: 1;"><label>De:</label><input type="date" id="buscaInicio"></div>
                 <div class="form-group" style="margin:0; flex: 1;"><label>Até:</label><input type="date" id="buscaFim"></div>
-                <input type="text" id="buscaGeral" placeholder="🔍 Buscar..." style="flex:2; height: 41px;">
+                <input type="text" id="buscaGeral" placeholder="🔍 Buscar por Senha, Fornecedor, Pedido..." style="flex:2; height: 41px; padding: 0 10px; border: 1px solid #ddd; border-radius: 8px;">
                 
                 <div class="export-actions">
                     <button onclick="exportarExcel()" class="btn-exp" style="background:#2e7d32;"><i class="fas fa-file-excel"></i> EXCEL</button>
@@ -159,13 +159,13 @@
                     <thead>
                         <tr>
                             <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
-                            <th onclick="ordenarTabela(1)">SENHA</th>
-                            <th onclick="ordenarTabela(2)">DATA</th>
-                            <th onclick="ordenarTabela(3)">CENTRAL</th>
-                            <th onclick="ordenarTabela(4)">CARGAS</th>
-                            <th onclick="ordenarTabela(5)">PEDIDO</th>
-                            <th onclick="ordenarTabela(6)">FORNECEDOR</th>
-                            <th onclick="ordenarTabela(7)">TIPO</th>
+                            <th onclick="ordenarTabelaDefinitiva(1)">SENHA <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabelaDefinitiva(2)">DATA <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabelaDefinitiva(3)">CENTRAL <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabelaDefinitiva(4)">CARGAS <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabelaDefinitiva(5)">PEDIDO <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabelaDefinitiva(6)">FORNECEDOR <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabelaDefinitiva(7)">TIPO <i class="fas fa-sort"></i></th>
                             <th>AÇÕES</th>
                         </tr>
                     </thead>
@@ -174,19 +174,25 @@
             </div>
 
             <div class="secao-rascunho">
-                <h4><i class="fas fa-file-alt"></i> RASCUNHOS</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4><i class="fas fa-file-alt"></i> RASCUNHOS</h4>
+                    <button onclick="copiarRascunhosSelecionados()" class="btn-exp" style="background:#fb8c00;">
+                        <i class="fas fa-copy"></i> COPIAR SELECIONADOS
+                    </button>
+                </div>
                 <div class="table-responsive">
-                    <table>
+                    <table id="tabelaRascunhos">
                         <thead>
                             <tr>
-                            <th onclick="ordenarTabela(0)">SENHA <i class="fas fa-sort"></i></th>
-                            <th onclick="ordenarTabela(1)">DATA <i class="fas fa-sort"></i></th>
-                            <th onclick="ordenarTabela(2)">CENTRAL <i class="fas fa-sort"></i></th>
-                            <th onclick="ordenarTabela(3)">CARGAS <i class="fas fa-sort"></i></th>
-                            <th onclick="ordenarTabela(4)">PEDIDO <i class="fas fa-sort"></i></th>
-                            <th onclick="ordenarTabela(5)">FORNECEDOR <i class="fas fa-sort"></i></th>
-                            <th onclick="ordenarTabela(6)">TIPO <i class="fas fa-sort"></i></th>
-                            <th>AÇÕES</th>
+                                <th style="width: 40px;">Sel.</th>
+                                <th onclick="ordenarTabelaRascunho(1)">SENHA <i class="fas fa-sort"></i></th>
+                                <th onclick="ordenarTabelaRascunho(2)">DATA <i class="fas fa-sort"></i></th>
+                                <th onclick="ordenarTabelaRascunho(3)">CENTRAL <i class="fas fa-sort"></i></th>
+                                <th onclick="ordenarTabelaRascunho(4)">CARGAS <i class="fas fa-sort"></i></th>
+                                <th onclick="ordenarTabelaRascunho(5)">PEDIDO <i class="fas fa-sort"></i></th>
+                                <th onclick="ordenarTabelaRascunho(6)">FORNECEDOR <i class="fas fa-sort"></i></th>
+                                <th onclick="ordenarTabelaRascunho(7)">TIPO <i class="fas fa-sort"></i></th>
+                                <th>AÇÕES</th>
                             </tr>
                         </thead>
                         <tbody id="corpoRascunhos"></tbody>
@@ -200,9 +206,9 @@
         <div class="modal-content">
             <h3 id="tituloComp">Itens da Carga</h3>
             <div style="display:flex; gap:5px; margin: 15px 0;">
-                <input type="text" id="itemCod" placeholder="Cód" style="width:80px;">
-                <input type="text" id="itemDesc" placeholder="Descrição" style="flex:1;">
-                <input type="number" id="itemQtd" placeholder="Qtd" style="width:80px;">
+                <input type="text" id="itemCod" placeholder="Cód" style="width:80px; padding: 5px;">
+                <input type="text" id="itemDesc" placeholder="Descrição" style="flex:1; padding: 5px;">
+                <input type="number" id="itemQtd" placeholder="Qtd" style="width:80px; padding: 5px;">
                 <button onclick="adicionarItemManual()" class="btn-save" style="padding: 5px 15px; border-radius: 5px; border:none; color:white;"><i class="fas fa-plus"></i></button>
             </div>
             <div class="table-responsive" style="max-height: 40vh;">
@@ -223,10 +229,10 @@
         <div class="modal-content">
             <h3>Fornecedores</h3>
             <div style="display:flex; gap:10px; margin:20px 0;">
-                <input type="text" id="nomeNovoForn" placeholder="Nome">
+                <input type="text" id="nomeNovoForn" placeholder="Nome do Fornecedor" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px;">
                 <button id="btnAddForn" class="btn-save" style="padding: 0 20px; border-radius: 8px; border:none; color:white;">ADD</button>
             </div>
-            <ul id="listaForn" style="list-style:none; max-height:200px; overflow-y:auto; border:1px solid #eee;"></ul>
+            <ul id="listaForn" style="list-style:none; max-height:200px; overflow-y:auto; border:1px solid #eee; border-radius: 8px;"></ul>
             <button onclick="fecharModais()" class="btn-main" style="background:#eee; margin-top:10px;">FECHAR</button>
         </div>
     </div>
