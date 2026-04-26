@@ -148,9 +148,19 @@
                 <input type="text" id="buscaGeral" placeholder="🔍 Buscar por Senha, Fornecedor, Pedido..." style="flex:2; height: 41px; padding: 0 10px; border: 1px solid #ddd; border-radius: 8px;">
                 
                 <div class="export-actions">
-                    <button onclick="exportarExcel()" class="btn-exp" style="background:#2e7d32;"><i class="fas fa-file-excel"></i> EXCEL</button>
-                    <button onclick="exportarPDF('basico')" class="btn-exp" style="background:#1565c0;"><i class="fas fa-file-pdf"></i> PDF BÁSICO</button>
-                    <button onclick="exportarPDF('completo')" class="btn-exp" style="background:#d32f2f;"><i class="fas fa-file-pdf"></i> PDF COMPLETO</button>
+                    <button onclick="exportarExcel('basico')" class="btn-exp" style="background:#2e7d32;" title="Apenas colunas principais">
+                        <i class="fas fa-file-excel"></i> EXCEL BÁSICO
+                    </button>
+                    <button onclick="exportarExcel('completo')" class="btn-exp" style="background:#1b5e20;" title="Inclui composição da carga">
+                        <i class="fas fa-file-excel"></i> EXCEL COMPLETO
+                    </button>
+
+                    <button onclick="exportarPDF('basico')" class="btn-exp" style="background:#1565c0;" title="Apenas colunas principais">
+                        <i class="fas fa-file-pdf"></i> PDF BÁSICO
+                    </button>
+                    <button onclick="exportarPDF('completo')" class="btn-exp" style="background:#d32f2f;" title="Inclui composição da carga">
+                        <i class="fas fa-file-pdf"></i> PDF COMPLETO
+                    </button>
                 </div>
             </div>
 
