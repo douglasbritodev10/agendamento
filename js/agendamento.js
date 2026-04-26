@@ -32,7 +32,7 @@ async function gerarSenha() {
     document.getElementById('senhaAgendamento').value = String(num).padStart(2, '0') + "-SM";
 }
 
-// --- IMPORTAR EXCEL ---
+// --- IMPORTAR EXCEL (COMPOSIÇÃO) ---
 document.getElementById('inputExcel').addEventListener('change', (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
@@ -94,7 +94,6 @@ function carregarDados() {
             const ag = d.data();
             const classe = getClasseTipo(ag.tipoProduto);
             const dataFormat = ag.data.split('-').reverse().join('/');
-
             const compString = (ag.composicao || []).map(i => (i.codigo + " " + i.descricao).toLowerCase()).join(" ");
 
             const atendeBusca = 
@@ -124,6 +123,7 @@ function carregarDados() {
                 if (ag.data >= dIni && ag.data <= dFim && atendeBusca) {
                     corpo.innerHTML += `
                         <tr class="${classe}">
+                            <td><input type="checkbox" class="check-export" value="${ag.senhaAgendamento}"></td>
                             <td><b>${ag.senhaAgendamento}</b></td>
                             <td>${dataFormat}</td>
                             <td>${ag.central}</td>
@@ -142,14 +142,91 @@ function carregarDados() {
     });
 }
 
+// --- EXPORTAÇÕES ---
+window.toggleSelectAll = (el) => {
+    document.querySelectorAll('.check-export').forEach(c => c.checked = el.checked);
+};
+
+function getSelecionados() {
+    return Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+}
+
+window.exportarExcel = async () => {
+    const selecionados = getSelecionados();
+    if (selecionados.length === 0) return alert("Selecione ao menos um agendamento para exportar!");
+
+    const snap = await getDocs(collection(db, "agendamentos"));
+    const dadosExport = [];
+
+    snap.forEach(doc => {
+        if (selecionados.includes(doc.id)) {
+            const d = doc.data();
+            dadosExport.push({
+                Senha: d.senhaAgendamento,
+                Data: d.data,
+                Central: d.central,
+                Fornecedor: d.fornecedor,
+                Cargas: d.cargas || "",
+                Pedido: d.pedido || "",
+                Tipo: d.tipoProduto,
+                Linha: d.linhaSeparacao
+            });
+        }
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dadosExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Agendamentos");
+    XLSX.writeFile(wb, `Agendamentos_Simonetti_${getDataBR()}.xlsx`);
+};
+
+window.exportarPDF = async (tipo) => {
+    const { jsPDF } = window.jspdf;
+    const docPdf = new jsPDF('p', 'mm', 'a4');
+    const selecionados = getSelecionados();
+
+    if (selecionados.length === 0) return alert("Selecione ao menos um agendamento!");
+
+    const snap = await getDocs(collection(db, "agendamentos"));
+    const agendas = [];
+    snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
+
+    if (tipo === 'basico') {
+        docPdf.text("Relatório de Agendamentos - Móveis Simonetti", 14, 15);
+        const rows = agendas.map(a => [a.senhaAgendamento, a.data, a.fornecedor, a.pedido, a.tipoProduto]);
+        docPdf.autoTable({
+            startY: 20,
+            head: [['Senha', 'Data', 'Fornecedor', 'Pedido', 'Tipo']],
+            body: rows
+        });
+    } else {
+        // PDF Completo - Detalha itens de cada carga
+        agendas.forEach((a, index) => {
+            if (index > 0) docPdf.addPage();
+            docPdf.setFontSize(14);
+            docPdf.text(`AGENDA: ${a.senhaAgendamento} - ${a.fornecedor}`, 14, 15);
+            docPdf.setFontSize(10);
+            docPdf.text(`Data: ${a.data} | Pedido: ${a.pedido || '-'} | Central: ${a.central}`, 14, 22);
+            
+            const itens = (a.composicao || []).map(i => [i.codigo, i.descricao, i.qtd]);
+            docPdf.autoTable({
+                startY: 28,
+                head: [['Cód', 'Descrição do Produto', 'Qtd']],
+                body: itens,
+                foot: [['', 'TOTAL DE PEÇAS', (a.composicao || []).reduce((acc, cur) => acc + (cur.qtd || 0), 0)]]
+            });
+        });
+    }
+    docPdf.save(`Relatorio_Simonetti_${tipo}.pdf`);
+};
+
 // --- EDIÇÃO DE ITENS NO MODAL ---
 window.verComp = async (senha) => {
     senhaAbertaNoModal = senha;
     const snap = await getDocs(query(collection(db, "agendamentos")));
     const docFound = snap.docs.find(x => x.id === senha);
     if (!docFound) return;
-    const d = docFound.data();
-    itensCargaTmp = d.composicao || [];
+    itensCargaTmp = docFound.data().composicao || [];
     renderizarItensModal();
     document.getElementById('tituloComp').innerText = "Carga: " + senha;
     document.getElementById('modalComp').style.display = 'flex';
@@ -187,18 +264,9 @@ window.adicionarItemManual = () => {
     const cod = document.getElementById('itemCod').value;
     const desc = document.getElementById('itemDesc').value;
     const qtd = document.getElementById('itemQtd').value;
-
     if (!desc || !qtd) return alert("Preencha descrição e quantidade!");
-
-    itensCargaTmp.push({
-        codigo: cod || "N/A",
-        descricao: desc.toUpperCase(),
-        qtd: parseInt(qtd)
-    });
-
-    document.getElementById('itemCod').value = "";
-    document.getElementById('itemDesc').value = "";
-    document.getElementById('itemQtd').value = "";
+    itensCargaTmp.push({ codigo: cod || "N/A", descricao: desc.toUpperCase(), qtd: parseInt(qtd) });
+    document.getElementById('itemCod').value = ""; document.getElementById('itemDesc').value = ""; document.getElementById('itemQtd').value = "";
     renderizarItensModal();
 };
 
@@ -208,9 +276,7 @@ window.removerItemLocal = (index) => {
 };
 
 document.getElementById('btnSalvarEdicaoItens').onclick = async () => {
-    await updateDoc(doc(db, "agendamentos", senhaAbertaNoModal), {
-        composicao: itensCargaTmp
-    });
+    await updateDoc(doc(db, "agendamentos", senhaAbertaNoModal), { composicao: itensCargaTmp });
     alert("Itens da carga atualizados!");
     fecharModais();
 };
@@ -308,7 +374,6 @@ window.resetaForm = () => {
 
 window.fecharModais = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
 
-// Eventos de Inicialização
 window.addEventListener('DOMContentLoaded', () => { 
     gerarSenha(); 
     carregarDados(); 
