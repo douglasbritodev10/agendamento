@@ -1,7 +1,7 @@
 import { app } from './firebase-config.js';
 import { 
     getFirestore, doc, setDoc, collection, addDoc, onSnapshot, query, orderBy, 
-    updateDoc, getDocs, limit, serverTimestamp 
+    updateDoc, getDocs, limit, serverTimestamp, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
@@ -13,11 +13,11 @@ const getDataBR = () => {
     return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 };
 
-// Inicialização de campos de data e usuário
-if(document.getElementById('dataAgendamento')) document.getElementById('dataAgendamento').value = getDataBR();
-if(document.getElementById('buscaInicio')) document.getElementById('buscaInicio').value = getDataBR();
-if(document.getElementById('buscaFim')) document.getElementById('buscaFim').value = getDataBR();
-if(document.getElementById('user-display')) document.getElementById('user-display').innerText = usuarioNome;
+// Inicialização de campos
+document.getElementById('dataAgendamento').value = getDataBR();
+document.getElementById('buscaInicio').value = getDataBR();
+document.getElementById('buscaFim').value = getDataBR();
+document.getElementById('user-display').innerText = usuarioNome;
 
 // --- GERAÇÃO DE SENHA ---
 async function gerarSenha() {
@@ -77,7 +77,7 @@ async function salvarAgenda(status, isUpdate = false) {
     resetaForm();
 }
 
-// --- MONITORAMENTO DA TABELA ---
+// --- MONITORAMENTO ---
 function carregarDados() {
     onSnapshot(query(collection(db, "agendamentos"), orderBy("timestamp", "desc")), (snap) => {
         const corpo = document.getElementById('corpoTabela');
@@ -86,15 +86,14 @@ function carregarDados() {
         const dFim = document.getElementById('buscaFim').value;
         const termo = document.getElementById('buscaGeral').value.toLowerCase();
 
-        if(corpo) corpo.innerHTML = ""; 
-        if(rascunhos) rascunhos.innerHTML = "";
+        corpo.innerHTML = ""; rascunhos.innerHTML = "";
 
         snap.forEach(d => {
             const ag = d.data();
             const classe = getClasseTipo(ag.tipoProduto);
 
             if (ag.status === "Rascunho") {
-                if(rascunhos) rascunhos.innerHTML += `
+                rascunhos.innerHTML += `
                     <tr>
                         <td><b>${ag.senhaAgendamento}</b></td>
                         <td>${ag.fornecedor}</td>
@@ -105,7 +104,7 @@ function carregarDados() {
                     </tr>`;
             } else {
                 if (ag.data >= dIni && ag.data <= dFim && (ag.fornecedor.toLowerCase().includes(termo) || ag.senhaAgendamento.toLowerCase().includes(termo))) {
-                    if(corpo) corpo.innerHTML += `
+                    corpo.innerHTML += `
                         <tr class="${classe}">
                             <td><b>${ag.senhaAgendamento}</b></td>
                             <td>${ag.data.split('-').reverse().join('/')}</td>
@@ -123,7 +122,7 @@ function carregarDados() {
     });
 }
 
-// --- GESTÃO DE FORNECEDORES (ADICIONADO CONFORME PEDIDO) ---
+// --- GESTÃO DE FORNECEDORES ---
 async function carregarFornecedores() {
     onSnapshot(collection(db, "fornecedores"), (snap) => {
         const select = document.getElementById('selectFornecedor');
@@ -136,22 +135,39 @@ async function carregarFornecedores() {
             const f = d.data().nome;
             if (select) select.innerHTML += `<option value="${f}">${f}</option>`;
             if (lista) {
-                lista.innerHTML += `<li style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;">
+                lista.innerHTML += `<li style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee; align-items:center;">
                     ${f} <i class="fas fa-trash" style="color:red; cursor:pointer;" onclick="removerForn('${d.id}')"></i>
                 </li>`;
             }
         });
     });
 }
-window.carregarFornecedores = carregarFornecedores;
 
-// --- DEMAIS FUNÇÕES AUXILIARES ---
+window.abrirFornecedor = () => {
+    document.getElementById('modalFornecedor').style.display = 'flex';
+};
+
+document.getElementById('btnAddForn').onclick = async () => {
+    const input = document.getElementById('nomeNovoForn');
+    const nome = input.value.toUpperCase().trim();
+    if (!nome) return alert("Digite o nome do fornecedor!");
+
+    await addDoc(collection(db, "fornecedores"), { nome: nome });
+    input.value = "";
+};
+
+window.removerForn = async (id) => {
+    if (confirm("Deseja excluir este fornecedor?")) {
+        await deleteDoc(doc(db, "fornecedores", id));
+    }
+};
+
+// --- FUNÇÕES AUXILIARES ---
 window.verComp = async (senha) => {
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const docEncontrado = snap.docs.find(x => x.id === senha);
-    if(!docEncontrado) return;
-    
-    const ag = docEncontrado.data();
+    const docFound = snap.docs.find(x => x.id === senha);
+    if (!docFound) return;
+    const ag = docFound.data();
     const corpo = document.getElementById('corpoItensComp');
     corpo.innerHTML = "";
 
@@ -176,9 +192,9 @@ const getClasseTipo = (tipo) => {
 
 window.editarAg = async (senha) => {
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const docEncontrado = snap.docs.find(x => x.id === senha);
-    if(!docEncontrado) return;
-    const d = docEncontrado.data();
+    const docFound = snap.docs.find(x => x.id === senha);
+    if (!docFound) return;
+    const d = docFound.data();
     
     document.getElementById('senhaAgendamento').value = d.senhaAgendamento;
     document.getElementById('dataAgendamento').value = d.data;
@@ -205,7 +221,7 @@ window.resetaForm = () => {
     gerarSenha();
 };
 
-// --- EVENTOS DE INICIALIZAÇÃO ---
+// --- INICIALIZAÇÃO ---
 window.addEventListener('DOMContentLoaded', () => { 
     gerarSenha(); 
     carregarDados(); 
