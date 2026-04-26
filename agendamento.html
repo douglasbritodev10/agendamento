@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<title>AGENDAMENTO - MÓVEIS SIMONETTI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.datatables.net/plug-ins/1.13.4/sorting/datetime-moment.js"></script>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" />
+
+<style>
+:root {
+  --cor-fundo: #fafafa;
+  --vermelho: #cc0000;
+  --vermelho-grad: linear-gradient(90deg, #ff6666, #cc0000);
+}
+body { font-family: 'Segoe UI', sans-serif; background-color: var(--cor-fundo); margin: 0; padding: 10px; }
+
+#userBar { background:#E6E6E6; padding:10px; display:flex; align-items:center; border-radius:6px; margin-bottom:12px; gap: 15px; }
+#welcomeUser { font-weight:bold; flex-grow: 1; text-align: left; color: #333; }
+header h1 { text-align: center; color: var(--vermelho); font-size: 28px; font-weight: bold; margin: 15px 0; }
+
+.table-container { overflow-x: auto; border: 1px solid #ff9999; border-radius: 6px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+table { width: 100% !important; border-collapse: collapse; font-size: 13px; table-layout: auto; }
+thead th { background: var(--vermelho-grad) !important; color: #fff !important; padding: 12px; text-align: center; border: 1px solid #ddd; white-space: nowrap; }
+
+tbody td { 
+    padding: 10px; border: 1px solid #ddd; text-align: center; 
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+    max-width: 150px;
+    cursor: pointer;
+}
+tbody tr:nth-child(even) { background-color: #ffe5e5; }
+
+.filter-select {
+  width: 100%; padding: 6px; font-size: 12px; background: #fff; border: 1px solid var(--vermelho);
+  color: var(--vermelho); font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.3s;
+}
+.filter-select.applied { background-color: #FFFF00 !important; color: #000 !important; border-color: #b8860b !important; }
+
+.menu { margin-bottom: 10px; position: relative; display: inline-block; }
+.menu button { background: var(--vermelho); color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+.menu-content { display: none; position: absolute; background: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 100; min-width: 160px; border-radius: 4px; }
+.menu-content a { display: block; padding: 10px; text-decoration: none; color: #333; cursor: pointer; border-bottom: 1px solid #eee; }
+.menu:hover .menu-content { display: block; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none; justify-content: center; align-items: center; }
+.modal-content-filter { background: white; padding: 20px; border-radius: 8px; width: 320px; max-height: 80%; display: flex; flex-direction: column; }
+.modal-checkbox-list { overflow-y: auto; flex-grow: 1; margin: 10px 0; border: 1px solid #eee; padding: 10px; }
+.modal-checkbox-list label { display: flex; align-items: center; padding: 5px; cursor: pointer; }
+
+/* Estilo para opções bloqueadas (que não existem no filtro atual das outras colunas) */
+.disabled-option { color: #bbb; cursor: not-allowed !important; background: #f9f9f9; }
+.disabled-option input { pointer-events: none; opacity: 0.5; }
+
+#modalCarga { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center; }
+.carga-box { background: #fff; padding: 25px; border-radius: 8px; max-width: 500px; width: 90%; position: relative; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+
+<div id="userBar">
+  <button onclick="history.back()" style="background:none; border:none; font-size:24px; cursor:pointer;">←</button>
+  <span id="welcomeUser"></span>
+  <button onclick="logout()" style="background:var(--vermelho); color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">Sair</button>
+</div>
+
+<header><h1>AGENDAMENTO - MÓVEIS SIMONETTI</h1></header>
+
+<div class="menu">
+  <button>📤 Exportar Dados</button>
+  <div class="menu-content">
+    <a onclick="exportarPDF()">PDF Profissional</a>
+    <a onclick="exportarExcel()">Planilha Excel</a>
+  </div>
+</div>
+
+<div class="table-container">
+  <table id="planilha" class="display nowrap">
+    <thead>
+      <tr class="headers"></tr>
+      <tr class="filters"></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div id="filterModalOverlay" class="modal-overlay">
+    <div class="modal-content-filter">
+        <div id="modalTitle" style="font-weight:bold; color:var(--vermelho); border-bottom:1px solid #eee; padding-bottom:5px;"></div>
+        <div id="modalCheckboxList" class="modal-checkbox-list"></div>
+        <div style="display:flex; gap:5px;">
+            <button onclick="marcarTodos(true)" style="flex:1; padding:8px; cursor:pointer;">Todos</button>
+            <button onclick="marcarTodos(false)" style="flex:1; padding:8px; cursor:pointer;">Nenhum</button>
+        </div>
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <button onclick="$('#filterModalOverlay').fadeOut()" style="flex:1; padding:10px; background:#6c757d; color:#fff; border:none; border-radius:4px; cursor:pointer;">Cancelar</button>
+            <button id="btnApplyFilter" style="flex:1; padding:10px; background:var(--vermelho); color:#fff; border:none; border-radius:4px; cursor:pointer;">Aplicar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalCarga">
+  <div class="carga-box">
+    <span onclick="$('#modalCarga').hide()" style="position:absolute; top:10px; right:15px; cursor:pointer; font-size:20px; font-weight:bold;">&times;</span>
+    <h3 style="color:var(--vermelho); border-bottom: 1px solid #eee; padding-bottom: 10px;">Conteúdo Completo</h3>
+    <p id="textoCompleto" style="text-align: left; line-height: 1.5; color: #444; word-wrap: break-word;"></p>
+  </div>
+</div>
+
+<script>
+$.fn.dataTable.moment('DD/MM/YYYY');
+
+const colunas = ["SENHA DE AGENDAMENTO", "DATA", "CENTRAL", "CARGAS", "FORNECEDOR", "TIPO DE PRODUTO", "PRODUTO"];
+let dataTable;
+let allData = [];
+const sheetID = "1Ore02M4GARvE6hldNDZmiVNDrABb4dgaZO7wlMY-fjs";
+const urls = [
+  `https://docs.google.com/spreadsheets/d/${sheetID}/export?format=csv&gid=0`,
+  `https://docs.google.com/spreadsheets/d/${sheetID}/export?format=csv&gid=353068485`
+];
+
+async function carregar() {
+    let p = 0;
+    urls.forEach(url => {
+        Papa.parse(url, { download:true, header:true, complete: r => {
+            allData = allData.concat(r.data.filter(x => x[colunas[0]]));
+            p++; if(p === urls.length) initTable();
+        }});
+    });
+}
+
+function initTable() {
+    const h = document.querySelector(".headers");
+    const f = document.querySelector(".filters");
+    h.innerHTML = ""; f.innerHTML = "";
+    
+    colunas.forEach((c, i) => {
+        h.innerHTML += `<th>${c}</th>`;
+        f.innerHTML += `<th><button class="filter-select" data-index="${i}">Filtrar</button></th>`;
+    });
+
+    dataTable = $("#planilha").DataTable({
+        data: allData,
+        columns: colunas.map(c => ({ data: c })),
+        stateSave: true,
+        language: { url: "https://cdn.datatables.net/plug-ins/1.13.4/i18n/pt-BR.json" },
+        scrollX: true, autoWidth: true, pageLength: 50,
+        order: [[1, 'asc']],
+        createdRow: function(row, data) {
+            const tp = (data["TIPO DE PRODUTO"] || "").toUpperCase();
+            if (['ROUPEIRO', 'ARMARIO', 'COZINHA', 'PAINEL', 'MODULO', 'MULTIUSO', 'BALCAO', 'COMODA'].some(x => tp.includes(x))) $('td', row).eq(5).css('background','#FFFF00');
+            else if (['CELULAR', 'TABLET', 'RELOGIO', 'ROBO', 'NOTEBOOK'].some(x => tp.includes(x))) $('td', row).eq(5).css('background','#00BFFF');
+            else if (tp.includes('MESA')) $('td', row).eq(5).css('background','#4CAF50');
+        },
+        initComplete: function() {
+            this.api().columns().every(function(idx) {
+                if (this.search()) {
+                    $(`.filter-select[data-index="${idx}"]`).addClass('applied');
+                }
+            });
+        }
+    });
+
+    $(document).off('click', '.filter-select').on('click', '.filter-select', function() {
+        abrirFiltro($(this).data('index'));
+    });
+
+    $('#planilha tbody').off('click', 'td').on('click', 'td', function() {
+        const txt = $(this).text();
+        if(txt.length > 5) {
+            $('#textoCompleto').text(txt);
+            $('#modalCarga').css('display','flex');
+        }
+    });
+}
+
+function abrirFiltro(idx) {
+    // 1. Pega TODOS os dados únicos da coluna no banco inteiro
+    let todosDoBanco = dataTable.column(idx).data().unique().toArray();
+
+    // 2. IMPORTANTE: Pega o que está visível considerando os filtros de OUTRAS colunas,
+    // mas IGNORANDO o filtro da própria coluna que você está abrindo agora.
+    // Isso permite que você veja Pinheiros e Serra como disponíveis se a Data permitir.
+    let configuracaoOriginal = dataTable.column(idx).search();
+    dataTable.column(idx).search('').draw(); // Limpa temporariamente
+    let visiveisNoContexto = dataTable.column(idx, {filter:'applied'}).data().unique().toArray();
+    dataTable.column(idx).search(configuracaoOriginal).draw(); // Restaura
+
+    // 3. Pega o que já está selecionado para manter o checkbox marcado
+    let selecionados = configuracaoOriginal ? configuracaoOriginal.replace(/[\^\$\\]/g, '').split('|') : [];
+
+    // Ordenação
+    if(idx === 1) {
+        todosDoBanco.sort((a, b) => moment(a, "DD/MM/YYYY").toDate() - moment(b, "DD/MM/YYYY").toDate());
+    } else {
+        todosDoBanco.sort();
+    }
+
+    let html = "";
+    todosDoBanco.forEach(v => {
+        if(!v || v.trim() === "") return;
+        
+        // Regra do Filtro Inteligente:
+        // Só é "disponível" se existe dentro do contexto das outras colunas filtradas
+        const disponivel = visiveisNoContexto.includes(v);
+        const isChecked = selecionados.includes(v) ? "checked" : "";
+        
+        // Se não estiver disponível no contexto, bloqueia o clique
+        const labelClass = !disponivel ? "class='disabled-option'" : "";
+        const disabledAttr = !disponivel ? "disabled" : "";
+
+        // Caso especial: Se nada estiver filtrado na coluna, os disponíveis vêm marcados por padrão
+        const finalChecked = (configuracaoOriginal === "" && disponivel) ? "checked" : isChecked;
+
+        html += `<label ${labelClass}><input type="checkbox" value="${v}" ${finalChecked} ${disabledAttr}> ${v}</label>`;
+    });
+
+    $('#modalTitle').text(colunas[idx]);
+    $('#modalCheckboxList').html(html);
+    $('#filterModalOverlay').data('col', idx).fadeIn(200).css('display','flex');
+}
+
+$('#btnApplyFilter').off('click').click(function() {
+    const idx = $('#filterModalOverlay').data('col');
+    const sel = $('#modalCheckboxList input:checked:not(:disabled)').map(function(){ return this.value; }).get();
+    
+    // Pega o total de opções que estavam habilitadas (disponíveis para aquela data)
+    const totalHabilitados = $('#modalCheckboxList input:not(:disabled)').length;
+
+    let reg = "";
+    // Só filtra se o usuário marcou apenas algumas das opções disponíveis
+    if(sel.length > 0 && sel.length < totalHabilitados) {
+        reg = sel.map(v => '^'+$.fn.dataTable.util.escapeRegex(v)+'$').join('|');
+    }
+    
+    dataTable.column(idx).search(reg, true, false).draw();
+    
+    const btn = $(`.filter-select[data-index="${idx}"]`);
+    if(reg !== "") btn.addClass('applied'); else btn.removeClass('applied');
+    $('#filterModalOverlay').fadeOut(200);
+});
+
+function marcarTodos(st) { 
+    // Só mexe nos que não estão bloqueados pelo contexto
+    $('#modalCheckboxList input:not(:disabled)').prop('checked', st); 
+}
+
+function exportarPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const data = dataTable.rows({search:'applied'}).data().toArray();
+    doc.setFillColor(40, 40, 40); doc.rect(0, 0, 297, 30, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(16);
+    doc.text("MÓVEIS SIMONETTI - AGENDAMENTO", 15, 12);
+    doc.setFillColor(204, 0, 0); doc.roundedRect(15, 18, 50, 8, 2, 2, 'F');
+    doc.setFontSize(10); doc.text(`CARGAS: ${data.length}`, 20, 23.5);
+    doc.autoTable({
+        head: [colunas],
+        body: data.map(r => colunas.map(c => r[c])),
+        startY: 35, theme: 'grid',
+        headStyles: { fillColor: [204, 0, 0] },
+        styles: { fontSize: 7, halign: 'center' },
+        didParseCell: function(d) {
+            if(d.section === 'body' && d.column.index === 5) {
+                const v = (d.cell.raw || "").toUpperCase();
+                if(['ROUPEIRO', 'ARMARIO', 'COZINHA', 'PAINEL', 'MODULO', 'MULTIUSO', 'BALCAO', 'COMODA'].some(x => v.includes(x))) d.cell.styles.fillColor = [255,255,0];
+                if(['CELULAR', 'TABLET', 'RELOGIO', 'ROBO', 'NOTEBOOK'].some(x => v.includes(x))) d.cell.styles.fillColor = [0,191,255];
+                if(v.includes('MESA')) d.cell.styles.fillColor = [76,175,80];
+            }
+        }
+    });
+    doc.save("agendamento_simonetti.pdf");
+}
+
+function exportarExcel() {
+    const data = dataTable.rows({search:'applied'}).data().toArray();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Agendamento");
+    XLSX.writeFile(wb, "agendamento.xlsx");
+}
+
+function logout() { localStorage.clear(); window.location.href="login.html"; }
+document.getElementById("welcomeUser").textContent = "Bem-vindo, " + (localStorage.getItem("username") || "Usuário");
+carregar();
+</script>
+</body>
+</html>
