@@ -16,14 +16,14 @@
         .tipo-azul { background-color: #00BFFF !important; color: #fff; font-weight: bold; }
 
         .navbar { background: var(--vermelho); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-        .nav-left { display: flex; align-items: center; gap: 15px; }
-        .nav-left a { color: white; text-decoration: none; font-size: 1.2rem; }
+        .logo { font-weight: bold; font-size: 1.2rem; }
+        .logo span { font-weight: 300; }
 
-        .container { display: grid; grid-template-columns: 400px 1fr; gap: 20px; padding: 20px; max-width: 1800px; margin: 0 auto; }
+        .container { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 20px; max-width: 1800px; margin: 0 auto; }
 
         .card { background: var(--branco); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .card-header { border-bottom: 2px solid var(--fundo); margin-bottom: 15px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .card-header h3 { font-size: 1rem; color: var(--vermelho); text-transform: uppercase; }
+        .card-header h3 { font-size: 0.9rem; color: var(--vermelho); text-transform: uppercase; }
 
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 0.75rem; font-weight: bold; color: #666; margin-bottom: 4px; text-transform: uppercase; }
@@ -34,24 +34,32 @@
         .btn-save { background: var(--vermelho); color: white; }
         .btn-draft { background: #607D8B; color: white; }
         
-        .filter-bar { background: white; padding: 15px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
+        .filter-bar { background: white; padding: 15px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
 
-        .table-responsive { background: white; border-radius: 12px; overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; color: #666; border-bottom: 2px solid #eee; }
+        .table-responsive { background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 800px; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; color: #666; border-bottom: 2px solid #eee; cursor: pointer; white-space: nowrap; }
+        th:hover { background: #ececec; }
         td { padding: 12px; border-bottom: 1px solid #eee; }
 
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; }
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 10px; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
 
-        .secao-rascunho { border: 2px dashed #607D8B; background: #f8f9fb; padding: 15px; border-radius: 12px; }
+        .secao-rascunho { border: 2px dashed #607D8B; background: #f8f9fb; padding: 15px; border-radius: 12px; margin-top: 20px; }
+
+        /* Mobile */
+        @media (max-width: 1024px) {
+            .container { grid-template-columns: 1fr; }
+            .navbar { padding: 10px; }
+            .filter-bar { flex-direction: column; align-items: stretch; }
+        }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
         <div class="nav-left">
-            <a href="inicial.html"><i class="fas fa-chevron-left"></i> <span id="user-display">---</span></a>
+            <a href="inicial.html" style="color:white; text-decoration:none;"><i class="fas fa-chevron-left"></i> <span id="user-display">---</span></a>
         </div>
         <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
         <button onclick="location.href='index.html'" style="background:none; border:1px solid white; color:white; padding:5px 12px; border-radius:5px; cursor:pointer;">SAIR</button>
@@ -89,14 +97,17 @@
                     <select id="selectFornecedor"><option value="">Carregando...</option></select>
                 </div>
                 <div class="form-group">
-                    <label>Cargas / Placa</label>
+                    <label>Nº Pedido</label>
+                    <input type="text" id="pedido" placeholder="Ex: 550998">
+                </div>
+                <div class="form-group">
+                    <label>Cargas / Transportes</label>
                     <input type="text" id="cargas">
                 </div>
                 <div class="form-group">
-                    <label>Tipo de Produto (Livre)</label>
+                    <label>Tipo de Produto</label>
                     <input type="text" id="tipoProduto">
                 </div>
-
                 <div class="form-group">
                     <label>Linha de Separação</label>
                     <select id="linhaSeparacao">
@@ -113,7 +124,7 @@
                         <option value="GRANDEZA 9">GRANDEZA 9</option>
                         <option value="GRANDEZA 10">GRANDEZA 10</option>
                         <option value="MIUDEZA 1">MIUDEZA 1</option>
-                    </select>
+                        </select>
                 </div>
 
                 <div class="form-group" style="border: 1px dashed #D32F2F; padding: 10px; border-radius: 8px; margin-top: 15px;">
@@ -125,44 +136,58 @@
                 <button class="btn-main btn-draft" id="btnRascunho">SALVAR COMO RASCUNHO</button>
                 <button class="btn-main" id="btnAtualizar" style="display:none; background:var(--preto); color:white;">ATUALIZAR AGENDAMENTO</button>
             </section>
-
-            <section class="secao-rascunho">
-                <h4 style="font-size:0.8rem; color:#607D8B; margin-bottom:10px;"><i class="fas fa-file-alt"></i> RASCUNHOS</h4>
-                <div class="table-responsive">
-                    <table style="font-size: 0.75rem;">
-                        <tbody id="corpoRascunhos"></tbody>
-                    </table>
-                </div>
-            </section>
         </aside>
 
         <main>
             <div class="filter-bar">
-                <div class="form-group" style="margin:0">
+                <div class="form-group" style="margin:0; flex: 1;">
                     <label>De:</label>
                     <input type="date" id="buscaInicio">
                 </div>
-                <div class="form-group" style="margin:0">
+                <div class="form-group" style="margin:0; flex: 1;">
                     <label>Até:</label>
                     <input type="date" id="buscaFim">
                 </div>
-                <input type="text" id="buscaGeral" placeholder="🔍 Buscar por senha ou fornecedor..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                <input type="text" id="buscaGeral" placeholder="🔍 Buscar por senha, fornecedor ou pedido..." style="flex:2; padding:10px; border-radius:8px; border:1px solid #ddd; height: 41px;">
             </div>
 
             <div class="table-responsive">
-                <table>
+                <table id="tabelaAgendas">
                     <thead>
                         <tr>
-                            <th>SENHA</th>
-                            <th>DATA</th>
-                            <th>CENTRAL</th>
-                            <th>FORNECEDOR</th>
-                            <th>TIPO</th>
+                            <th onclick="ordenarTabela(0)">SENHA <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabela(1)">DATA <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabela(2)">CENTRAL <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabela(4)">CARGAS <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabela(3)">PEDIDO <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabela(5)">FORNECEDOR <i class="fas fa-sort"></i></th>
+                            <th onclick="ordenarTabela(6)">TIPO <i class="fas fa-sort"></i></th>
                             <th>AÇÕES</th>
                         </tr>
                     </thead>
                     <tbody id="corpoTabela"></tbody>
                 </table>
+            </div>
+
+            <div class="secao-rascunho">
+                <h4 style="font-size:0.8rem; color:#607D8B; margin-bottom:10px;"><i class="fas fa-file-alt"></i> RASCUNHOS EM ABERTO</h4>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr style="background:#f0f4f7">
+                                <th>SENHA</th>
+                                <th>DATA</th>
+                                <th>CENTRAL</th>
+                                <th>CARGAS</th>
+                                <th>PEDIDO</th>
+                                <th>FORNECEDOR</th>
+                                <th>TIPO</th>
+                                <th>AÇÕES</th>                                
+                            </tr>
+                        </thead>
+                        <tbody id="corpoRascunhos"></tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
@@ -170,17 +195,37 @@
     <div id="modalComp" class="modal">
         <div class="modal-content">
             <h3 id="tituloComp">Itens da Carga</h3>
-            <table style="margin-top: 15px; width: 100%;">
-                <thead>
-                    <tr style="background: #f0f0f0;">
-                        <th>Cód</th>
-                        <th>Descrição</th>
-                        <th>Qtd</th>
-                    </tr>
-                </thead>
-                <tbody id="corpoItensComp"></tbody>
-            </table>
-            <button onclick="fecharModais()" class="btn-main" style="background:#eee; margin-top:15px;">FECHAR</button>
+            
+            <div style="display:flex; gap:5px; margin-top:15px; background:#f9f9f9; padding:10px; border-radius:8px;">
+                <input type="text" id="itemCod" placeholder="Cód" style="width:70px; padding:5px;">
+                <input type="text" id="itemDesc" placeholder="Descrição do Produto" style="flex:1; padding:5px;">
+                <input type="number" id="itemQtd" placeholder="Qtd" style="width:70px; padding:5px;">
+                <button onclick="adicionarItemManual()" style="background:var(--vermelho); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;"><i class="fas fa-plus"></i></button>
+            </div>
+
+            <div class="table-responsive" style="margin-top: 15px; max-height: 40vh;">
+                <table style="width: 100%;">
+                    <thead style="position: sticky; top: 0; z-index: 1;">
+                        <tr style="background: #f0f0f0;">
+                            <th>Cód</th>
+                            <th>Descrição</th>
+                            <th>Qtd</th>
+                            <th style="width:50px">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoItensComp"></tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:1.1rem; color:var(--vermelho);">
+                <span>TOTAL DE PEÇAS:</span>
+                <span id="totalPecas">0</span>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="fecharModais()" class="btn-main" style="background:#eee; margin-bottom:0;">FECHAR</button>
+                <button id="btnSalvarEdicaoItens" class="btn-main btn-save" style="margin-bottom:0;">SALVAR ALTERAÇÕES</button>
+            </div>
         </div>
     </div>
 
