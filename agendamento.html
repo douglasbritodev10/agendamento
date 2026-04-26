@@ -3,124 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Agendamento | Móveis Simonetti</title>
+    <title>Agendamento Profissional | Móveis Simonetti</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
     <nav class="navbar">
         <div class="nav-left">
-            <a href="inicial.html" style="color:white; text-decoration:none;">⬅ <span id="nomeUsuarioLogado">DBRITO</span></a>
+            <a href="inicial.html" class="btn-voltar">⬅ VOLTAR</a>
+            <span id="user-display">DBRITO</span>
         </div>
         <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
         <div class="nav-right">
-            <button class="btn-sair" onclick="window.location.href='index.html'">SAIR</button>
+            <button class="btn-sair" onclick="location.href='index.html'">SAIR</button>
         </div>
     </nav>
 
     <main class="container">
-        <h2 style="text-align: center; color: var(--vermelho); margin-top: 0;">CONTROLE DE AGENDAMENTOS</h2>
-
-        <div class="grid-form">
+        <div class="dashboard-grid">
             <section class="card-form">
-                <h3 id="tituloForm">📅 Novo Agendamento</h3>
-                <input type="hidden" id="editandoId">
-                
-                <div class="form-group">
-                    <label>Senha de Agendamento</label>
-                    <input type="text" id="senhaAgendamento" readonly style="background: #eee;">
+                <div class="card-header">
+                    <h3>📅 Dados do Agendamento</h3>
+                    <span id="badge-status" class="badge">NOVO</span>
                 </div>
-
-                <div class="grid-campos" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Senha</label>
+                        <input type="text" id="senhaAgendamento" readonly class="input-readonly">
+                    </div>
                     <div class="form-group">
                         <label>Data</label>
                         <input type="date" id="dataCarga">
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label>Central</label>
                         <select id="central">
                             <option value="PINHEIROS">PINHEIROS</option>
                             <option value="SERRA">SERRA</option>
                             <option value="BUERAREMA">BUERAREMA</option>
-                            <option value="CANCELADA">CANCELADA</option>
                             <option value="CONQUISTA">CONQUISTA</option>
-                            <option value="EUNÁPOLIS">EUNÁPOLIS</option>
-                            <option value="TEXEIRA">TEXEIRA</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fornecedor <button class="btn-mini" onclick="abrirModalFornecedor()">GERENCIAR</button></label>
+                        <select id="fornecedorSelect"></select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Cargas (Campo Livre)</label>
-                    <input type="text" id="cargaTransporte">
+                    <input type="text" id="cargaTransporte" placeholder="Ex: Placa, Carreta, etc.">
                 </div>
 
-                <div class="form-group">
-                    <label>Fornecedor <button onclick="window.abrirModalFornecedor()" style="padding:2px 5px; font-size:10px;">GERENCIAR</button></label>
-                    <select id="fornecedorSelect"></select>
-                </div>
-
-                <div class="grid-campos" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Pedido de Compra</label>
+                        <label>Pedido / OC</label>
                         <input type="text" id="pedidoCompra">
                     </div>
                     <div class="form-group">
-                        <label>Volumes</label>
-                        <input type="text" id="volumes">
+                        <label>Tipo de Produto</label>
+                        <input type="text" id="tipoProduto" placeholder="Ex: ROUPEIRO, CELULAR..." onkeyup="this.value = this.value.toUpperCase()">
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Linha de Separação</label>
-                    <select id="linhaSeparacao">
-                        <option value="EMBALADO">EMBALADO</option>
-                        <option value="GRANDEZA 1">GRANDEZA 1</option>
-                        <option value="GRANDEZA 2">GRANDEZA 2</option>
-                        <option value="MIUDEZA 1">MIUDEZA 1</option>
-                    </select>
                 </div>
             </section>
 
             <section class="card-form">
                 <h3>📦 Composição da Carga</h3>
-                <div id="listaItens"></div>
-                <button type="button" class="btn-add-item" onclick="window.addLinhaItem()">+ ADICIONAR PRODUTO</button>
-                <button class="btn-save-all" id="btnFinalizar">SALVAR AGENDAMENTO</button>
-                <button id="btnCancelarEdicao" style="display:none; background:gray; width:100%; margin-top:10px;">CANCELAR EDIÇÃO</button>
+                <div id="listaItens" class="lista-itens-scroll"></div>
+                <button class="btn-add" onclick="addLinhaItem()">+ ITEM</button>
+                
+                <div class="acoes-container">
+                    <button class="btn-rascunho" id="btnRascunho">SALVAR RASCUNHO</button>
+                    <button class="btn-save-all" id="btnFinalizar">AGENDAR DEFINITIVO</button>
+                </div>
             </section>
         </div>
 
         <section class="area-tabela">
-            <div class="filtros-header" style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;">
-                <div>
-                    <label>Início</label>
-                    <input type="date" id="filtroDataInicio" style="width: 150px;">
-                </div>
-                <div>
-                    <label>Fim</label>
-                    <input type="date" id="filtroDataFim" style="width: 150px;">
-                </div>
-                <div style="flex: 1;">
-                    <label>Busca Geral</label>
-                    <input type="text" id="buscaGeral" placeholder="Senha, Fornecedor ou Carga...">
-                </div>
-                <button onclick="window.exportarExcel()" style="background:#2e7d32;">EXCEL</button>
-                <button onclick="window.exportarPDF()" style="background:#c62828;">PDF</button>
+            <div class="filtros-bar">
+                <input type="date" id="filtroInicio">
+                <input type="date" id="filtroFim">
+                <input type="text" id="buscaGeral" placeholder="🔍 Buscar por fornecedor, carga ou senha...">
+                <button class="btn-excel" onclick="exportarExcel()">EXCEL</button>
             </div>
 
-            <table id="tabelaAgendamentos">
+            <table id="tabelaAgendas">
                 <thead>
                     <tr>
-                        <th><input type="checkbox" id="selecionarTodos"></th>
                         <th>SENHA</th>
                         <th>DATA</th>
                         <th>CENTRAL</th>
                         <th>FORNECEDOR</th>
                         <th>CARGA</th>
+                        <th>TIPO PRODUTO</th>
                         <th>AÇÕES</th>
                     </tr>
                 </thead>
@@ -132,23 +112,23 @@
     <div id="modalFornecedor" class="modal">
         <div class="modal-content">
             <h3>Gerenciar Fornecedores</h3>
-            <input type="text" id="novoFornecedorNome" placeholder="Nome do Fornecedor">
-            <button onclick="window.salvarFornecedor()">ADICIONAR</button>
-            <hr>
-            <ul id="listaFornecedoresModal" style="list-style:none; padding:0; max-height:200px; overflow-y:auto;"></ul>
-            <button onclick="document.getElementById('modalFornecedor').style.display='none'" style="background:gray;">FECHAR</button>
+            <div class="modal-input-group">
+                <input type="text" id="novoFornecedor" placeholder="Nome do fornecedor">
+                <button onclick="salvarFornecedor()">ADICIONAR</button>
+            </div>
+            <ul id="listaFornecedores" class="modal-list"></ul>
+            <button class="btn-fechar" onclick="fecharModais()">FECHAR</button>
         </div>
     </div>
 
-    <div id="modalComposicao" class="modal">
-        <div class="modal-content">
-            <h3 id="tituloModalComp">Composição</h3>
-            <table border="1" style="width:100%; border-collapse: collapse;">
+    <div id="modalComp" class="modal">
+        <div class="modal-content wide">
+            <h3 id="tituloComp">Composição da Carga</h3>
+            <table class="table-modal">
                 <thead><tr><th>Cód</th><th>Descrição</th><th>Qtd</th></tr></thead>
-                <tbody id="corpoModalComp"></tbody>
+                <tbody id="corpoComp"></tbody>
             </table>
-            <br>
-            <button onclick="document.getElementById('modalComposicao').style.display='none'">FECHAR</button>
+            <button class="btn-fechar" onclick="fecharModais()">FECHAR</button>
         </div>
     </div>
 
