@@ -1,92 +1,107 @@
 import { app } from './firebase-config.js';
 import { 
-    getFirestore, 
-    doc, 
-    setDoc, 
-    collection, 
-    addDoc 
+    getFirestore, collection, addDoc, getDocs, query, where, orderBy, doc, updateDoc, setDoc 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
+const nivel = localStorage.getItem('nivelAcesso');
 
-// 1. GERAÇÃO DE SENHA ÚNICA (Executa ao carregar)
-const gerarSenha = () => {
-    const random = Math.floor(1000 + Math.random() * 9000);
-    const data = new Date();
-    const ano = data.getFullYear();
-    const mes = String(data.getMonth() + 1).padStart(2, '0');
-    return `SIM-${ano}${mes}-${random}`;
-};
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Controle de Acesso
+    if (nivel === 'ADM' || nivel === 'AGENDAMENTO') {
+        document.getElementById('areaCadastro').style.display = 'block';
+    }
 
-const inputSenha = document.getElementById('senhaAgendamento');
-if (inputSenha) inputSenha.value = gerarSenha();
+    // 2. Datas Padrão (Hoje)
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('filtroDataInicio').value = hoje;
+    document.getElementById('filtroDataFim').value = hoje;
+    document.getElementById('dataCarga').value = hoje;
 
-// 2. FUNÇÃO SALVAR TUDO
+    // 3. Gerar Senha Inicial
+    document.getElementById('senhaAgendamento').value = `SIM-${Date.now().toString().slice(-6)}`;
+
+    carregarAgendamentos(hoje, hoje);
+});
+
+// FUNÇÃO CARREGAR DADOS
+async function carregarAgendamentos(inicio, fim) {
+    const corpo = document.getElementById('corpoAgendamentos');
+    corpo.innerHTML = "<tr><td colspan='8'>Buscando...</td></tr>";
+
+    try {
+        const q = query(
+            collection(db, "agendamentos"),
+            where("data", ">=", inicio),
+            where("data", "<=", fim),
+            orderBy("data", "desc")
+        );
+
+        const snap = await getDocs(q);
+        corpo.innerHTML = "";
+
+        snap.forEach(docSnap => {
+            const d = docSnap.data();
+            const isFracionada = d.linkSenha ? `<br><small style="color:blue">🔗 Link: ${d.linkSenha}</small>` : "";
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="checkbox" class="row-select" data-id="${docSnap.id}"></td>
+                <td><strong>${d.senhaAgendamento}</strong>${isFracionada}</td>
+                <td>${d.data}</td>
+                <td>${d.central}</td>
+                <td>${d.fornecedor}</td>
+                <td>${d.cargaTransporte}</td>
+                <td>${d.volumes || 0}</td>
+                <td>
+                    ${(nivel === 'ADM') ? `<button onclick="editarCarga('${docSnap.id}')" class="btn-edit">✏️</button>` : '---'}
+                </td>
+            `;
+            corpo.appendChild(tr);
+        });
+    } catch (e) {
+        console.error(e);
+        corpo.innerHTML = "<tr><td colspan='8'>Erro ao carregar ou sem dados no período.</td></tr>";
+    }
+}
+
+// LÓGICA DE SALVAR (Com contador de veículo inteligente)
 document.getElementById('btnFinalizar').addEventListener('click', async () => {
-    const btn = document.getElementById('btnFinalizar');
-    const senha = inputSenha.value;
-
-    // Coleta dados da Carga
-    const dadosCarga = {
+    const senha = document.getElementById('senhaAgendamento').value;
+    const link = document.getElementById('linkSenha').value.trim();
+    
+    const dados = {
         senhaAgendamento: senha,
         data: document.getElementById('dataCarga').value,
         central: document.getElementById('central').value,
         fornecedor: document.getElementById('fornecedor').value,
         cargaTransporte: document.getElementById('transporte').value,
-        ordemCompra: document.getElementById('ordemCompra').value,
-        volumes: document.getElementById('volumes').value,
-        tipoProduto: document.getElementById('tipoProduto').value,
+        linkSenha: link,
+        // Se houver link, contaVeiculo é 0, se não, é 1 (para o seu contador de dashboard)
+        contaVeiculo: link ? 0 : 1, 
         status: "Agendada",
-        fixado: false,
-        dataCriacao: new Date().toISOString(),
-        criadoPor: localStorage.getItem('user_email') || "Sistema"
+        criadoEm: new Date().toISOString()
     };
 
-    // Validação Simples
-    if (!dadosCarga.data || !dadosCarga.fornecedor) {
-        alert("Por favor, preencha a Data e o Fornecedor.");
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = "PROCESSANDO...";
-
     try {
-        // A. Salva a Carga Principal (Usa a Senha como ID do documento)
-        await setDoc(doc(db, "agendamentos", senha), dadosCarga);
-
-        // B. Coleta e Salva os Itens
-        const linhas = document.querySelectorAll('.item-row');
-        for (const linha of linhas) {
-            const cod = linha.querySelector('.prod-id').value;
-            const desc = linha.querySelector('.prod-desc').value;
-            const qtd = linha.querySelector('.prod-qtd').value;
-
-            if (cod && desc) {
-                await addDoc(collection(db, "itens_agenda"), {
-                    senhaAgendamento: senha,
-                    codigoProduto: cod,
-                    descricao: desc,
-                    quantidade: qtd
-                });
-            }
-        }
-
-        // C. Registra no Histórico
-        await addDoc(collection(db, "historico"), {
-            usuario: localStorage.getItem('user_email'),
-            acao: "Criou novo agendamento",
-            senhaAgendamento: senha,
-            dataHora: new Date().toISOString()
-        });
-
-        alert("SUCESSO! Agendamento " + senha + " registrado.");
-        window.location.href = "inicial.html";
-
-    } catch (error) {
-        console.error("Erro ao salvar:", error);
-        alert("Erro ao salvar no banco de dados.");
-        btn.disabled = false;
-        btn.innerText = "FINALIZAR E SALVAR AGENDAMENTO";
+        await setDoc(doc(db, "agendamentos", senha), dados);
+        alert("Agendamento Salvo!");
+        location.reload();
+    } catch (e) {
+        alert("Erro ao salvar.");
     }
+});
+
+// EXPORTAÇÃO EXCEL (Exemplo simples usando SheetJS)
+window.exportarExcel = () => {
+    const table = document.getElementById("tabelaAgendamentos");
+    const wb = XLSX.utils.table_to_book(table);
+    XLSX.writeFile(wb, `Agendamentos_Simonetti_${Date.now()}.xlsx`);
+};
+
+// FILTRO
+document.getElementById('btnFiltrar').addEventListener('click', () => {
+    const i = document.getElementById('filtroDataInicio').value;
+    const f = document.getElementById('filtroDataFim').value;
+    carregarAgendamentos(i, f);
 });
