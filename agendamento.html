@@ -6,15 +6,11 @@
     <title>Gestão de Agendamentos | Móveis Simonetti</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
     <style>
         :root { --vermelho: #D32F2F; --preto: #212121; --fundo: #F0F2F5; --branco: #FFFFFF; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--fundo); color: var(--preto); }
 
-        /* Cores Dinâmicas por Tipo */
         .tipo-amarelo { background-color: #FFFF00 !important; color: #000; font-weight: bold; }
         .tipo-verde { background-color: #4CAF50 !important; color: #fff; font-weight: bold; }
         .tipo-azul { background-color: #00BFFF !important; color: #fff; font-weight: bold; }
@@ -25,12 +21,10 @@
 
         .container { display: grid; grid-template-columns: 400px 1fr; gap: 20px; padding: 20px; max-width: 1800px; margin: 0 auto; }
 
-        /* Cards */
         .card { background: var(--branco); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .card-header { border-bottom: 2px solid var(--fundo); margin-bottom: 15px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .card-header h3 { font-size: 1rem; color: var(--vermelho); text-transform: uppercase; }
 
-        /* Forms */
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 0.75rem; font-weight: bold; color: #666; margin-bottom: 4px; text-transform: uppercase; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
@@ -40,18 +34,15 @@
         .btn-save { background: var(--vermelho); color: white; }
         .btn-draft { background: #607D8B; color: white; }
         
-        /* Filtros */
         .filter-bar { background: white; padding: 15px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
 
-        /* Tabelas */
         .table-responsive { background: white; border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th { background: #f8f9fa; padding: 12px; text-align: left; color: #666; border-bottom: 2px solid #eee; }
         td { padding: 12px; border-bottom: 1px solid #eee; }
 
-        /* Modais */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 550px; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; }
 
         .secao-rascunho { border: 2px dashed #607D8B; background: #f8f9fb; padding: 15px; border-radius: 12px; }
     </style>
@@ -105,6 +96,7 @@
                     <label>Tipo de Produto (Livre)</label>
                     <input type="text" id="tipoProduto">
                 </div>
+
                 <div class="form-group">
                     <label>Linha de Separação</label>
                     <select id="linhaSeparacao">
@@ -121,7 +113,12 @@
                         <option value="GRANDEZA 9">GRANDEZA 9</option>
                         <option value="GRANDEZA 10">GRANDEZA 10</option>
                         <option value="MIUDEZA 1">MIUDEZA 1</option>
-                        </select>
+                    </select>
+                </div>
+
+                <div class="form-group" style="border: 1px dashed #D32F2F; padding: 10px; border-radius: 8px; margin-top: 15px;">
+                    <label style="color:var(--vermelho); font-weight: bold;">Importar Composição (Excel)</label>
+                    <input type="file" id="inputExcel" accept=".xlsx, .xls" style="font-size: 0.7rem;">
                 </div>
 
                 <button class="btn-main btn-save" id="btnSalvar">FINALIZAR AGENDAMENTO</button>
@@ -150,7 +147,6 @@
                     <input type="date" id="buscaFim">
                 </div>
                 <input type="text" id="buscaGeral" placeholder="🔍 Buscar por senha ou fornecedor..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
-                <button onclick="exportarExcel()" style="background:#2e7d32; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;"><i class="fas fa-file-excel"></i></button>
             </div>
 
             <div class="table-responsive">
@@ -171,25 +167,32 @@
         </main>
     </div>
 
+    <div id="modalComp" class="modal">
+        <div class="modal-content">
+            <h3 id="tituloComp">Itens da Carga</h3>
+            <table style="margin-top: 15px; width: 100%;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th>Cód</th>
+                        <th>Descrição</th>
+                        <th>Qtd</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoItensComp"></tbody>
+            </table>
+            <button onclick="fecharModais()" class="btn-main" style="background:#eee; margin-top:15px;">FECHAR</button>
+        </div>
+    </div>
+
     <div id="modalFornecedor" class="modal">
         <div class="modal-content">
             <h3>Gestão de Fornecedores</h3>
             <div style="display:flex; gap:10px; margin:20px 0;">
                 <input type="text" id="nomeNovoForn" placeholder="Nome do Fornecedor" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
-                <button onclick="salvarNovoForn()" style="background:var(--vermelho); color:white; border:none; padding:0 20px; border-radius:8px;">ADD</button>
+                <button id="btnAddForn" style="background:var(--vermelho); color:white; border:none; padding:0 20px; border-radius:8px; cursor:pointer;">ADD</button>
             </div>
-            <ul id="listaForn" style="list-style:none; max-height:250px; overflow-y:auto; border:1px solid #eee; border-radius:8px;"></ul>
+            <ul id="listaForn" style="list-style:none; max-height:250px; overflow-y:auto; border:1px solid #eee;"></ul>
             <button onclick="fecharModais()" class="btn-main" style="background:#eee; margin-top:15px;">FECHAR</button>
-        </div>
-    </div>
-
-    <div id="modalExcel" class="modal">
-        <div class="modal-content">
-            <h3>Importar Composição</h3>
-            <p id="labelSenhaExcel" style="font-weight:bold; color:var(--vermelho); margin:10px 0;"></p>
-            <input type="file" id="inputExcel" accept=".xlsx, .xls" style="margin:15px 0;">
-            <button class="btn-main btn-save" onclick="processarExcel()">IMPORTAR PARA O BANCO</button>
-            <button onclick="fecharModais()" class="btn-main" style="background:#eee;">CANCELAR</button>
         </div>
     </div>
 
