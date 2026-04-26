@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
-const usuarioNome = localStorage.getItem('usuarioNome') || "DBRITO";
+const usuarioNome = localStorage.getItem('usuarioNome') || "DBBRITO";
 let itensCargaTmp = []; 
 let senhaAbertaNoModal = ""; // Para saber qual agenda estamos editando no modal
 
@@ -95,6 +95,17 @@ function carregarDados() {
             const classe = getClasseTipo(ag.tipoProduto);
             const dataFormat = ag.data.split('-').reverse().join('/');
 
+            // String para busca na composição (produtos)
+            const compString = (ag.composicao || []).map(i => (i.codigo + " " + i.descricao).toLowerCase()).join(" ");
+
+            const atendeBusca = 
+                ag.senhaAgendamento.toLowerCase().includes(termo) || 
+                ag.fornecedor.toLowerCase().includes(termo) || 
+                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
+                (ag.central && ag.central.toLowerCase().includes(termo)) ||
+                (ag.cargas && ag.cargas.toLowerCase().includes(termo)) ||
+                compString.includes(termo);
+
             if (ag.status === "Rascunho") {
                 rascunhos.innerHTML += `
                     <tr>
@@ -111,10 +122,7 @@ function carregarDados() {
                         </td>
                     </tr>`;
             } else {
-                if (ag.data >= dIni && ag.data <= dFim && 
-                   (ag.fornecedor.toLowerCase().includes(termo) || 
-                    ag.senhaAgendamento.toLowerCase().includes(termo) || 
-                    (ag.pedido && ag.pedido.includes(termo)))) {
+                if (ag.data >= dIni && ag.data <= dFim && atendeBusca) {
                     
                     corpo.innerHTML += `
                         <tr class="${classe}">
@@ -153,17 +161,27 @@ function renderizarItensModal() {
     let total = 0;
 
     itensCargaTmp.forEach((item, index) => {
-        total += parseInt(item.qtd);
+        total += parseInt(item.qtd || 0);
         corpo.innerHTML += `
             <tr>
-                <td>${item.codigo}</td>
-                <td>${item.descricao}</td>
-                <td>${item.qtd}</td>
+                <td><input type="text" value="${item.codigo}" onchange="atualizarCampoItem(${index}, 'codigo', this.value)" style="width:100%; border:none; background:transparent;"></td>
+                <td><input type="text" value="${item.descricao}" onchange="atualizarCampoItem(${index}, 'descricao', this.value.toUpperCase())" style="width:100%; border:none; background:transparent;"></td>
+                <td><input type="number" value="${item.qtd}" onchange="atualizarCampoItem(${index}, 'qtd', this.value)" style="width:65px; border:1px solid #ddd; border-radius:4px; padding:2px;"></td>
                 <td><button onclick="removerItemLocal(${index})" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
             </tr>`;
     });
     document.getElementById('totalPecas').innerText = total;
 }
+
+window.atualizarCampoItem = (index, campo, valor) => {
+    if (campo === 'qtd') {
+        itensCargaTmp[index][campo] = parseInt(valor) || 0;
+        const novoTotal = itensCargaTmp.reduce((acc, curr) => acc + parseInt(curr.qtd || 0), 0);
+        document.getElementById('totalPecas').innerText = novoTotal;
+    } else {
+        itensCargaTmp[index][campo] = valor;
+    }
+};
 
 window.adicionarItemManual = () => {
     const cod = document.getElementById('itemCod').value;
