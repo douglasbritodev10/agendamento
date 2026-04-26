@@ -3,92 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Agendamento | Móveis Simonetti</title>
+    <title>Gestão de Agendamentos | Móveis Simonetti</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
     <style>
-        :root { --vermelho: #D32F2F; --preto: #212121; --fundo: #F4F7F6; --branco: #ffffff; }
+        :root { --vermelho: #D32F2F; --preto: #212121; --fundo: #F0F2F5; --branco: #FFFFFF; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--fundo); color: var(--preto); }
 
-        /* Navbar */
-        .navbar { background: var(--vermelho); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        /* Cores Dinâmicas por Tipo */
+        .tipo-amarelo { background-color: #FFFF00 !important; color: #000; font-weight: bold; }
+        .tipo-verde { background-color: #4CAF50 !important; color: #fff; font-weight: bold; }
+        .tipo-azul { background-color: #00BFFF !important; color: #fff; font-weight: bold; }
+
+        .navbar { background: var(--vermelho); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .nav-left { display: flex; align-items: center; gap: 15px; }
         .nav-left a { color: white; text-decoration: none; font-size: 1.2rem; }
-        .logo span { font-weight: bold; }
 
-        /* Layout */
         .container { display: grid; grid-template-columns: 400px 1fr; gap: 20px; padding: 20px; max-width: 1800px; margin: 0 auto; }
 
         /* Cards */
-        .card { background: var(--branco); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .card { background: var(--branco); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .card-header { border-bottom: 2px solid var(--fundo); margin-bottom: 15px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .card-header h3 { font-size: 1rem; color: var(--vermelho); text-transform: uppercase; }
 
-        /* Form */
+        /* Forms */
         .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 0.7rem; font-weight: bold; color: #666; margin-bottom: 4px; text-transform: uppercase; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
-        .input-readonly { background: #eeeeee; font-weight: bold; color: var(--vermelho); }
+        .form-group label { display: block; font-size: 0.75rem; font-weight: bold; color: #666; margin-bottom: 4px; text-transform: uppercase; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+        .readonly { background: #f0f0f0; font-weight: bold; color: var(--vermelho); }
 
-        .btn-block { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
+        .btn-main { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 8px; }
         .btn-save { background: var(--vermelho); color: white; }
-        .btn-update { background: #212121; color: white; display: none; }
+        .btn-draft { background: #607D8B; color: white; }
+        
+        /* Filtros */
+        .filter-bar { background: white; padding: 15px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
 
-        /* Filtros e Busca */
-        .search-area { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
-        .search-area input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-
-        /* Tabela */
-        .table-container { background: white; border-radius: 12px; overflow: hidden; }
+        /* Tabelas */
+        .table-responsive { background: white; border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th { background: #f8f9fa; padding: 12px; text-align: left; color: #666; border-bottom: 2px solid #eee; }
         td { padding: 12px; border-bottom: 1px solid #eee; }
-        .row-selected { background-color: #fff9c4 !important; }
 
         /* Modais */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
-        .modal-wide { max-width: 900px; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 550px; }
 
-        /* Badges */
-        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; }
-
-        @media (max-width: 1000px) { .container { grid-template-columns: 1fr; } }
+        .secao-rascunho { border: 2px dashed #607D8B; background: #f8f9fb; padding: 15px; border-radius: 12px; }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
         <div class="nav-left">
-            <a href="inicial.html"><i class="fas fa-arrow-left"></i></a>
-            <span id="user-display">---</span>
+            <a href="inicial.html"><i class="fas fa-chevron-left"></i> <span id="user-display">---</span></a>
         </div>
         <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
-        <button onclick="location.href='index.html'" style="background:none; border:1px solid white; color:white; padding:5px 15px; border-radius:4px; cursor:pointer;">Sair</button>
+        <button onclick="location.href='index.html'" style="background:none; border:1px solid white; color:white; padding:5px 12px; border-radius:5px; cursor:pointer;">SAIR</button>
     </nav>
 
     <div class="container">
         <aside>
             <section class="card">
                 <div class="card-header">
-                    <h3 id="form-title">Agendar Carga</h3>
-                    <button onclick="resetaForm()" class="badge" style="background:#eee; border:none; cursor:pointer;">Limpar</button>
+                    <h3 id="form-title">Dados da Agenda</h3>
+                    <button onclick="resetaForm()" style="border:none; background:none; cursor:pointer; color:#666;"><i class="fas fa-sync"></i></button>
                 </div>
-                
                 <div class="form-group">
-                    <label>Senha de Agendamento</label>
-                    <input type="text" id="senhaAgendamento" readonly class="input-readonly">
+                    <label>Senha Agendamento</label>
+                    <input type="text" id="senhaAgendamento" readonly class="readonly">
                 </div>
-
                 <div class="form-group">
                     <label>Data</label>
                     <input type="date" id="dataAgendamento">
                 </div>
-
                 <div class="form-group">
                     <label>Central</label>
                     <select id="central">
@@ -101,29 +93,18 @@
                         <option value="TEXEIRA">TEXEIRA</option>
                     </select>
                 </div>
-
                 <div class="form-group">
-                    <label>Fornecedor <button onclick="abrirFornecedor()" style="border:none; background:none; color:var(--vermelho); cursor:pointer;"><i class="fas fa-edit"></i></button></label>
-                    <select id="selectFornecedor">
-                        <option value="">Selecione...</option>
-                    </select>
+                    <label>Fornecedor <button onclick="abrirFornecedor()" style="border:none; background:none; color:var(--vermelho); cursor:pointer;"><i class="fas fa-plus-circle"></i></button></label>
+                    <select id="selectFornecedor"><option value="">Carregando...</option></select>
                 </div>
-
                 <div class="form-group">
-                    <label>Cargas (Livre)</label>
-                    <input type="text" id="cargas" placeholder="Descrição da carga">
+                    <label>Cargas / Placa</label>
+                    <input type="text" id="cargas">
                 </div>
-
-                <div class="form-group">
-                    <label>Pedido de Compra</label>
-                    <input type="text" id="pedidoCompra">
-                </div>
-
                 <div class="form-group">
                     <label>Tipo de Produto (Livre)</label>
                     <input type="text" id="tipoProduto">
                 </div>
-
                 <div class="form-group">
                     <label>Linha de Separação</label>
                     <select id="linhaSeparacao">
@@ -140,21 +121,26 @@
                         <option value="GRANDEZA 9">GRANDEZA 9</option>
                         <option value="GRANDEZA 10">GRANDEZA 10</option>
                         <option value="MIUDEZA 1">MIUDEZA 1</option>
-                    </select>
+                        </select>
                 </div>
 
-                <div class="form-group">
-                    <label>Volumes</label>
-                    <input type="number" id="volumes">
-                </div>
+                <button class="btn-main btn-save" id="btnSalvar">FINALIZAR AGENDAMENTO</button>
+                <button class="btn-main btn-draft" id="btnRascunho">SALVAR COMO RASCUNHO</button>
+                <button class="btn-main" id="btnAtualizar" style="display:none; background:var(--preto); color:white;">ATUALIZAR AGENDAMENTO</button>
+            </section>
 
-                <button class="btn-block btn-save" id="btnSalvar">SALVAR AGENDAMENTO</button>
-                <button class="btn-block btn-update" id="btnAtualizar">ATUALIZAR DADOS</button>
+            <section class="secao-rascunho">
+                <h4 style="font-size:0.8rem; color:#607D8B; margin-bottom:10px;"><i class="fas fa-file-alt"></i> RASCUNHOS</h4>
+                <div class="table-responsive">
+                    <table style="font-size: 0.75rem;">
+                        <tbody id="corpoRascunhos"></tbody>
+                    </table>
+                </div>
             </section>
         </aside>
 
         <main>
-            <div class="search-area">
+            <div class="filter-bar">
                 <div class="form-group" style="margin:0">
                     <label>De:</label>
                     <input type="date" id="buscaInicio">
@@ -163,22 +149,19 @@
                     <label>Até:</label>
                     <input type="date" id="buscaFim">
                 </div>
-                <input type="text" id="buscaGeral" placeholder="🔍 Buscar Fornecedor, Senha..." style="flex:1">
-                
-                <button onclick="exportarExcel()" style="background:#2e7d32; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;"><i class="fas fa-file-excel"></i> Excel</button>
-                <button onclick="exportarPDF()" style="background:#c62828; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;"><i class="fas fa-file-pdf"></i> PDF</button>
+                <input type="text" id="buscaGeral" placeholder="🔍 Buscar por senha ou fornecedor..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                <button onclick="exportarExcel()" style="background:#2e7d32; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;"><i class="fas fa-file-excel"></i></button>
             </div>
 
-            <div class="table-container">
-                <table id="mainTable">
+            <div class="table-responsive">
+                <table>
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="selectAll"></th>
                             <th>SENHA</th>
                             <th>DATA</th>
                             <th>CENTRAL</th>
                             <th>FORNECEDOR</th>
-                            <th>VOLUMES</th>
+                            <th>TIPO</th>
                             <th>AÇÕES</th>
                         </tr>
                     </thead>
@@ -191,20 +174,22 @@
     <div id="modalFornecedor" class="modal">
         <div class="modal-content">
             <h3>Gestão de Fornecedores</h3>
-            <div style="display:flex; gap:10px; margin: 20px 0;">
-                <input type="text" id="nomeNovoFornecedor" placeholder="Nome do Fornecedor" style="flex:1; padding:10px;">
-                <button onclick="salvarNovoFornecedor()" style="background:var(--vermelho); color:white; border:none; padding:0 15px; border-radius:5px;">ADICIONAR</button>
+            <div style="display:flex; gap:10px; margin:20px 0;">
+                <input type="text" id="nomeNovoForn" placeholder="Nome do Fornecedor" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd;">
+                <button onclick="salvarNovoForn()" style="background:var(--vermelho); color:white; border:none; padding:0 20px; border-radius:8px;">ADD</button>
             </div>
-            <ul id="listaFornecedores" style="list-style:none; max-height: 300px; overflow-y:auto;"></ul>
-            <button onclick="fecharModais()" class="btn-block" style="background:#eee;">Fechar</button>
+            <ul id="listaForn" style="list-style:none; max-height:250px; overflow-y:auto; border:1px solid #eee; border-radius:8px;"></ul>
+            <button onclick="fecharModais()" class="btn-main" style="background:#eee; margin-top:15px;">FECHAR</button>
         </div>
     </div>
 
-    <div id="modalComp" class="modal">
-        <div class="modal-content modal-wide">
-            <h3 id="tituloComp">Composição da Agenda</h3>
-            <div id="conteudoComp" style="margin:20px 0;"></div>
-            <button onclick="fecharModais()" class="btn-block" style="background:#eee;">Fechar</button>
+    <div id="modalExcel" class="modal">
+        <div class="modal-content">
+            <h3>Importar Composição</h3>
+            <p id="labelSenhaExcel" style="font-weight:bold; color:var(--vermelho); margin:10px 0;"></p>
+            <input type="file" id="inputExcel" accept=".xlsx, .xls" style="margin:15px 0;">
+            <button class="btn-main btn-save" onclick="processarExcel()">IMPORTAR PARA O BANCO</button>
+            <button onclick="fecharModais()" class="btn-main" style="background:#eee;">CANCELAR</button>
         </div>
     </div>
 
