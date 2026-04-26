@@ -1,107 +1,109 @@
 import { app } from './firebase-config.js';
 import { 
-    getFirestore, collection, addDoc, getDocs, query, where, orderBy, doc, updateDoc, setDoc 
+    getFirestore, doc, setDoc, collection, addDoc 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
-const nivel = localStorage.getItem('nivelAcesso');
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Controle de Acesso
+    const nivel = localStorage.getItem('nivelAcesso');
+    const nome = localStorage.getItem('usuarioNome');
+
+    // 1. Mostra o nome do usuário na Navbar
+    const navNome = document.getElementById('navUserName');
+    if(navNome) navNome.innerText = nome || "Usuário";
+
+    // 2. Verifica se o nível é ADM ou AGENDAMENTO
     if (nivel === 'ADM' || nivel === 'AGENDAMENTO') {
-        document.getElementById('areaCadastro').style.display = 'block';
+        document.getElementById('areaAgendamento').style.display = 'block';
+    } else {
+        document.getElementById('erroAcesso').style.display = 'block';
     }
 
-    // 2. Datas Padrão (Hoje)
-    const hoje = new Date().toISOString().split('T')[0];
-    document.getElementById('filtroDataInicio').value = hoje;
-    document.getElementById('filtroDataFim').value = hoje;
-    document.getElementById('dataCarga').value = hoje;
-
-    // 3. Gerar Senha Inicial
-    document.getElementById('senhaAgendamento').value = `SIM-${Date.now().toString().slice(-6)}`;
-
-    carregarAgendamentos(hoje, hoje);
+    // 3. Setup inicial
+    gerarSenhaAgendamento();
+    if(document.getElementById('listaItens').innerHTML === "") {
+        window.addLinhaItem(); // Adiciona a primeira linha de produto automaticamente
+    }
+    document.getElementById('dataCarga').value = new Date().toISOString().split('T')[0];
 });
 
-// FUNÇÃO CARREGAR DADOS
-async function carregarAgendamentos(inicio, fim) {
-    const corpo = document.getElementById('corpoAgendamentos');
-    corpo.innerHTML = "<tr><td colspan='8'>Buscando...</td></tr>";
-
-    try {
-        const q = query(
-            collection(db, "agendamentos"),
-            where("data", ">=", inicio),
-            where("data", "<=", fim),
-            orderBy("data", "desc")
-        );
-
-        const snap = await getDocs(q);
-        corpo.innerHTML = "";
-
-        snap.forEach(docSnap => {
-            const d = docSnap.data();
-            const isFracionada = d.linkSenha ? `<br><small style="color:blue">🔗 Link: ${d.linkSenha}</small>` : "";
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input type="checkbox" class="row-select" data-id="${docSnap.id}"></td>
-                <td><strong>${d.senhaAgendamento}</strong>${isFracionada}</td>
-                <td>${d.data}</td>
-                <td>${d.central}</td>
-                <td>${d.fornecedor}</td>
-                <td>${d.cargaTransporte}</td>
-                <td>${d.volumes || 0}</td>
-                <td>
-                    ${(nivel === 'ADM') ? `<button onclick="editarCarga('${docSnap.id}')" class="btn-edit">✏️</button>` : '---'}
-                </td>
-            `;
-            corpo.appendChild(tr);
-        });
-    } catch (e) {
-        console.error(e);
-        corpo.innerHTML = "<tr><td colspan='8'>Erro ao carregar ou sem dados no período.</td></tr>";
-    }
+function gerarSenhaAgendamento() {
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const data = new Date();
+    const ref = `SIM-${data.getFullYear()}${String(data.getMonth() + 1).padStart(2, '0')}-${random}`;
+    document.getElementById('senhaAgendamento').value = ref;
 }
 
-// LÓGICA DE SALVAR (Com contador de veículo inteligente)
 document.getElementById('btnFinalizar').addEventListener('click', async () => {
+    const btn = document.getElementById('btnFinalizar');
     const senha = document.getElementById('senhaAgendamento').value;
     const link = document.getElementById('linkSenha').value.trim();
-    
-    const dados = {
+
+    const dadosCarga = {
         senhaAgendamento: senha,
+        linkSenha: link,
+        contaVeiculo: link === "" ? 1 : 0, 
         data: document.getElementById('dataCarga').value,
         central: document.getElementById('central').value,
         fornecedor: document.getElementById('fornecedor').value,
         cargaTransporte: document.getElementById('transporte').value,
-        linkSenha: link,
-        // Se houver link, contaVeiculo é 0, se não, é 1 (para o seu contador de dashboard)
-        contaVeiculo: link ? 0 : 1, 
+        ordemCompra: document.getElementById('ordemCompra').value,
+        volumes: document.getElementById('volumes').value,
         status: "Agendada",
-        criadoEm: new Date().toISOString()
+        criadoPor: localStorage.getItem('usuarioEmail'),
+        dataRegistro: new Date().toISOString()
     };
 
-    try {
-        await setDoc(doc(db, "agendamentos", senha), dados);
-        alert("Agendamento Salvo!");
-        location.reload();
-    } catch (e) {
-        alert("Erro ao salvar.");
+    if (!dadosCarga.fornecedor || !dadosCarga.cargaTransporte) {
+        alert("Preencha Fornecedor e Placa!");
+        return;
     }
-});
 
-// EXPORTAÇÃO EXCEL (Exemplo simples usando SheetJS)
-window.exportarExcel = () => {
-    const table = document.getElementById("tabelaAgendamentos");
-    const wb = XLSX.utils.table_to_book(table);
-    XLSX.writeFile(wb, `Agendamentos_Simonetti_${Date.now()}.xlsx`);
-};
+    btn.disabled = true;
+    btn.innerText = "SALVANDO...";
 
-// FILTRO
-document.getElementById('btnFiltrar').addEventListener('click', () => {
-    const i = document.getElementById('filtroDataInicio').value;
-    const f = document.getElementById('filtroDataFim').value;
-    carregarAgendamentos(i, f);
+    try {
+        await setDoc(doc(db, "agendamentos", senha), dadosCarga);
+
+        const linhas = document.querySelectorAll('.item-row');
+        for (const linha of linhas) {
+            const cod = linha.querySelector('.prod-id').value;
+            const desc = linha.querySelector('.prod-desc').value;
+            const qtd = linha.querySelector('.prod-qtd').value;
+
+            if (cod && desc) {
+                await addDoc(collection(db, "itens_agenda"), {
+                    senhaAgendamento: senha,
+                    codigo: cod,
+                    descricao: desc,
+                    quantidade: qtd
+                });
+            }
+        }
+
+        await addDoc(collection(db, "historico"), {
+            usuario: localStorage.getItem('usuarioEmail'),
+            acao: link !== "" ? `Carga vinculada à senha ${link}` : "Novo agendamento criado",
+            senhaAgendamento: senha,
+            dataHora: new Date().toISOString()
+        });
+
+        alert("Sucesso! Carga " + senha + " registrada.");
+
+        // AGENDAMENTO MÚLTIPLO: Limpa apenas o necessário
+        document.getElementById('ordemCompra').value = "";
+        document.getElementById('volumes').value = "";
+        document.getElementById('listaItens').innerHTML = "";
+        window.addLinhaItem();
+        gerarSenhaAgendamento(); 
+        
+        btn.disabled = false;
+        btn.innerText = "FINALIZAR E SALVAR AGENDAMENTO";
+
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao salvar.");
+        btn.disabled = false;
+    }
 });
