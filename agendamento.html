@@ -3,142 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agendamentos | Móveis Simonetti</title>
+    <title>Novo Agendamento | Móveis Simonetti</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
-        /* Layout da Navbar solicitado */
-        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #D32F2F; color: white; }
-        .user-section { display: flex; align-items: center; gap: 15px; }
-        .btn-voltar { background: rgba(255,255,255,0.2); color: white; text-decoration: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; }
-        .title-central { position: absolute; left: 50%; transform: translateX(-50%); font-weight: bold; text-transform: uppercase; }
-        
-        /* Containers */
-        .main-content { padding: 20px; max-width: 1200px; margin: auto; }
-        .area-agendar { background: white; padding: 20px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .grid-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        
-        /* Tabela e Filtros */
-        .area-tabela { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .filtros-tabela { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
-        #buscaCarga { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        
-        .item-row { display: grid; grid-template-columns: 100px 1fr 100px 50px; gap: 10px; margin-bottom: 5px; }
-        .ocultar-adm { display: none; } /* Para esconder botões de quem não é ADM */
+        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card-form { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.75rem; font-weight: bold; color: #D32F2F; margin-bottom: 5px; text-transform: uppercase; }
+        .item-row { display: grid; grid-template-columns: 80px 1fr 80px 40px; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .btn-del { background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; height: 38px; }
+        .btn-add-item { background: #212121; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; }
+        .btn-save-all { width: 100%; padding: 15px; background: #D32F2F; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 20px; }
+        .area-tabela { margin-top: 40px; background: white; padding: 20px; border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #f5f5f5; text-align: left; padding: 12px; font-size: 0.8rem; color: #666; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
-        <div class="user-section">
-            <a href="inicial.html" class="btn-voltar">⬅ VOLTAR</a>
-            <span id="labelUsuario">Usuário: ...</span>
-        </div>
-        
-        <div class="title-central">Gestão de Agendamentos</div>
-
-        <button onclick="logout()" style="background:none; border:1px solid white; color:white; padding:5px 15px; border-radius:4px; cursor:pointer;">SAIR</button>
+        <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
+        <a href="inicial.html" style="color:white; text-decoration:none;">⬅ Voltar</a>
     </nav>
 
-<main class="main-content">
-    <section id="secaoCadastro" class="area-agendar ocultar-adm" style="display:none;">
-        <h3 style="color: var(--vermelho);">📅 Novo Agendamento</h3>
-        <div class="grid-campos">
-            <div class="form-group">
-                <label>Senha</label>
-                <input type="text" id="senhaAgendamento" readonly style="background:#eee; font-weight:bold;">
-            </div>
-            <div class="form-group">
-                <label>Data</label>
-                <input type="date" id="dataCarga">
-            </div>
-            <div class="form-group">
-                <label>Central</label>
-                <select id="central">
-                    <option value="PINHEIROS">PINHEIROS</option>
-                    <option value="SERRA">SERRA</option>
-                    <option value="BUERAREMA">BUERAREMA</option>
-                    <option value="CANCELADA">CANCELADA</option>
-                    <option value="CONQUISTA">CONQUISTA</option>
-                    <option value="EUNÁPOLIS">EUNÁPOLIS</option>
-                    <option value="TEXEIRA">TEXEIRA</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Cargas</label>
-                <input type="text" id="cargaTransporte" placeholder="Ex: Placa ou Nome">
-            </div>
-            <div class="form-group">
-                <label>Pedido de Compra</label>
-                <input type="text" id="pedidoCompra" placeholder="Nº do Pedido">
-            </div>
-            <div class="form-group">
-                <label>Fornecedor</label>
-                <select id="fornecedor">
+    <main class="container">
+        <div class="grid-form">
+            <section class="card-form">
+                <h3 style="color: #D32F2F; margin-bottom: 20px;">📅 Dados do Agendamento</h3>
+                
+                <div class="form-group">
+                    <label>Senha de Agendamento</label>
+                    <input type="text" id="senhaAgendamento" readonly style="background: #f9f9f9; font-weight: bold; color: #333;">
+                </div>
+
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="dataCarga">
+                </div>
+
+                <div class="form-group">
+                    <label>Central</label>
+                    <select id="central">
+                        <option value="PINHEIROS">PINHEIROS</option>
+                        <option value="SERRA">SERRA</option>
+                        <option value="BUERAREMA">BUERAREMA</option>
+                        <option value="CANCELADA">CANCELADA</option>
+                        <option value="CONQUISTA">CONQUISTA</option>
+                        <option value="EUNÁPOLIS">EUNÁPOLIS</option>
+                        <option value="TEXEIRA">TEXEIRA</option>
                     </select>
-            </div>
-            <div class="form-group">
-                <label>Tipo de Produto</label>
-                <input type="text" id="tipoProduto">
-            </div>
-            <div class="form-group">
-                <label>Linha de Separação</label>
-                <select id="linhaSeparacao">
-                    <option value="EMBALADO">EMBALADO</option>
-                    <option value="EMBALADO 1">EMBALADO 1</option>
-                    <option value="GRANDEZA 1">GRANDEZA 1</option>
-                    <option value="GRANDEZA 2">GRANDEZA 2</option>
-                    <option value="GRANDEZA 3">GRANDEZA 3</option>
-                    <option value="GRANDEZA 4">GRANDEZA 4</option>
-                    <option value="GRANDEZA 5">GRANDEZA 5</option>
-                    <option value="GRANDEZA 6">GRANDEZA 6</option>
-                    <option value="GRANDEZA 7">GRANDEZA 7</option>
-                    <option value="GRANDEZA 8">GRANDEZA 8</option>
-                    <option value="GRANDEZA 9">GRANDEZA 9</option>
-                    <option value="GRANDEZA 10">GRANDEZA 10</option>
-                    <option value="MIUDEZA 1">MIUDEZA 1</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Volumes</label>
-                <input type="text" id="volumes">
-            </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Cargas (Campo Livre)</label>
+                    <input type="text" id="cargaTransporte" placeholder="Digite as informações da carga">
+                </div>
+
+                <div class="form-group">
+                    <label>Pedido de Compra</label>
+                    <input type="text" id="pedidoCompra" placeholder="Nº do pedido">
+                </div>
+
+                <div class="form-group">
+                    <label>Fornecedor</label>
+                    <select id="fornecedor">
+                        <option value="FORNECEDOR PADRAO">FORNECEDOR PADRAO</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Produto</label>
+                    <input type="text" id="tipoProduto">
+                </div>
+
+                <div class="form-group">
+                    <label>Linha de Separação</label>
+                    <select id="linhaSeparacao">
+                        <option value="EMBALADO">EMBALADO</option>
+                        <option value="EMBALADO 1">EMBALADO 1</option>
+                        <option value="GRANDEZA 1">GRANDEZA 1</option>
+                        <option value="GRANDEZA 2">GRANDEZA 2</option>
+                        <option value="GRANDEZA 3">GRANDEZA 3</option>
+                        <option value="GRANDEZA 4">GRANDEZA 4</option>
+                        <option value="GRANDEZA 5">GRANDEZA 5</option>
+                        <option value="GRANDEZA 6">GRANDEZA 6</option>
+                        <option value="GRANDEZA 7">GRANDEZA 7</option>
+                        <option value="GRANDEZA 8">GRANDEZA 8</option>
+                        <option value="GRANDEZA 9">GRANDEZA 9</option>
+                        <option value="GRANDEZA 10">GRANDEZA 10</option>
+                        <option value="MIUDEZA 1">MIUDEZA 1</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Volumes</label>
+                    <input type="text" id="volumes">
+                </div>
+            </section>
+
+            <section class="card-form">
+                <h3 style="color: #D32F2F; margin-bottom: 20px;">📦 Composição da Carga</h3>
+                <div id="listaItens">
+                    </div>
+                <button type="button" class="btn-add-item" onclick="window.addLinhaItem()">+ ADICIONAR PRODUTO</button>
+            </section>
         </div>
 
-        <h4 style="margin:20px 0 10px;">📦 Composição da Carga</h4>
-        <div id="listaItens"></div>
-        <button type="button" onclick="addLinhaItem()">+ ADICIONAR PRODUTO</button>
-        <button class="btn-save-all" id="btnFinalizar" style="width:100%; margin-top:20px;">SALVAR AGENDAMENTO</button>
-    </section>
+        <button class="btn-save-all" id="btnFinalizar">FINALIZAR E SALVAR AGENDAMENTO</button>
 
-    <section class="area-tabela">
-        <input type="text" id="buscaCarga" placeholder="🔍 Buscar...">
-        <table id="tabelaPrincipal">
-            <thead>
-                <tr>
-                    <th>SENHA</th><th>DATA</th><th>CENTRAL</th><th>CARGAS</th>
-                    <th>OC</th><th>FORNECEDOR</th><th>VOLUMES</th><th>AÇÕES</th>
-                </tr>
-            </thead>
-            <tbody id="corpoTabelaAgendamentos"></tbody>
-        </table>
-    </section>
-</main>
+        <section class="area-tabela">
+            <h3>📋 Últimos Agendamentos</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>SENHA</th>
+                        <th>DATA</th>
+                        <th>CENTRAL</th>
+                        <th>CARGAS</th>
+                        <th>FORNECEDOR</th>
+                        <th>AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaAgendamentos"></tbody>
+            </table>
+        </section>
+    </main>
 
     <script type="module" src="js/agendamento.js"></script>
-    <script>
-        function addLinhaItem() {
-            const container = document.getElementById('listaItens');
-            const div = document.createElement('div');
-            div.className = 'item-row';
-            div.innerHTML = `
-                <input type="text" class="prod-id" placeholder="Cód">
-                <input type="text" class="prod-desc" placeholder="Descrição">
-                <input type="number" class="prod-qtd" placeholder="Qtd">
-                <button type="button" onclick="this.parentElement.remove()" style="background:red; padding:5px;">X</button>
-            `;
-            container.appendChild(div);
-        }
-        window.logout = () => { localStorage.clear(); window.location.href="index.html"; };
-    </script>
 </body>
 </html>
