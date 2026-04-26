@@ -3,142 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Agendamento | Móveis Simonetti</title>
+    <title>Agendamentos | Móveis Simonetti</title>
     <link rel="stylesheet" href="css/styles.css">
-    
     <style>
-        /* Ajustes específicos para a grade de agendamento */
-        .grid-main { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .item-header { 
-            display: grid; 
-            grid-template-columns: 120px 1fr 100px 40px; 
-            gap: 10px; 
-            font-weight: bold; 
-            font-size: 0.7rem; 
-            color: #666;
-            margin-bottom: 10px;
-        }
-        .item-row { 
-            display: grid; 
-            grid-template-columns: 120px 1fr 100px 40px; 
-            gap: 10px; 
-            margin-bottom: 8px; 
-        }
-        .btn-del { background: #ff5252; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        /* Layout da Navbar solicitado */
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #D32F2F; color: white; }
+        .user-section { display: flex; align-items: center; gap: 15px; }
+        .btn-voltar { background: rgba(255,255,255,0.2); color: white; text-decoration: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; }
+        .title-central { position: absolute; left: 50%; transform: translateX(-50%); font-weight: bold; text-transform: uppercase; }
         
-        @media (max-width: 768px) {
-            .grid-main { grid-template-columns: 1fr; }
-        }
+        /* Containers */
+        .main-content { padding: 20px; max-width: 1200px; margin: auto; }
+        .area-agendar { background: white; padding: 20px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .grid-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        
+        /* Tabela e Filtros */
+        .area-tabela { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .filtros-tabela { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
+        #buscaCarga { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        
+        .item-row { display: grid; grid-template-columns: 100px 1fr 100px 50px; gap: 10px; margin-bottom: 5px; }
+        .ocultar-adm { display: none; } /* Para esconder botões de quem não é ADM */
     </style>
 </head>
 <body>
+
     <nav class="navbar">
-        <div class="nav-left" style="display: flex; align-items: center; gap: 15px;">
-            <a href="inicial.html" class="btn-back" style="text-decoration: none; color: white; font-size: 1.2rem;">⬅</a>
-            <div id="userInfo" style="font-size: 0.8rem; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">
-                👤 <span id="navUserName">Carregando...</span>
-            </div>
+        <div class="user-section">
+            <a href="inicial.html" class="btn-voltar">⬅ VOLTAR</a>
+            <span id="labelUsuario">Usuário: ...</span>
         </div>
         
-        <div class="logo">MÓVEIS <span>SIMONETTI</span></div>
-        
-        <div class="nav-right">
-            <button onclick="logout()" class="btn-sair">SAIR ⏻</button>
-        </div>
+        <div class="title-central">Gestão de Agendamentos</div>
+
+        <button onclick="logout()" style="background:none; border:1px solid white; color:white; padding:5px 15px; border-radius:4px; cursor:pointer;">SAIR</button>
     </nav>
 
-    <main class="container">
-        <div id="areaAgendamento" style="display:none;">
-            <div class="grid-main">
-                <section class="card-form">
-                    <h3 style="color: #D32F2F; margin-bottom: 20px; border-bottom: 2px solid #f5f5f5; padding-bottom: 10px;">📋 Dados do Transporte</h3>
-                    
-                    <div class="form-group">
-                        <label>Senha do Agendamento</label>
-                        <input type="text" id="senhaAgendamento" readonly style="background: #eee; font-weight: bold; color: #333;">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Linkar com Senha (Fracionado)</label>
-                        <input type="text" id="linkSenha" placeholder="Ex: SIM-202405-1234">
-                    </div>
-
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div class="form-group">
-                            <label>Data</label>
-                            <input type="date" id="dataCarga">
-                        </div>
-                        <div class="form-group">
-                            <label>Central</label>
-                            <select id="central">
-                                <option value="CD-COLATINA">CD COLATINA</option>
-                                <option value="CD-VIANA">CD VIANA</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Fornecedor</label>
-                        <input type="text" id="fornecedor" placeholder="Nome da empresa">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Transportadora / Placa</label>
-                        <input type="text" id="transporte" placeholder="Identificação do veículo">
-                    </div>
-                </section>
-
-                <section class="card-form">
-                    <h3 style="color: #D32F2F; margin-bottom: 20px; border-bottom: 2px solid #f5f5f5; padding-bottom: 10px;">📦 Conteúdo da Carga</h3>
-                    
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div class="form-group">
-                            <label>Ordem de Compra</label>
-                            <input type="text" id="ordemCompra" placeholder="Nº da OC">
-                        </div>
-                        <div class="form-group">
-                            <label>Volumes</label>
-                            <input type="number" id="volumes" placeholder="0">
-                        </div>
-                    </div>
-
-                    <div class="item-header">
-                        <div>CÓDIGO</div><div>DESCRIÇÃO</div><div>QTD</div><div></div>
-                    </div>
-                    
-                    <div id="listaItens">
-                        </div>
-                    
-                    <button type="button" onclick="addLinhaItem()" style="width: 100%; margin-top: 10px; background: #666; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer;">+ ADICIONAR PRODUTO</button>
-                </section>
+    <main class="main-content">
+        
+        <section id="secaoCadastro" class="area-agendar ocultar-adm">
+            <h3 style="color: #D32F2F; margin-top:0;">📅 Novo Agendamento</h3>
+            <div class="grid-campos">
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="text" id="senhaAgendamento" readonly style="background: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="dataCarga">
+                </div>
+                <div class="form-group">
+                    <label>Fornecedor</label>
+                    <input type="text" id="fornecedor" placeholder="Nome do Fornecedor">
+                </div>
+                <div class="form-group">
+                    <label>Transporte</label>
+                    <input type="text" id="transporte" placeholder="Placa ou Transportadora">
+                </div>
             </div>
 
-            <button class="btn-save-all" id="btnFinalizar" style="margin-top: 20px; width: 100%; padding: 20px; font-size: 1.1rem; background: #D32F2F; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">FINALIZAR E SALVAR AGENDAMENTO</button>
-        </div>
+            <h4 style="margin: 20px 0 10px 0;">📦 Composição da Carga</h4>
+            <div id="listaItens">
+                </div>
+            <button type="button" onclick="addLinhaItem()" style="background:#212121; margin-top:10px;">+ ADICIONAR PRODUTO</button>
+            <hr>
+            <button class="btn-save-all" id="btnFinalizar" style="width:100%; padding:15px;">SALVAR AGENDAMENTO COMPLETO</button>
+        </section>
 
-        <div id="erroAcesso" style="display:none; text-align: center; padding: 50px;">
-            <h2>Acesso Negado</h2>
-            <p>Seu usuário não tem permissão para realizar agendamentos.</p>
-        </div>
+        <section class="area-tabela">
+            <div class="filtros-tabela">
+                <input type="text" id="buscaCarga" placeholder="🔍 Buscar por senha, fornecedor ou produto...">
+                <button onclick="exportarPDF()" style="background:#444;">🖨️ PDF</button>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Senha</th>
+                            <th>Data</th>
+                            <th>Fornecedor</th>
+                            <th>Transporte</th>
+                            <th>Composição</th>
+                            <th class="ocultar-adm">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoTabelaAgendamentos">
+                        </tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
+    <script type="module" src="js/agendamento.js"></script>
     <script>
-        function logout() { localStorage.clear(); window.location.href = "index.html"; }
-        
         function addLinhaItem() {
             const container = document.getElementById('listaItens');
             const div = document.createElement('div');
             div.className = 'item-row';
             div.innerHTML = `
                 <input type="text" class="prod-id" placeholder="Cód">
-                <input type="text" class="prod-desc" placeholder="Ex: Roupeiro">
-                <input type="number" class="prod-qtd" placeholder="0">
-                <button type="button" class="btn-del" onclick="this.parentElement.remove()">X</button>
+                <input type="text" class="prod-desc" placeholder="Descrição">
+                <input type="number" class="prod-qtd" placeholder="Qtd">
+                <button type="button" onclick="this.parentElement.remove()" style="background:red; padding:5px;">X</button>
             `;
             container.appendChild(div);
         }
+        window.logout = () => { localStorage.clear(); window.location.href="index.html"; };
     </script>
-
-    <script type="module" src="js/agendamento.js"></script>
 </body>
 </html>
