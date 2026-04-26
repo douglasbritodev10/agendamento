@@ -39,61 +39,90 @@
         <button onclick="logout()" style="background:none; border:1px solid white; color:white; padding:5px 15px; border-radius:4px; cursor:pointer;">SAIR</button>
     </nav>
 
-    <main class="main-content">
-        
-        <section id="secaoCadastro" class="area-agendar ocultar-adm">
-            <h3 style="color: #D32F2F; margin-top:0;">📅 Novo Agendamento</h3>
-            <div class="grid-campos">
-                <div class="form-group">
-                    <label>Senha</label>
-                    <input type="text" id="senhaAgendamento" readonly style="background: #f0f0f0;">
-                </div>
-                <div class="form-group">
-                    <label>Data</label>
-                    <input type="date" id="dataCarga">
-                </div>
-                <div class="form-group">
-                    <label>Fornecedor</label>
-                    <input type="text" id="fornecedor" placeholder="Nome do Fornecedor">
-                </div>
-                <div class="form-group">
-                    <label>Transporte</label>
-                    <input type="text" id="transporte" placeholder="Placa ou Transportadora">
-                </div>
+<main class="main-content">
+    <section id="secaoCadastro" class="area-agendar ocultar-adm" style="display:none;">
+        <h3 style="color: var(--vermelho);">📅 Novo Agendamento</h3>
+        <div class="grid-campos">
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="text" id="senhaAgendamento" readonly style="background:#eee; font-weight:bold;">
             </div>
-
-            <h4 style="margin: 20px 0 10px 0;">📦 Composição da Carga</h4>
-            <div id="listaItens">
-                </div>
-            <button type="button" onclick="addLinhaItem()" style="background:#212121; margin-top:10px;">+ ADICIONAR PRODUTO</button>
-            <hr>
-            <button class="btn-save-all" id="btnFinalizar" style="width:100%; padding:15px;">SALVAR AGENDAMENTO COMPLETO</button>
-        </section>
-
-        <section class="area-tabela">
-            <div class="filtros-tabela">
-                <input type="text" id="buscaCarga" placeholder="🔍 Buscar por senha, fornecedor ou produto...">
-                <button onclick="exportarPDF()" style="background:#444;">🖨️ PDF</button>
+            <div class="form-group">
+                <label>Data</label>
+                <input type="date" id="dataCarga">
             </div>
-
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Senha</th>
-                            <th>Data</th>
-                            <th>Fornecedor</th>
-                            <th>Transporte</th>
-                            <th>Composição</th>
-                            <th class="ocultar-adm">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="corpoTabelaAgendamentos">
-                        </tbody>
-                </table>
+            <div class="form-group">
+                <label>Central</label>
+                <select id="central">
+                    <option value="PINHEIROS">PINHEIROS</option>
+                    <option value="SERRA">SERRA</option>
+                    <option value="BUERAREMA">BUERAREMA</option>
+                    <option value="CANCELADA">CANCELADA</option>
+                    <option value="CONQUISTA">CONQUISTA</option>
+                    <option value="EUNÁPOLIS">EUNÁPOLIS</option>
+                    <option value="TEXEIRA">TEXEIRA</option>
+                </select>
             </div>
-        </section>
-    </main>
+            <div class="form-group">
+                <label>Cargas</label>
+                <input type="text" id="cargaTransporte" placeholder="Ex: Placa ou Nome">
+            </div>
+            <div class="form-group">
+                <label>Pedido de Compra</label>
+                <input type="text" id="pedidoCompra" placeholder="Nº do Pedido">
+            </div>
+            <div class="form-group">
+                <label>Fornecedor</label>
+                <select id="fornecedor">
+                    </select>
+            </div>
+            <div class="form-group">
+                <label>Tipo de Produto</label>
+                <input type="text" id="tipoProduto">
+            </div>
+            <div class="form-group">
+                <label>Linha de Separação</label>
+                <select id="linhaSeparacao">
+                    <option value="EMBALADO">EMBALADO</option>
+                    <option value="EMBALADO 1">EMBALADO 1</option>
+                    <option value="GRANDEZA 1">GRANDEZA 1</option>
+                    <option value="GRANDEZA 2">GRANDEZA 2</option>
+                    <option value="GRANDEZA 3">GRANDEZA 3</option>
+                    <option value="GRANDEZA 4">GRANDEZA 4</option>
+                    <option value="GRANDEZA 5">GRANDEZA 5</option>
+                    <option value="GRANDEZA 6">GRANDEZA 6</option>
+                    <option value="GRANDEZA 7">GRANDEZA 7</option>
+                    <option value="GRANDEZA 8">GRANDEZA 8</option>
+                    <option value="GRANDEZA 9">GRANDEZA 9</option>
+                    <option value="GRANDEZA 10">GRANDEZA 10</option>
+                    <option value="MIUDEZA 1">MIUDEZA 1</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Volumes</label>
+                <input type="text" id="volumes">
+            </div>
+        </div>
+
+        <h4 style="margin:20px 0 10px;">📦 Composição da Carga</h4>
+        <div id="listaItens"></div>
+        <button type="button" onclick="addLinhaItem()">+ ADICIONAR PRODUTO</button>
+        <button class="btn-save-all" id="btnFinalizar" style="width:100%; margin-top:20px;">SALVAR AGENDAMENTO</button>
+    </section>
+
+    <section class="area-tabela">
+        <input type="text" id="buscaCarga" placeholder="🔍 Buscar...">
+        <table id="tabelaPrincipal">
+            <thead>
+                <tr>
+                    <th>SENHA</th><th>DATA</th><th>CENTRAL</th><th>CARGAS</th>
+                    <th>OC</th><th>FORNECEDOR</th><th>VOLUMES</th><th>AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabelaAgendamentos"></tbody>
+        </table>
+    </section>
+</main>
 
     <script type="module" src="js/agendamento.js"></script>
     <script>
