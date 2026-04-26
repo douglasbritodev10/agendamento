@@ -14,19 +14,26 @@ const getDataBR = () => {
     return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 };
 
-// Inicialização
+// --- CONFIGURAÇÃO INICIAL ---
 document.getElementById('dataAgendamento').value = getDataBR();
 document.getElementById('buscaInicio').value = getDataBR();
 document.getElementById('buscaFim').value = getDataBR();
 document.getElementById('user-display').innerText = usuarioNome;
 
+const getCoresPorTipo = (tipo) => {
+    const t = (tipo || "").toUpperCase();
+    if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) return { bg: '#FFFF00', text: '#000000', rgb: [255, 255, 0] };
+    if (t.includes('MESA')) return { bg: '#4CAF50', text: '#FFFFFF', rgb: [76, 175, 80] };
+    if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) return { bg: '#00BFFF', text: '#FFFFFF', rgb: [0, 191, 255] };
+    return { bg: '#FFFFFF', text: '#000000', rgb: [255, 255, 255] };
+};
+
 // --- GERAÇÃO DE SENHA ---
 async function gerarSenha() {
-    const q = query(collection(db, "agendamentos"), orderBy("timestamp", "desc"), limit(5));
+    const q = query(collection(db, "agendamentos"), orderBy("timestamp", "desc"), limit(10));
     const snap = await getDocs(q);
     let num = 1;
     if (!snap.empty) {
-        // Pega o maior número da lista recente para evitar duplicidade se houver rascunhos antigos
         const numeros = snap.docs.map(d => {
             const s = d.data().senhaAgendamento;
             return s && s.includes('-') ? parseInt(s.split('-')[0]) : 0;
@@ -35,26 +42,6 @@ async function gerarSenha() {
     }
     document.getElementById('senhaAgendamento').value = String(num).padStart(2, '0') + "-SM";
 }
-
-// --- IMPORTAR EXCEL ---
-document.getElementById('inputExcel').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(ws);
-        
-        itensCargaTmp = data.map(row => ({
-            codigo: row.Codigo || row.CODIGO || row.cod || "N/A",
-            descricao: String(row.Descricao || row.DESCRICAO || row.desc || "SEM DESCRIÇÃO").toUpperCase(),
-            qtd: parseInt(row.Qtd || row.QTD || row.qtd || 0)
-        }));
-        alert(`${itensCargaTmp.length} itens carregados!`);
-    };
-    reader.readAsBinaryString(file);
-});
 
 // --- SALVAR/RASCUNHO ---
 async function salvarAgenda(status) {
@@ -82,17 +69,162 @@ async function salvarAgenda(status) {
     resetaForm();
 }
 
-// --- FINALIZAR RASCUNHO DIRETO ---
-window.finalizarDireto = async (senha) => {
-    if(confirm(`Confirmar agendamento definitivo da carga ${senha}?`)) {
-        await updateDoc(doc(db, "agendamentos", senha), { 
-            status: "Agendada",
-            timestamp: serverTimestamp() 
-        });
-    }
+// --- COPIAR RASCUNHOS (VERSÃO COMPRIMIDA) ---
+window.copiarRascunhosSelecionados = () => {
+    const selecionados = Array.from(document.querySelectorAll('.check-copy-rascunho:checked'));
+    if (selecionados.length === 0) return alert("Selecione os rascunhos!");
+
+    let html = `<div style="font-family: Arial, sans-serif; max-width: 400px;">`;
+
+    selecionados.forEach(cb => {
+        const tr = cb.closest('tr');
+        const senha = tr.cells[1].innerText;
+        const data = tr.cells[2].innerText;
+        const central = tr.cells[3].innerText;
+        const cargas = tr.cells[4].innerText;
+        const fornecedor = tr.cells[6].innerText;
+        const tipo = tr.cells[7].innerText;
+        const cores = getCoresPorTipo(tipo);
+
+        html += `
+            <div style="background: ${cores.bg}; color: ${cores.text}; padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #ccc;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 4px; margin-bottom: 4px;">
+                    <b>SENHA: ${senha}</b> <span>DATA: ${data}</span>
+                </div>
+                <div style="font-size: 13px;">
+                    <b>FORN:</b> ${fornecedor}<br>
+                    <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
+                    <b>CARGA:</b> ${cargas}
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const data = [new ClipboardItem({ 'text/html': blob })];
+    navigator.clipboard.write(data).then(() => alert("Copiado em formato comprimido!"));
 };
 
-// --- CARREGAR E MONITORAR ---
+// --- EXPORTAR PDF (BÁSICO VS COMPLETO) ---
+window.exportarPDF = async (modo) => {
+    const { jsPDF } = window.jspdf;
+    const docPdf = new jsPDF('p', 'mm', 'a4');
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+    
+    if (selecionados.length === 0) return alert("Selecione agendamentos na tabela!");
+
+    const snap = await getDocs(collection(db, "agendamentos"));
+    const agendas = [];
+    snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
+    
+    // Cabeçalho
+    docPdf.setFontSize(16);
+    docPdf.setTextColor(211, 47, 47);
+    docPdf.text("MÓVEIS SIMONETTI - GESTÃO DE CARGAS", 14, 15);
+    docPdf.setFontSize(10);
+    docPdf.setTextColor(100);
+    docPdf.text(`Total de Agendamentos: ${agendas.length} | Emitido em: ${new Date().toLocaleString()}`, 14, 22);
+
+    let currentY = 28;
+
+    const head = [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'PEDIDO', 'FORNECEDOR', 'TIPO']];
+    const body = agendas.map(a => [
+        a.senhaAgendamento, 
+        a.data.split('-').reverse().join('/'), 
+        a.central, 
+        a.cargas || '-', 
+        a.pedido || '-', 
+        a.fornecedor, 
+        a.tipoProduto
+    ]);
+
+    docPdf.autoTable({
+        head: head,
+        body: body,
+        startY: currentY,
+        theme: 'grid',
+        headStyles: { fillGray: 200, textColor: 50, fontSize: 8 },
+        styles: { fontSize: 8, cellPadding: 2 },
+        didParseCell: function(data) {
+            if (data.section === 'body') {
+                const tipo = data.row.raw[6]; 
+                const cores = getCoresPorTipo(tipo);
+                if (cores.bg !== '#FFFFFF') {
+                    data.cell.styles.fillColor = cores.rgb;
+                    data.cell.styles.textColor = (cores.text === '#FFFFFF') ? 255 : 0;
+                }
+            }
+        }
+    });
+
+    if (modo === 'completo') {
+        let finalY = docPdf.lastAutoTable.finalY + 10;
+        docPdf.setFontSize(12);
+        docPdf.text("DETALHAMENTO DA COMPOSIÇÃO", 14, finalY);
+        
+        agendas.forEach(ag => {
+            if (ag.composicao && ag.composicao.length > 0) {
+                finalY += 7;
+                docPdf.setFontSize(9);
+                docPdf.setTextColor(0);
+                docPdf.text(`Carga: ${ag.senhaAgendamento} - ${ag.fornecedor}`, 14, finalY);
+                
+                const compBody = ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]);
+                docPdf.autoTable({
+                    head: [['Cód', 'Descrição do Item', 'Qtd']],
+                    body: compBody,
+                    startY: finalY + 2,
+                    margin: { left: 20 },
+                    tableWidth: 150,
+                    styles: { fontSize: 7 },
+                    headStyles: { fillGray: 240 }
+                });
+                finalY = docPdf.lastAutoTable.finalY + 5;
+            }
+        });
+    }
+
+    docPdf.save(`Simonetti_${modo.toUpperCase()}_${getDataBR()}.pdf`);
+};
+
+// --- EXPORTAR EXCEL ---
+window.exportarExcel = async () => {
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+    if (selecionados.length === 0) return alert("Selecione agendamentos!");
+
+    const snap = await getDocs(collection(db, "agendamentos"));
+    const rows = [];
+
+    snap.forEach(doc => {
+        if(selecionados.includes(doc.id)) {
+            const d = doc.data();
+            const base = {
+                Senha: d.senhaAgendamento,
+                Data: d.data,
+                Central: d.central,
+                Cargas: d.cargas,
+                Pedido: d.pedido,
+                Fornecedor: d.fornecedor,
+                Tipo: d.tipoProduto
+            };
+
+            if (d.composicao && d.composicao.length > 0) {
+                d.composicao.forEach(item => {
+                    rows.push({ ...base, Item_Cod: item.codigo, Item_Desc: item.descricao, Item_Qtd: item.qtd });
+                });
+            } else {
+                rows.push(base);
+            }
+        }
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Agendamentos_Completos");
+    XLSX.writeFile(wb, `Logistica_Simonetti_${getDataBR()}.xlsx`);
+};
+
+// --- CARREGAR E MONITORAR (REAL-TIME) ---
 function carregarDados() {
     onSnapshot(query(collection(db, "agendamentos"), orderBy("timestamp", "desc")), (snap) => {
         const corpo = document.getElementById('corpoTabela');
@@ -105,14 +237,17 @@ function carregarDados() {
 
         snap.forEach(d => {
             const ag = d.data();
-            const classe = getClasseTipo(ag.tipoProduto);
+            const cores = getCoresPorTipo(ag.tipoProduto);
             const dataFormat = ag.data.split('-').reverse().join('/');
-            const compString = (ag.composicao || []).map(i => (i.codigo + " " + i.descricao).toLowerCase()).join(" ");
-
+            
             const atendeBusca = ag.senhaAgendamento.toLowerCase().includes(termo) || 
                                 ag.fornecedor.toLowerCase().includes(termo) || 
-                                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
-                                compString.includes(termo);
+                                (ag.pedido && ag.pedido.toLowerCase().includes(termo));
+
+            const acoes = `
+                <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Itens" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
+                <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
+            `;
 
             if (ag.status === "Rascunho") {
                 rascunhos.innerHTML += `
@@ -126,15 +261,14 @@ function carregarDados() {
                         <td>${ag.fornecedor}</td>
                         <td>${ag.tipoProduto}</td>
                         <td>
-                            <button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Mudar para Definitivo" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>
-                            <button onclick="verComp('${ag.senhaAgendamento}')" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
-                            <button onclick="editarAg('${ag.senhaAgendamento}')" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
+                            <button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>
+                            ${acoes}
                         </td>
                     </tr>`;
             } else {
                 if (ag.data >= dIni && ag.data <= dFim && atendeBusca) {
                     corpo.innerHTML += `
-                        <tr class="${classe}">
+                        <tr style="background-color: ${cores.bg}; color: ${cores.text}">
                             <td><input type="checkbox" class="check-export" value="${ag.senhaAgendamento}"></td>
                             <td><b>${ag.senhaAgendamento}</b></td>
                             <td>${dataFormat}</td>
@@ -143,10 +277,7 @@ function carregarDados() {
                             <td>${ag.pedido || '-'}</td>
                             <td>${ag.fornecedor}</td>
                             <td>${ag.tipoProduto}</td>
-                            <td>
-                                <button onclick="verComp('${ag.senhaAgendamento}')" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
-                                <button onclick="editarAg('${ag.senhaAgendamento}')" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
-                            </td>
+                            <td>${acoes}</td>
                         </tr>`;
                 }
             }
@@ -154,67 +285,12 @@ function carregarDados() {
     });
 }
 
-// --- COPIAR RASCUNHOS FORMATADOS ---
-window.copiarRascunhosSelecionados = () => {
-    const selecionados = Array.from(document.querySelectorAll('.check-copy-rascunho:checked'));
-    if (selecionados.length === 0) return alert("Selecione rascunhos na coluna da esquerda!");
-
-    let html = `<table style="border-collapse:collapse; font-family:Arial; width:100%;">
-                <tr style="background:#eee;"><th>SENHA</th><th>DATA</th><th>CENTRAL</th><th>CARGAS</th></tr>`;
-
-    selecionados.forEach(cb => {
-        const tr = cb.closest('tr');
-        const tipo = tr.getAttribute('data-tipo');
-        let cor = "#ffffff"; let txt = "#000";
-        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => tipo.includes(x))) cor = "#FFFF00";
-        else if (tipo.includes('MESA')) { cor = "#4CAF50"; txt = "#fff"; }
-        else if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => tipo.includes(x))) { cor = "#00BFFF"; txt = "#fff"; }
-
-        html += `<tr style="background:${cor}; color:${txt};">
-                    <td style="border:1px solid #ccc; padding:5px;"><b>${tr.cells[1].innerText}</b></td>
-                    <td style="border:1px solid #ccc; padding:5px;">${tr.cells[2].innerText}</td>
-                    <td style="border:1px solid #ccc; padding:5px;">${tr.cells[3].innerText}</td>
-                    <td style="border:1px solid #ccc; padding:5px;">${tr.cells[4].innerText}</td>
-                 </tr>`;
-    });
-    html += `</table>`;
-
-    const blob = new Blob([html], { type: 'text/html' });
-    const data = [new ClipboardItem({ 'text/html': blob })];
-    navigator.clipboard.write(data).then(() => alert("Copiado com sucesso! Pronto para colar no WhatsApp."));
-};
-
-// --- ORDENAÇÃO INDEPENDENTE ---
-window.ordenarTabelaDefinitiva = (n) => ordenarGenerico("tabelaAgendas", n);
-window.ordenarTabelaRascunho = (n) => ordenarGenerico("tabelaRascunhos", n);
-
-function ordenarGenerico(id, n) {
-    const table = document.getElementById(id);
-    let switching = true, shouldSwitch, dir = "asc", switchcount = 0;
-    while (switching) {
-        switching = false;
-        let rows = table.rows;
-        for (var i = 1; i < (rows.length - 1); i++) {
-            shouldSwitch = false;
-            let x = rows[i].getElementsByTagName("TD")[n];
-            let y = rows[i + 1].getElementsByTagName("TD")[n];
-            if (dir == "asc") {
-                if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) { shouldSwitch = true; break; }
-            } else {
-                if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) { shouldSwitch = true; break; }
-            }
-        }
-        if (shouldSwitch) {
-            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-            switching = true; switchcount++;
-        } else if (switchcount == 0 && dir == "asc") {
-            dir = "desc"; switching = true;
-        }
+// --- RESTANTE DAS FUNÇÕES AUXILIARES ---
+window.finalizarDireto = async (senha) => {
+    if(confirm(`Confirmar agendamento definitivo da carga ${senha}?`)) {
+        await updateDoc(doc(db, "agendamentos", senha), { status: "Agendada", timestamp: serverTimestamp() });
     }
-}
-
-// --- RESTO DAS FUNÇÕES (EXPORT, FORNECEDOR, MODAL) ---
-window.toggleSelectAll = (el) => document.querySelectorAll('.check-export').forEach(c => c.checked = el.checked);
+};
 
 window.resetaForm = () => {
     document.getElementById('pedido').value = "";
@@ -230,43 +306,59 @@ window.resetaForm = () => {
 
 window.fecharModais = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
 
-// Manter funções de Fornecedor, PDF e Exportação Excel originais...
-// (Resumidas aqui para o código não ficar gigante, mas você deve manter as suas conforme o original)
-
-window.exportarExcel = async () => {
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
-    if (selecionados.length === 0) return alert("Selecione agendamentos!");
+window.verComp = async (senha) => {
+    senhaAbertaNoModal = senha;
     const snap = await getDocs(collection(db, "agendamentos"));
-    const dados = [];
-    snap.forEach(doc => {
-        if(selecionados.includes(doc.id)) {
-            const d = doc.data();
-            dados.push({ Senha: d.senhaAgendamento, Data: d.data, Fornecedor: d.fornecedor, Tipo: d.tipoProduto });
-        }
+    const docEncontrado = snap.docs.find(x => x.id === senha);
+    if(!docEncontrado) return;
+    itensCargaTmp = docEncontrado.data().composicao || [];
+    renderizarItensModal();
+    document.getElementById('tituloComp').innerText = "Carga: " + senha;
+    document.getElementById('modalComp').style.display = 'flex';
+};
+
+function renderizarItensModal() {
+    const corpo = document.getElementById('corpoItensComp');
+    corpo.innerHTML = ""; let total = 0;
+    itensCargaTmp.forEach((item, index) => {
+        total += parseInt(item.qtd || 0);
+        corpo.innerHTML += `<tr><td>${item.codigo}</td><td>${item.descricao}</td><td>${item.qtd}</td><td><button onclick="removerItemLocal(${index})" style="color:red; border:none; background:none;"><i class="fas fa-trash"></i></button></td></tr>`;
     });
-    const ws = XLSX.utils.json_to_sheet(dados);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Agendamentos");
-    XLSX.writeFile(wb, `Simonetti_Export_${getDataBR()}.xlsx`);
+    document.getElementById('totalPecas').innerText = total;
+}
+
+window.removerItemLocal = (i) => { itensCargaTmp.splice(i,1); renderizarItensModal(); };
+window.adicionarItemManual = () => {
+    const cod = document.getElementById('itemCod').value || "N/A";
+    const desc = document.getElementById('itemDesc').value.toUpperCase();
+    const qtd = parseInt(document.getElementById('itemQtd').value);
+    if(!desc || isNaN(qtd)) return alert("Preencha descrição e quantidade!");
+    itensCargaTmp.push({ codigo: cod, descricao: desc, qtd: qtd });
+    renderizarItensModal();
 };
 
-window.exportarPDF = async (tipo) => {
-    const { jsPDF } = window.jspdf;
-    const docPdf = new jsPDF();
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
-    if (selecionados.length === 0) return alert("Selecione agendamentos!");
-    
+document.getElementById('btnSalvarEdicaoItens').onclick = async () => {
+    await updateDoc(doc(db, "agendamentos", senhaAbertaNoModal), { composicao: itensCargaTmp });
+    fecharModais();
+};
+
+window.editarAg = async (senha) => {
     const snap = await getDocs(collection(db, "agendamentos"));
-    const agendas = [];
-    snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
-
-    docPdf.text("Relatório Simonetti", 14, 15);
-    const rows = agendas.map(a => [a.senhaAgendamento, a.data, a.fornecedor, a.tipoProduto]);
-    docPdf.autoTable({ head: [['Senha', 'Data', 'Forn', 'Tipo']], body: rows, startY: 20 });
-    docPdf.save(`Relatorio_${tipo}.pdf`);
+    const d = snap.docs.find(x => x.id === senha).data();
+    document.getElementById('senhaAgendamento').value = d.senhaAgendamento;
+    document.getElementById('dataAgendamento').value = d.data;
+    document.getElementById('central').value = d.central;
+    document.getElementById('selectFornecedor').value = d.fornecedor;
+    document.getElementById('tipoProduto').value = d.tipoProduto;
+    document.getElementById('pedido').value = d.pedido || "";
+    document.getElementById('cargas').value = d.cargas || "";
+    itensCargaTmp = d.composicao || [];
+    document.getElementById('btnSalvar').style.display = 'none';
+    document.getElementById('btnRascunho').style.display = 'none';
+    document.getElementById('btnAtualizar').style.display = 'block';
 };
 
-// Fornecedores
+// --- FORNECEDORES ---
 async function carregarFornecedores() {
     onSnapshot(collection(db, "fornecedores"), (snap) => {
         const select = document.getElementById('selectFornecedor');
@@ -288,79 +380,16 @@ document.getElementById('btnAddForn').onclick = async () => {
 };
 window.removerForn = async (id) => { if (confirm("Excluir?")) await deleteDoc(doc(db, "fornecedores", id)); };
 
-// Inicialização Geral
-window.addEventListener('DOMContentLoaded', () => { 
-    gerarSenha(); 
-    carregarDados(); 
-    carregarFornecedores(); 
-});
-
-const getClasseTipo = (tipo) => {
-    const t = (tipo || "").toUpperCase();
-    if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) return 'tipo-amarelo';
-    if (t.includes('MESA')) return 'tipo-verde';
-    if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) return 'tipo-azul';
-    return '';
-};
-
-// Funções de Modal e Edição (Manter as que você já tinha)
-window.verComp = async (senha) => {
-    senhaAbertaNoModal = senha;
-    const snap = await getDocs(collection(db, "agendamentos"));
-    const d = snap.docs.find(x => x.id === senha).data();
-    itensCargaTmp = d.composicao || [];
-    renderizarItensModal();
-    document.getElementById('tituloComp').innerText = "Carga: " + senha;
-    document.getElementById('modalComp').style.display = 'flex';
-};
-
-function renderizarItensModal() {
-    const corpo = document.getElementById('corpoItensComp');
-    corpo.innerHTML = ""; let total = 0;
-    itensCargaTmp.forEach((item, index) => {
-        total += parseInt(item.qtd || 0);
-        corpo.innerHTML += `<tr>
-            <td>${item.codigo}</td>
-            <td>${item.descricao}</td>
-            <td>${item.qtd}</td>
-            <td><button onclick="removerItemLocal(${index})" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
-        </tr>`;
-    });
-    document.getElementById('totalPecas').innerText = total;
-}
-
-window.removerItemLocal = (i) => { itensCargaTmp.splice(i,1); renderizarItensModal(); };
-window.adicionarItemManual = () => {
-    const desc = document.getElementById('itemDesc').value;
-    const qtd = document.getElementById('itemQtd').value;
-    if(!desc || !qtd) return;
-    itensCargaTmp.push({ codigo: document.getElementById('itemCod').value || "N/A", descricao: desc.toUpperCase(), qtd: parseInt(qtd) });
-    renderizarItensModal();
-};
-
-document.getElementById('btnSalvarEdicaoItens').onclick = async () => {
-    await updateDoc(doc(db, "agendamentos", senhaAbertaNoModal), { composicao: itensCargaTmp });
-    fecharModais();
-};
-
-window.editarAg = async (senha) => {
-    const snap = await getDocs(collection(db, "agendamentos"));
-    const d = snap.docs.find(x => x.id === senha).data();
-    document.getElementById('senhaAgendamento').value = d.senhaAgendamento;
-    document.getElementById('dataAgendamento').value = d.data;
-    document.getElementById('selectFornecedor').value = d.fornecedor;
-    document.getElementById('tipoProduto').value = d.tipoProduto;
-    document.getElementById('pedido').value = d.pedido || "";
-    document.getElementById('cargas').value = d.cargas || "";
-    itensCargaTmp = d.composicao || [];
-    document.getElementById('btnSalvar').style.display = 'none';
-    document.getElementById('btnRascunho').style.display = 'none';
-    document.getElementById('btnAtualizar').style.display = 'block';
-};
-
+// --- LISTENERS ---
 document.getElementById('btnSalvar').onclick = () => salvarAgenda("Agendada");
 document.getElementById('btnRascunho').onclick = () => salvarAgenda("Rascunho");
 document.getElementById('btnAtualizar').onclick = () => salvarAgenda("Agendada");
 document.getElementById('buscaGeral').oninput = carregarDados;
 document.getElementById('buscaInicio').onchange = carregarDados;
 document.getElementById('buscaFim').onchange = carregarDados;
+
+window.addEventListener('DOMContentLoaded', () => { 
+    gerarSenha(); 
+    carregarDados(); 
+    carregarFornecedores(); 
+});
