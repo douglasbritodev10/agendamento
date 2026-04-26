@@ -5,16 +5,16 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
-const usuarioNome = localStorage.getItem('usuarioNome') || "DBBRITO";
+const usuarioNome = localStorage.getItem('usuarioNome') || "DBRITO";
 let itensCargaTmp = []; 
-let senhaAbertaNoModal = ""; // Para saber qual agenda estamos editando no modal
+let senhaAbertaNoModal = ""; 
 
 const getDataBR = () => {
     const d = new Date();
     return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 };
 
-// Inicialização
+// Inicialização de campos de data e usuário
 document.getElementById('dataAgendamento').value = getDataBR();
 document.getElementById('buscaInicio').value = getDataBR();
 document.getElementById('buscaFim').value = getDataBR();
@@ -95,7 +95,6 @@ function carregarDados() {
             const classe = getClasseTipo(ag.tipoProduto);
             const dataFormat = ag.data.split('-').reverse().join('/');
 
-            // String para busca na composição (produtos)
             const compString = (ag.composicao || []).map(i => (i.codigo + " " + i.descricao).toLowerCase()).join(" ");
 
             const atendeBusca = 
@@ -123,7 +122,6 @@ function carregarDados() {
                     </tr>`;
             } else {
                 if (ag.data >= dIni && ag.data <= dFim && atendeBusca) {
-                    
                     corpo.innerHTML += `
                         <tr class="${classe}">
                             <td><b>${ag.senhaAgendamento}</b></td>
@@ -148,7 +146,9 @@ function carregarDados() {
 window.verComp = async (senha) => {
     senhaAbertaNoModal = senha;
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const d = snap.docs.find(x => x.id === senha).data();
+    const docFound = snap.docs.find(x => x.id === senha);
+    if (!docFound) return;
+    const d = docFound.data();
     itensCargaTmp = d.composicao || [];
     renderizarItensModal();
     document.getElementById('tituloComp').innerText = "Carga: " + senha;
@@ -275,7 +275,10 @@ const getClasseTipo = (tipo) => {
 
 window.editarAg = async (senha) => {
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const d = snap.docs.find(x => x.id === senha).data();
+    const docFound = snap.docs.find(x => x.id === senha);
+    if(!docFound) return;
+    const d = docFound.data();
+    
     document.getElementById('senhaAgendamento').value = d.senhaAgendamento;
     document.getElementById('dataAgendamento').value = d.data;
     document.getElementById('central').value = d.central;
@@ -285,6 +288,7 @@ window.editarAg = async (senha) => {
     document.getElementById('tipoProduto').value = d.tipoProduto;
     document.getElementById('linhaSeparacao').value = d.linhaSeparacao || "EMBALADO";
     itensCargaTmp = d.composicao || [];
+    
     document.getElementById('btnSalvar').style.display = 'none';
     document.getElementById('btnRascunho').style.display = 'none';
     document.getElementById('btnAtualizar').style.display = 'block';
@@ -304,8 +308,13 @@ window.resetaForm = () => {
 
 window.fecharModais = () => document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
 
-// Eventos
-window.addEventListener('DOMContentLoaded', () => { gerarSenha(); carregarDados(); carregarFornecedores(); });
+// Eventos de Inicialização
+window.addEventListener('DOMContentLoaded', () => { 
+    gerarSenha(); 
+    carregarDados(); 
+    carregarFornecedores(); 
+});
+
 document.getElementById('btnSalvar').onclick = () => salvarAgenda("Agendada");
 document.getElementById('btnRascunho').onclick = () => salvarAgenda("Rascunho");
 document.getElementById('btnAtualizar').onclick = () => salvarAgenda("Agendada");
