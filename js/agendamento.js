@@ -13,10 +13,11 @@ const getDataBR = () => {
     return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 };
 
-document.getElementById('dataAgendamento').value = getDataBR();
-document.getElementById('buscaInicio').value = getDataBR();
-document.getElementById('buscaFim').value = getDataBR();
-document.getElementById('user-display').innerText = usuarioNome;
+// Inicialização de campos de data e usuário
+if(document.getElementById('dataAgendamento')) document.getElementById('dataAgendamento').value = getDataBR();
+if(document.getElementById('buscaInicio')) document.getElementById('buscaInicio').value = getDataBR();
+if(document.getElementById('buscaFim')) document.getElementById('buscaFim').value = getDataBR();
+if(document.getElementById('user-display')) document.getElementById('user-display').innerText = usuarioNome;
 
 // --- GERAÇÃO DE SENHA ---
 async function gerarSenha() {
@@ -64,7 +65,7 @@ async function salvarAgenda(status, isUpdate = false) {
         fornecedor: fornecedor,
         cargas: document.getElementById('cargas').value,
         tipoProduto: document.getElementById('tipoProduto').value.toUpperCase(),
-        linhaSeparacao: document.getElementById('linhaSeparacao').value, // SALVANDO LINHA DE SEPARAÇÃO
+        linhaSeparacao: document.getElementById('linhaSeparacao').value,
         status: status,
         composicao: itensCargaTmp, 
         timestamp: serverTimestamp(),
@@ -76,7 +77,7 @@ async function salvarAgenda(status, isUpdate = false) {
     resetaForm();
 }
 
-// --- MONITORAMENTO ---
+// --- MONITORAMENTO DA TABELA ---
 function carregarDados() {
     onSnapshot(query(collection(db, "agendamentos"), orderBy("timestamp", "desc")), (snap) => {
         const corpo = document.getElementById('corpoTabela');
@@ -85,14 +86,15 @@ function carregarDados() {
         const dFim = document.getElementById('buscaFim').value;
         const termo = document.getElementById('buscaGeral').value.toLowerCase();
 
-        corpo.innerHTML = ""; rascunhos.innerHTML = "";
+        if(corpo) corpo.innerHTML = ""; 
+        if(rascunhos) rascunhos.innerHTML = "";
 
         snap.forEach(d => {
             const ag = d.data();
             const classe = getClasseTipo(ag.tipoProduto);
 
             if (ag.status === "Rascunho") {
-                rascunhos.innerHTML += `
+                if(rascunhos) rascunhos.innerHTML += `
                     <tr>
                         <td><b>${ag.senhaAgendamento}</b></td>
                         <td>${ag.fornecedor}</td>
@@ -103,7 +105,7 @@ function carregarDados() {
                     </tr>`;
             } else {
                 if (ag.data >= dIni && ag.data <= dFim && (ag.fornecedor.toLowerCase().includes(termo) || ag.senhaAgendamento.toLowerCase().includes(termo))) {
-                    corpo.innerHTML += `
+                    if(corpo) corpo.innerHTML += `
                         <tr class="${classe}">
                             <td><b>${ag.senhaAgendamento}</b></td>
                             <td>${ag.data.split('-').reverse().join('/')}</td>
@@ -121,9 +123,35 @@ function carregarDados() {
     });
 }
 
+// --- GESTÃO DE FORNECEDORES (ADICIONADO CONFORME PEDIDO) ---
+async function carregarFornecedores() {
+    onSnapshot(collection(db, "fornecedores"), (snap) => {
+        const select = document.getElementById('selectFornecedor');
+        const lista = document.getElementById('listaForn');
+        
+        if (select) select.innerHTML = '<option value="">Selecione...</option>';
+        if (lista) lista.innerHTML = "";
+
+        snap.forEach(d => {
+            const f = d.data().nome;
+            if (select) select.innerHTML += `<option value="${f}">${f}</option>`;
+            if (lista) {
+                lista.innerHTML += `<li style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee;">
+                    ${f} <i class="fas fa-trash" style="color:red; cursor:pointer;" onclick="removerForn('${d.id}')"></i>
+                </li>`;
+            }
+        });
+    });
+}
+window.carregarFornecedores = carregarFornecedores;
+
+// --- DEMAIS FUNÇÕES AUXILIARES ---
 window.verComp = async (senha) => {
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const ag = snap.docs.find(x => x.id === senha).data();
+    const docEncontrado = snap.docs.find(x => x.id === senha);
+    if(!docEncontrado) return;
+    
+    const ag = docEncontrado.data();
     const corpo = document.getElementById('corpoItensComp');
     corpo.innerHTML = "";
 
@@ -138,7 +166,6 @@ window.verComp = async (senha) => {
     document.getElementById('modalComp').style.display = 'flex';
 };
 
-// --- RESTANTE DAS FUNÇÕES (CORES, FORNECEDORES, RESET) ---
 const getClasseTipo = (tipo) => {
     const t = (tipo || "").toUpperCase();
     if (['ARMARIO','COMODA','COZINHA','ROUPEIRO'].some(x => t.includes(x))) return 'tipo-amarelo';
@@ -149,7 +176,9 @@ const getClasseTipo = (tipo) => {
 
 window.editarAg = async (senha) => {
     const snap = await getDocs(query(collection(db, "agendamentos")));
-    const d = snap.docs.find(x => x.id === senha).data();
+    const docEncontrado = snap.docs.find(x => x.id === senha);
+    if(!docEncontrado) return;
+    const d = docEncontrado.data();
     
     document.getElementById('senhaAgendamento').value = d.senhaAgendamento;
     document.getElementById('dataAgendamento').value = d.data;
@@ -176,8 +205,13 @@ window.resetaForm = () => {
     gerarSenha();
 };
 
-// Eventos de Inicialização
-window.addEventListener('DOMContentLoaded', () => { gerarSenha(); carregarDados(); carregarFornecedores(); });
+// --- EVENTOS DE INICIALIZAÇÃO ---
+window.addEventListener('DOMContentLoaded', () => { 
+    gerarSenha(); 
+    carregarDados(); 
+    carregarFornecedores(); 
+});
+
 document.getElementById('btnSalvar').onclick = () => salvarAgenda("Agendada");
 document.getElementById('btnRascunho').onclick = () => salvarAgenda("Rascunho");
 document.getElementById('btnAtualizar').onclick = () => salvarAgenda("Agendada", true);
