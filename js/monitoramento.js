@@ -11,13 +11,13 @@ let filtrosPorColuna = {
     data: [],
     central: [],
     fornecedor: [],
-    tipoProduto: []
+    tipoProduto: [],
+    cargas: []
 };
 let colunaSendoFiltrada = "";
 
-// 1. Inicialização
-async function init() {
-    // Pega o nome do usuário salvo no login
+// 1. Inicialização Segura
+function init() {
     const userDisplay = document.getElementById('txtUser');
     if(userDisplay) userDisplay.innerText = localStorage.getItem('username') || "D. BRITO";
     
@@ -28,11 +28,14 @@ async function init() {
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(item => item.status !== "Rascunho");
 
-        // Regra Simonetti: No primeiro acesso, filtra pela data de HOJE automaticamente
+        // Regra Simonetti: Filtra pela data de HOJE no primeiro carregamento
         const hoje = new Date().toISOString().split('T')[0];
         const temDadosHoje = dadosMestres.some(d => d.data === hoje);
         
-        if (temDadosHoje && Object.values(filtrosPorColuna).every(v => v.length === 0)) {
+        // Só aplica o filtro automático se o usuário ainda não tiver filtrado nada
+        const jaTemFiltro = Object.values(filtrosPorColuna).some(v => v.length > 0);
+        
+        if (temDadosHoje && !jaTemFiltro) {
             filtrosPorColuna.data = [hoje];
         }
 
@@ -40,20 +43,21 @@ async function init() {
     });
 }
 
-// 2. Lógica de Filtragem (Cascata + Busca Global + Composição)
+// 2. Lógica de Filtragem (Corrigida para evitar o erro de 'null')
 window.atualizarFiltros = () => {
     const campoBusca = document.getElementById('inputBusca');
     const termo = campoBusca ? campoBusca.value.toLowerCase() : "";
     let algumFiltroAtivo = false;
 
     dadosFiltrados = dadosMestres.filter(item => {
+        // Verifica filtros de coluna
         const passaColunas = Object.keys(filtrosPorColuna).every(col => {
-            if (filtrosPorColuna[col].length === 0) return true;
+            if (!filtrosPorColuna[col] || filtrosPorColuna[col].length === 0) return true;
             algumFiltroAtivo = true;
-            return filtrosPorColuna[col].includes(item[col]);
+            return filtrosPorColuna[col].includes(String(item[col]));
         });
 
-        // Busca profunda: olha nos dados da carga e dentro da lista de itens (composição)
+        // Busca profunda (inclui composição)
         const compStr = item.composicao ? JSON.stringify(item.composicao).toLowerCase() : "";
         const itemStr = (JSON.stringify(item) + compStr).toLowerCase();
         const passaTermo = itemStr.includes(termo);
@@ -61,7 +65,7 @@ window.atualizarFiltros = () => {
         return passaColunas && passaTermo;
     });
 
-    // UI: Muda a cor do cabeçalho se houver filtro aplicado (Amarelo solicitado)
+    // Atualiza interface de filtros ativos
     document.querySelectorAll('th[data-col]').forEach(th => {
         const col = th.getAttribute('data-col');
         if (filtrosPorColuna[col] && filtrosPorColuna[col].length > 0) {
@@ -71,53 +75,63 @@ window.atualizarFiltros = () => {
         }
     });
 
-    const labelFiltro = document.getElementById('labelFiltroAtivo');
-    if(labelFiltro) labelFiltro.style.display = algumFiltroAtivo ? "inline" : "none";
+    const label = document.getElementById('labelFiltroAtivo');
+    if(label) label.style.display = algumFiltroAtivo ? "inline" : "none";
     
     renderizarTabela();
 };
 
-// 3. Renderização da Tabela com cores por tipo
+// 3. Renderização da Tabela
 function renderizarTabela() {
     const tbody = document.getElementById('corpoTabela');
     if(!tbody) return;
+    
     tbody.innerHTML = "";
-    document.getElementById('count').innerText = dadosFiltrados.length;
+    const contador = document.getElementById('count');
+    if(contador) contador.innerText = dadosFiltrados.length;
 
     dadosFiltrados.forEach(item => {
-        // Cores baseadas na sua regra de produto
-        const tipo = item.tipoProduto?.toLowerCase() || "";
+        const tipo = (item.tipoProduto || "").toLowerCase();
         const classeTipo = tipo.includes('eletro') ? 'row-eletro' : 
                           (tipo.includes('move') ? 'row-moveis' : 'row-outros');
 
         const tr = document.createElement('tr');
         tr.className = classeTipo;
+        
+        // Formata data para BR
+        const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
+
         tr.innerHTML = `
             <td><input type="checkbox" class="row-check" value="${item.id}"></td>
             <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
-            <td>${item.data ? item.data.split('-').reverse().join('/') : '---'}</td>
+            <td>${dataBR}</td>
             <td>${item.central || '---'}</td>
             <td>${item.cargas || 1}</td>
             <td>${item.fornecedor || '---'}</td>
             <td>${item.tipoProduto || '---'}</td>
             <td>
-                <button onclick="verDetalhes('${item.id}')" style="border:none; background:none; color:#C80000; cursor:pointer;">
+                <button class="btn-ver" data-id="${item.id}" style="border:none; background:none; color:#C80000; cursor:pointer;">
                     <i class="fas fa-eye fa-lg"></i>
                 </button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+
+    // Adiciona evento de clique nos botões de "olho" (necessário por causa do type="module")
+    document.querySelectorAll('.btn-ver').forEach(btn => {
+        btn.onclick = () => verDetalhes(btn.getAttribute('data-id'));
+    });
 }
 
-// 4. Funções de Modal e UI
+// 4. Modais e Exportação (Expostos para o Window)
 window.abrirModalFiltro = (coluna) => {
     colunaSendoFiltrada = coluna;
     const modal = document.getElementById('modalFiltro');
     const container = document.getElementById('opcoesFiltro');
     
-    // Opções únicas ordenadas A-Z
-    const opcoes = [...new Set(dadosMestres.map(d => d[coluna]))].sort();
+    // Pega valores únicos e limpa nulos
+    const opcoes = [...new Set(dadosMestres.map(d => String(d[coluna] || "")))].filter(o => o !== "").sort();
 
     container.innerHTML = opcoes.map(opt => `
         <div style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px;">
@@ -132,23 +146,28 @@ window.abrirModalFiltro = (coluna) => {
 window.aplicarFiltroColuna = () => {
     const selecionados = Array.from(document.querySelectorAll('.chk-opt:checked')).map(el => el.value);
     filtrosPorColuna[colunaSendoFiltrada] = selecionados;
-    atualizarFiltros();
-    fecharModais();
+    window.atualizarFiltros();
+    window.fecharModais();
 };
 
 window.toggleChecks = (status) => {
     document.querySelectorAll('.chk-opt').forEach(chk => chk.checked = status);
 };
 
-window.verDetalhes = (id) => {
+window.fecharModais = () => {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = "none");
+};
+
+function verDetalhes(id) {
     const item = dadosMestres.find(d => d.id === id);
     const container = document.getElementById('detalhesItens');
-    
-    if(!item || !item.composicao || item.composicao.length === 0) {
+    if(!item) return;
+
+    if(!item.composicao || item.composicao.length === 0) {
         container.innerHTML = "<p style='text-align:center; padding:20px;'>Nenhum item detalhado nesta carga.</p>";
     } else {
         container.innerHTML = `
-            <table style="width:100%; border-collapse:collapse;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
                 <thead style="background:#f4f4f4;">
                     <tr><th style="padding:10px;">CÓD</th><th style="padding:10px;">DESCRIÇÃO</th><th style="padding:10px;">QTD</th></tr>
                 </thead>
@@ -161,85 +180,51 @@ window.verDetalhes = (id) => {
                     </tr>
                 `).join('')}
                 </tbody>
-            </table>
-        `;
+            </table>`;
     }
     document.getElementById('modalComposicao').style.display = "flex";
-};
+}
 
-window.fecharModais = () => {
-    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = "none");
-};
-
-// 5. Exportação Robusta (4 tipos)
 window.exportar = (tipo, modo) => {
-    const checks = document.querySelectorAll('.row-check:checked');
-    const ids = Array.from(checks).map(el => el.value);
-    
-    if(ids.length === 0) return alert("Selecione os agendamentos na tabela primeiro!");
+    const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(el => el.value);
+    if(ids.length === 0) return alert("Selecione os itens na tabela primeiro!");
 
-    const itensParaExportar = dadosMestres.filter(d => ids.includes(d.id));
+    const selecionados = dadosMestres.filter(d => ids.includes(d.id));
 
     if(tipo === 'excel') {
         const rows = [];
-        itensParaExportar.forEach(d => {
+        selecionados.forEach(d => {
             if(modo === 'completo' && d.composicao) {
-                d.composicao.forEach(c => {
-                    rows.push({ 
-                        Senha: d.senhaAgendamento, 
-                        Data: d.data,
-                        Fornecedor: d.fornecedor, 
-                        Codigo: c.codigo, 
-                        Item: c.descricao, 
-                        Qtd: c.quantidade 
-                    });
-                });
+                d.composicao.forEach(c => rows.push({ Senha: d.senhaAgendamento, Fornecedor: d.fornecedor, Item: c.descricao, Qtd: c.quantidade }));
             } else {
-                rows.push({ 
-                    Senha: d.senhaAgendamento, 
-                    Data: d.data, 
-                    Central: d.central,
-                    Fornecedor: d.fornecedor, 
-                    Tipo: d.tipoProduto 
-                });
+                rows.push({ Senha: d.senhaAgendamento, Data: d.data, Fornecedor: d.fornecedor, Tipo: d.tipoProduto });
             }
         });
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Simonetti_Export");
-        XLSX.writeFile(wb, `Simonetti_${modo.toUpperCase()}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Dados");
+        XLSX.writeFile(wb, `Simonetti_${modo}.xlsx`);
     } else {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
-        doc.setFontSize(16);
-        doc.setTextColor(200, 0, 0);
-        doc.text("MÓVEIS SIMONETTI - MONITORAMENTO", 14, 15);
-        
-        const head = modo === 'completo' ? 
-            [['SENHA', 'DESCRIÇÃO ITEM', 'QTD']] : 
-            [['SENHA', 'DATA', 'FORNECEDOR', 'CENTRAL']];
-        
+        doc.text("Relatorio Simonetti", 14, 10);
+        const head = modo === 'completo' ? [['Senha', 'Item', 'Qtd']] : [['Senha', 'Data', 'Fornecedor']];
         const body = [];
-        itensParaExportar.forEach(d => {
+        selecionados.forEach(d => {
             if(modo === 'completo' && d.composicao) {
                 d.composicao.forEach(c => body.push([d.senhaAgendamento, c.descricao, c.quantidade]));
             } else {
-                body.push([d.senhaAgendamento, d.data, d.fornecedor, d.central]);
+                body.push([d.senhaAgendamento, d.data, d.fornecedor]);
             }
         });
-
-        doc.autoTable({ 
-            head, 
-            body, 
-            startY: 25,
-            headStyles: { fillColor: [200, 0, 0] },
-            theme: 'grid'
-        });
-        
-        doc.save(`Simonetti_${modo.toUpperCase()}.pdf`);
+        doc.autoTable({ head, body, startY: 20 });
+        doc.save(`Simonetti_${modo}.pdf`);
     }
 };
 
-// Inicia o sistema
-init();
+// Dispara o init quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
