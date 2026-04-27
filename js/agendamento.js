@@ -387,3 +387,32 @@ window.addEventListener('DOMContentLoaded', () => {
     carregarDados(); 
     carregarFornecedores(); 
 });
+
+// --- FUNÇÕES DE ORDENAÇÃO (DOM) ---
+window.ordenarTabelaDefinitiva = (coluna) => ordenarDOM('corpoTabela', coluna);
+window.ordenarTabelaRascunho = (coluna) => ordenarDOM('corpoRascunhos', coluna);
+
+function ordenarDOM(idCorpo, indexColuna) {
+    const corpo = document.getElementById(idCorpo);
+    const linhas = Array.from(corpo.querySelectorAll('tr'));
+    const isAsc = corpo.dataset.sortOrder !== 'asc';
+    
+    linhas.sort((a, b) => {
+        const valA = a.cells[indexColuna].innerText.trim().toUpperCase();
+        const valB = b.cells[indexColuna].innerText.trim().toUpperCase();
+        
+        // Lógica para datas (se for a coluna de data, geralmente a 2)
+        if (indexColuna === 2) {
+            const dateA = valA.split('/').reverse().join('');
+            const dateB = valB.split('/').reverse().join('');
+            return isAsc ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+        }
+
+        return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+
+    // Atualiza o DOM e salva a direção
+    corpo.dataset.sortOrder = isAsc ? 'asc' : 'desc';
+    linhas.forEach(linha => corpo.appendChild(linha));
+}
+
