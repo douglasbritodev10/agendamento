@@ -86,6 +86,7 @@
                 <div class="form-group">
                     <label>Central</label>
                     <select id="central">
+                        <option value="Selecione...">Selecione...</option>
                         <option value="PINHEIROS">PINHEIROS</option>
                         <option value="SERRA">SERRA</option>
                         <option value="BUERAREMA">BUERAREMA</option>
@@ -114,6 +115,7 @@
                 <div class="form-group">
                     <label>Linha de Separação</label>
                     <select id="linhaSeparacao">
+                        <option value="Selecione...">Selecione...</option>
                         <option value="GRANDEZA 1">GRANDEZA 1</option>
                         <option value="GRANDEZA 2">GRANDEZA 2</option>
                         <option value="GRANDEZA 3">GRANDEZA 3</option>
@@ -145,7 +147,7 @@
             <div class="filter-bar">
                 <div class="form-group" style="margin:0; flex: 1;"><label>De:</label><input type="date" id="buscaInicio"></div>
                 <div class="form-group" style="margin:0; flex: 1;"><label>Até:</label><input type="date" id="buscaFim"></div>
-                <input type="text" id="buscaGeral" placeholder="🔍 Buscar por Senha, Fornecedor, Pedido..." style="flex:2; height: 41px; padding: 0 10px; border: 1px solid #ddd; border-radius: 8px;">
+                <input type="text" id="buscaGeral" placeholder="🔍 Buscar..." style="flex:2; height: 41px; padding: 0 10px; border: 1px solid #ddd; border-radius: 8px;">
                 
                 <div class="export-actions">
                     <button onclick="exportarExcel('basico')" class="btn-exp" style="background:#2e7d32;" title="Apenas colunas principais">
