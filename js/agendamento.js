@@ -234,10 +234,19 @@ function carregarDados() {
             const cores = getCoresPorTipo(ag.tipoProduto);
             const dataFormat = ag.data.split('-').reverse().join('/');
             
-            const atendeBusca = ag.senhaAgendamento.toLowerCase().includes(termo) || 
-                                ag.fornecedor.toLowerCase().includes(termo) || 
-                                (ag.pedido && ag.pedido.toLowerCase().includes(termo));
+            // Verifica nos dados principais
+            const buscaNoPrincipal = ag.senhaAgendamento.toLowerCase().includes(termo) || 
+                                     ag.fornecedor.toLowerCase().includes(termo) || 
+                                     (ag.pedido && ag.pedido.toLowerCase().includes(termo));
 
+            // Verifica se o termo está em algum item da composição (Código ou Descrição)
+            const buscaNosItens = ag.composicao && ag.composicao.some(item => 
+                (item.codigo && item.codigo.toLowerCase().includes(termo)) || 
+                (item.descricao && item.descricao.toLowerCase().includes(termo))
+            );
+
+            const atendeBusca = buscaNoPrincipal || buscaNosItens;
+            
             const acoes = `
                 <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Itens" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
                 <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
