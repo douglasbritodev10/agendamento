@@ -18,7 +18,7 @@ async function verificarAcessoADM() {
 
     try {
         // Busca na coleção 'users' onde o campo 'username' é igual ao usuarioNome
-        const q = query(collection(db, "users"), where("username", "==", usuarioNome));
+        const q = query(collection(db, "users"), where("username", "==", username));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
@@ -49,7 +49,7 @@ verificarAcessoADM();
 document.getElementById('dataAgendamento').value = getDataBR();
 document.getElementById('buscaInicio').value = getDataBR();
 document.getElementById('buscaFim').value = getDataBR();
-document.getElementById('user-display').innerText = usuarioNome;
+document.getElementById('user-display').innerText = username;
 
 const getCoresPorTipo = (tipo) => {
     const t = (tipo || "").toUpperCase();
