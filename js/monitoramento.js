@@ -1,121 +1,115 @@
 import { app } from './firebase-config.js';
-import { getFirestore, collection, query, where, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, query, where, onSnapshot, getDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
 
-// Configurações Globais
-let dadosOriginais = [];
-let dadosFiltrados = [];
-let colunaAtual = "";
-let filtrosAtivos = {
-    senhaAgendamento: [],
-    data: [],
-    central: [],
-    cargas: [],
-    fornecedor: [],
-    tipoProduto: []
-};
+let dadosOriginais = []; // Todas as cargas da data (exceto rascunhos)
+let dadosExibidos = [];   // Cargas após filtros de coluna e busca global
+let dataFiltroAtiva = "";
 
-// 1. Pegar Data de Hoje (Brasil)
-const d = new Date();
-const hojeISO = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+// 1. Inicialização
+async function iniciar() {
+    // Exibe o username no topo (DBRITO)
+    document.getElementById('user-display').innerText = localStorage.getItem('username') || "USUÁRIO";
 
-// 2. Escuta do Firebase em Tempo Real
-function inicializar() {
+    // Define data padrão como hoje (Brasil)
+    const d = new Date();
+    dataFiltroAtiva = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    document.getElementById('filtroDataGlobal').value = dataFiltroAtiva;
+
+    ouvirCargas();
+}
+
+// 2. Ouvinte Firebase com Bloqueio de Rascunhos
+function ouvirCargas() {
+    // Buscamos apenas onde status NÃO é rascunho
+    // Se você usa um campo booleano ou string, ajuste abaixo:
     const q = query(
         collection(db, "agendamentos"), 
-        where("data", "==", hojeISO),
-        orderBy("timestamp", "desc")
+        where("data", "==", dataFiltroAtiva)
+        // Adicionaremos o filtro de rascunho na lógica local para evitar erros de índice no Firebase
     );
 
     onSnapshot(q, (snap) => {
-        dadosOriginais = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        aplicarLogicaDeFiltros(); // Re-aplica filtros se os dados mudarem
+        // FILTRO DE SEGURANÇA: Remove rascunhos antes de qualquer coisa
+        dadosOriginais = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(item => item.status !== "Rascunho" && item.status !== "DRAFT"); 
+
+        dadosExibidos = [...dadosOriginais];
+        renderizarTabela();
     });
 }
 
-// 3. Funções do Modal
-window.abrirModalFiltro = (coluna) => {
-    colunaAtual = coluna;
-    document.getElementById('tituloFiltro').innerText = `Filtrar ${coluna.toUpperCase()}`;
-    document.getElementById('modalFiltro').style.display = 'flex';
-    document.getElementById('inputBuscaModal').value = "";
+// 3. Busca Global (Igual à tela de agendamento)
+window.filtrarGeral = () => {
+    const termo = document.getElementById('inputBuscaGlobal').value.toLowerCase();
     
-    // Efeito Cascata: Pegar opções únicas dos dados que já passaram pelos outros filtros
-    const opcoesUnicas = [...new Set(dadosFiltrados.map(item => item[coluna] || "VAZIO"))].sort();
-    
-    const container = document.getElementById('listaOpcoes');
-    container.innerHTML = "";
-
-    opcoesUnicas.forEach(opcao => {
-        const isChecked = filtrosAtivos[coluna].length === 0 || filtrosAtivos[coluna].includes(opcao);
-        container.innerHTML += `
-            <div class="opcao-item">
-                <input type="checkbox" value="${opcao}" ${isChecked ? 'checked' : ''}>
-                <label>${opcao}</label>
-            </div>
-        `;
-    });
-};
-
-window.fecharModal = () => {
-    document.getElementById('modalFiltro').style.display = 'none';
-};
-
-window.selecionarTodos = (status) => {
-    const checkboxes = document.querySelectorAll('#listaOpcoes input');
-    checkboxes.forEach(cb => cb.checked = status);
-};
-
-// 4. Execução do Filtro
-window.executarFiltro = () => {
-    const checkboxes = document.querySelectorAll('#listaOpcoes input:checked');
-    const selecionados = Array.from(checkboxes).map(cb => cb.value);
-    
-    // Se todos estiverem marcados, limpamos o filtro daquela coluna (mostra tudo)
-    const totalOpcoes = document.querySelectorAll('#listaOpcoes input').length;
-    filtrosAtivos[colunaAtual] = selecionados.length === totalOpcoes ? [] : selecionados;
-
-    aplicarLogicaDeFiltros();
-    fecharModal();
-};
-
-function aplicarLogicaDeFiltros() {
-    dadosFiltrados = dadosOriginais.filter(item => {
-        return Object.keys(filtrosAtivos).every(col => {
-            if (filtrosAtivos[col].length === 0) return true; // Sem filtro nesta coluna
-            return filtrosAtivos[col].includes(item[col] || "VAZIO");
-        });
+    dadosExibidos = dadosOriginais.filter(item => {
+        const conteudoParaBusca = `
+            ${item.senhaAgendamento} 
+            ${item.fornecedor} 
+            ${item.central} 
+            ${item.tipoProduto} 
+            ${item.status}
+            ${item.composicao ? JSON.stringify(item.composicao) : ""}
+        `.toLowerCase();
+        
+        return conteudoParaBusca.includes(termo);
     });
 
     renderizarTabela();
-}
+};
 
-// 5. Renderização na Tela
+// 4. Ver Composição (Modal de Itens)
+window.verComposicao = async (id) => {
+    const container = document.getElementById('listaComposicao');
+    container.innerHTML = "Carregando itens...";
+    document.getElementById('modalComposicao').style.display = 'flex';
+
+    const agenda = dadosOriginais.find(a => a.id === id);
+    if (agenda && agenda.composicao) {
+        document.getElementById('spanSenhaCarga').innerText = agenda.senhaAgendamento;
+        container.innerHTML = agenda.composicao.map(item => `
+            <div class="card-item">
+                <div>
+                    <b>${item.descricao}</b><br>
+                    <small>Cód: ${item.codigo || 'N/A'}</small>
+                </div>
+                <div style="text-align:right">
+                    <span style="color:#D32F2F; font-weight:bold">${item.quantidade} UN</span>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        container.innerHTML = "Nenhum item detalhado nesta carga.";
+    }
+};
+
+// 5. Troca de Data
+window.alterarDataFiltro = () => {
+    dataFiltroAtiva = document.getElementById('filtroDataGlobal').value;
+    ouvirCargas(); // Reinicia a escuta para a nova data
+};
+
+// 6. Renderização
 function renderizarTabela() {
     const corpo = document.getElementById('tabelaCorpo');
     corpo.innerHTML = "";
-    document.getElementById('txtContador').innerText = dadosFiltrados.length;
+    document.getElementById('txtContador').innerText = dadosExibidos.length;
 
-    if (dadosFiltrados.length === 0) {
-        corpo.innerHTML = `<tr><td colspan="7">Nenhum agendamento encontrado para hoje.</td></tr>`;
-        return;
-    }
-
-    dadosFiltrados.forEach(ag => {
-        const dataFormatada = ag.data ? ag.data.split('-').reverse().join('/') : '---';
-        
+    dadosExibidos.forEach(ag => {
         corpo.innerHTML += `
             <tr>
-                <td style="font-weight:bold; color:var(--primary)">${ag.senhaAgendamento}</td>
-                <td>${dataFormatada}</td>
+                <td style="font-weight:bold">${ag.senhaAgendamento}</td>
+                <td>${ag.data.split('-').reverse().join('/')}</td>
                 <td>${ag.central}</td>
-                <td>${ag.cargas || '1 CARRETA'}</td>
+                <td>${ag.cargas || '1'}</td>
                 <td>${ag.fornecedor}</td>
                 <td>${ag.tipoProduto}</td>
                 <td>
-                    <button onclick="verComposicao('${ag.id}')" title="Ver Composição" style="border:none; background:none; cursor:pointer; color:#555">
-                        <i class="fas fa-search-plus"></i>
+                    <button onclick="verComposicao('${ag.id}')" class="btn-abrir-filtro" style="width:auto; padding:5px 10px">
+                        <i class="fas fa-list"></i> ITENS
                     </button>
                 </td>
             </tr>
@@ -123,20 +117,6 @@ function renderizarTabela() {
     });
 }
 
-// 6. Busca interna do Modal
-window.filtrarListaModal = () => {
-    const termo = document.getElementById('inputBuscaModal').value.toLowerCase();
-    const itens = document.querySelectorAll('.opcao-item');
-    itens.forEach(item => {
-        const texto = item.innerText.toLowerCase();
-        item.style.display = texto.includes(termo) ? 'flex' : 'none';
-    });
-};
+window.fecharModalComposicao = () => document.getElementById('modalComposicao').style.display = 'none';
 
-// Função de placeholder para composição
-window.verComposicao = (id) => {
-    alert("Visualizando composição da carga ID: " + id);
-};
-
-// Início
-inicializar();
+iniciar();
