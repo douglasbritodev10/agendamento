@@ -10,43 +10,43 @@ let itensCargaTmp = [];
 let senhaAbertaNoModal = ""; 
 
 async function verificarAcessoADM() {
-    // nomeBusca aqui será o ID do documento (ex: "DBRITO")
-    const nomeBusca = usuarioNome.trim(); 
+    const nomeParaBusca = usuarioNome.trim(); 
 
-    if (nomeBusca === "DESCONHECIDO") {
+    if (nomeParaBusca === "DESCONHECIDO") {
         window.location.href = "index.html";
         return;
     }
 
     try {
-        // Referência direta ao documento dentro da coleção 'users'
-        const docRef = doc(db, "users", nomeBusca);
-        const docSnap = await getDoc(docRef);
+        // CORREÇÃO: Pesquisamos na coleção 'users' onde o campo 'nome' seja igual ao localStorage
+        const q = query(collection(db, "users"), where("nome", "==", nomeParaBusca));
+        const querySnapshot = await getDocs(q);
 
-        if (docSnap.exists()) {
-            const dadosUser = docSnap.data();
+        if (!querySnapshot.empty) {
+            // Pegamos os dados do primeiro documento encontrado
+            const dadosUser = querySnapshot.docs[0].data();
             
-        if (document.getElementById('user-display')) {
-            // Agora vai pegar EXATAMENTE o que está no campo 'username' do Firestore
-            document.getElementById('user-display').innerText = dadosUser.username;
-        }
+            // 1. Exibe o 'username' (DBRITO) no canto superior
+            if (document.getElementById('user-display')) {
+                document.getElementById('user-display').innerText = dadosUser.username;
+            }
 
-            // Verifica o nível de acesso direto no campo do documento
+            // 2. Verifica se o nível de acesso é ADM
             if (dadosUser.nivelAcesso !== "ADM") { 
                 alert("ACESSO NEGADO: Somente administradores.");
                 window.location.href = "portal.html";
             }
             
-            console.log("Acesso ADM confirmado para:", nomeBusca);
+            console.log("Logado como:", dadosUser.username);
 
         } else {
-            // Se o documento com esse ID não existir
-            console.error("Documento não encontrado no Firestore ID:", nomeBusca);
-            alert(`Usuário "${nomeBusca}" não encontrado.`);
+            // Se cair aqui, o nome completo no localStorage não bate com nenhum campo 'nome' no banco
+            console.error("Nome não encontrado no campo 'nome':", nomeParaBusca);
+            alert(`Usuário "${nomeParaBusca}" não encontrado no sistema.`);
             window.location.href = "index.html";
         }
     } catch (error) {
-        console.error("Erro na validação de segurança:", error);
+        console.error("Erro na validação:", error);
         window.location.href = "index.html";
     }
 }
@@ -442,8 +442,8 @@ document.getElementById('buscaInicio').onchange = carregarDados;
 document.getElementById('buscaFim').onchange = carregarDados;
 
 window.addEventListener('DOMContentLoaded', async () => { 
-    await verificarAcessoADM(); // Agora o await funciona porque a arrow function é async
-    gerarSenha(); 
+    await verificarAcessoADM(); // Garante que o usuário é ADM primeiro
+    gerarSenha();  
     carregarDados(); 
     carregarFornecedores(); 
 });
