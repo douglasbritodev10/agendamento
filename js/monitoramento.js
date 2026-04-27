@@ -6,17 +6,15 @@ const db = getFirestore(app);
 // Estados Globais
 let dadosMestres = [];
 let dadosFiltrados = [];
-let filtrosPorColuna = {
-    senhaAgendamento: [],
-    data: [],
-    central: [],
-    fornecedor: [],
-    tipoProduto: [],
-    cargas: []
-};
-let colunaSendoFiltrada = "";
+let filtrosAtivos = { senhaAgendamento: [], data: [], central: [], fornecedor: [], tipoProduto: [], cargas: [] };
+let colunaFiltroAtual = "";
 
-// 1. Inicialização Segura
+// Paginação e Ordenação
+let paginaAtual = 1;
+let registrosPorPagina = 50;
+let ordenacao = { coluna: 'data', direcao: 'desc' };
+
+// 1. Início
 function init() {
     const userDisplay = document.getElementById('txtUser');
     if(userDisplay) userDisplay.innerText = localStorage.getItem('username') || "D. BRITO";
@@ -28,79 +26,65 @@ function init() {
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(item => item.status !== "Rascunho");
 
-        // Regra Simonetti: Filtra pela data de HOJE no primeiro carregamento
+        // Filtro automático de hoje apenas no primeiro load
         const hoje = new Date().toISOString().split('T')[0];
-        const temDadosHoje = dadosMestres.some(d => d.data === hoje);
-        
-        // Só aplica o filtro automático se o usuário ainda não tiver filtrado nada
-        const jaTemFiltro = Object.values(filtrosPorColuna).some(v => v.length > 0);
-        
-        if (temDadosHoje && !jaTemFiltro) {
-            filtrosPorColuna.data = [hoje];
+        if (dadosMestres.some(d => d.data === hoje) && paginaAtual === 1 && !termoBuscaAtivo()) {
+            filtrosAtivos.data = [hoje];
         }
 
-        atualizarFiltros();
+        window.atualizarFiltros();
     });
 }
 
-// 2. Lógica de Filtragem (Corrigida para evitar o erro de 'null')
+const termoBuscaAtivo = () => document.getElementById('inputBusca')?.value !== "";
+
+// 2. Lógica de Filtros e Busca
 window.atualizarFiltros = () => {
-    const campoBusca = document.getElementById('inputBusca');
-    const termo = campoBusca ? campoBusca.value.toLowerCase() : "";
-    let algumFiltroAtivo = false;
+    const termo = document.getElementById('inputBusca')?.value.toLowerCase() || "";
 
     dadosFiltrados = dadosMestres.filter(item => {
-        // Verifica filtros de coluna
-        const passaColunas = Object.keys(filtrosPorColuna).every(col => {
-            if (!filtrosPorColuna[col] || filtrosPorColuna[col].length === 0) return true;
-            algumFiltroAtivo = true;
-            return filtrosPorColuna[col].includes(String(item[col]));
+        const atendeColunas = Object.keys(filtrosAtivos).every(col => {
+            if (filtrosAtivos[col].length === 0) return true;
+            return filtrosAtivos[col].includes(String(item[col]));
         });
 
-        // Busca profunda (inclui composição)
         const compStr = item.composicao ? JSON.stringify(item.composicao).toLowerCase() : "";
-        const itemStr = (JSON.stringify(item) + compStr).toLowerCase();
-        const passaTermo = itemStr.includes(termo);
+        const atendeBusca = (JSON.stringify(item).toLowerCase() + compStr).includes(termo);
 
-        return passaColunas && passaTermo;
+        return atendeColunas && atendeBusca;
     });
 
-    // Atualiza interface de filtros ativos
-    document.querySelectorAll('th[data-col]').forEach(th => {
-        const col = th.getAttribute('data-col');
-        if (filtrosPorColuna[col] && filtrosPorColuna[col].length > 0) {
-            th.classList.add('active-filter');
-        } else {
-            th.classList.remove('active-filter');
-        }
-    });
-
-    const label = document.getElementById('labelFiltroAtivo');
-    if(label) label.style.display = algumFiltroAtivo ? "inline" : "none";
-    
+    paginaAtual = 1; // Reseta para primeira página ao filtrar
     renderizarTabela();
 };
 
-// 3. Renderização da Tabela
+// 3. Renderização com Ordenação e Paginação
 function renderizarTabela() {
     const tbody = document.getElementById('corpoTabela');
     if(!tbody) return;
-    
-    tbody.innerHTML = "";
-    const contador = document.getElementById('count');
-    if(contador) contador.innerText = dadosFiltrados.length;
 
-    dadosFiltrados.forEach(item => {
+    // Ordenação
+    const dadosOrdenados = [...dadosFiltrados].sort((a, b) => {
+        let valA = a[ordenacao.coluna] || "";
+        let valB = b[ordenacao.coluna] || "";
+        return ordenacao.direcao === 'asc' 
+            ? valA.toString().localeCompare(valB.toString(), undefined, {numeric: true}) 
+            : valB.toString().localeCompare(valA.toString(), undefined, {numeric: true});
+    });
+
+    // Paginação
+    const inicio = (paginaAtual - 1) * registrosPorPagina;
+    const fim = inicio + registrosPorPagina;
+    const dadosPaginados = dadosOrdenados.slice(inicio, fim);
+
+    tbody.innerHTML = "";
+    dadosPaginados.forEach(item => {
+        const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
         const tipo = (item.tipoProduto || "").toLowerCase();
-        const classeTipo = tipo.includes('eletro') ? 'row-eletro' : 
-                          (tipo.includes('move') ? 'row-moveis' : 'row-outros');
+        const classeTipo = tipo.includes('eletro') ? 'row-eletro' : (tipo.includes('move') ? 'row-moveis' : '');
 
         const tr = document.createElement('tr');
         tr.className = classeTipo;
-        
-        // Formata data para BR
-        const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
-
         tr.innerHTML = `
             <td><input type="checkbox" class="row-check" value="${item.id}"></td>
             <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
@@ -110,7 +94,7 @@ function renderizarTabela() {
             <td>${item.fornecedor || '---'}</td>
             <td>${item.tipoProduto || '---'}</td>
             <td>
-                <button class="btn-ver" data-id="${item.id}" style="border:none; background:none; color:#C80000; cursor:pointer;">
+                <button onclick="verDetalhes('${item.id}')" style="background:none; border:none; color:var(--primary); cursor:pointer;">
                     <i class="fas fa-eye fa-lg"></i>
                 </button>
             </td>
@@ -118,113 +102,167 @@ function renderizarTabela() {
         tbody.appendChild(tr);
     });
 
-    // Adiciona evento de clique nos botões de "olho" (necessário por causa do type="module")
-    document.querySelectorAll('.btn-ver').forEach(btn => {
-        btn.onclick = () => verDetalhes(btn.getAttribute('data-id'));
-    });
+    atualizarControlesPaginacao();
 }
 
-// 4. Modais e Exportação (Expostos para o Window)
-window.abrirModalFiltro = (coluna) => {
-    colunaSendoFiltrada = coluna;
-    const modal = document.getElementById('modalFiltro');
-    const container = document.getElementById('opcoesFiltro');
+// 4. Controles de Paginação
+function atualizarControlesPaginacao() {
+    const totalPaginas = Math.ceil(dadosFiltrados.length / registrosPorPagina);
+    const container = document.getElementById('botoesPagina');
+    const info = document.getElementById('infoPagina');
     
-    // Pega valores únicos e limpa nulos
-    const opcoes = [...new Set(dadosMestres.map(d => String(d[coluna] || "")))].filter(o => o !== "").sort();
+    info.innerText = `Mostrando ${dadosFiltrados.length > 0 ? (paginaAtual - 1) * registrosPorPagina + 1 : 0} até ${Math.min(paginaAtual * registrosPorPagina, dadosFiltrados.length)} de ${dadosFiltrados.length} registros`;
 
-    container.innerHTML = opcoes.map(opt => `
-        <div style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px;">
-            <input type="checkbox" class="chk-opt" value="${opt}" ${filtrosPorColuna[coluna].includes(opt) ? 'checked' : ''}>
-            <label style="font-size:14px; cursor:pointer;">${coluna === 'data' ? opt.split('-').reverse().join('/') : opt}</label>
+    container.innerHTML = "";
+    
+    // Botão Anterior
+    container.innerHTML += `<button class="btn-page" ${paginaAtual === 1 ? 'disabled' : ''} onclick="irParaPagina(${paginaAtual - 1})">Anterior</button>`;
+
+    // Números das páginas (simplificado)
+    for(let i = 1; i <= totalPaginas; i++) {
+        if(i === 1 || i === totalPaginas || (i >= paginaAtual - 2 && i <= paginaAtual + 2)) {
+            container.innerHTML += `<button class="btn-page ${i === paginaAtual ? 'active' : ''}" onclick="irParaPagina(${i})">${i}</button>`;
+        }
+    }
+
+    // Botão Próximo
+    container.innerHTML += `<button class="btn-page" ${paginaAtual === totalPaginas ? 'disabled' : ''} onclick="irParaPagina(${paginaAtual + 1})">Próximo</button>`;
+}
+
+window.irParaPagina = (p) => { paginaAtual = p; renderizarTabela(); };
+window.mudarTamanhoPagina = () => {
+    registrosPorPagina = parseInt(document.getElementById('selectPageSize').value);
+    paginaAtual = 1;
+    renderizarTabela();
+};
+
+// 5. Ordenação
+window.ordenar = (coluna) => {
+    if(ordenacao.coluna === coluna) {
+        ordenacao.direcao = ordenacao.direcao === 'asc' ? 'desc' : 'asc';
+    } else {
+        ordenacao.coluna = coluna;
+        ordenacao.direcao = 'asc';
+    }
+    renderizarTabela();
+};
+
+// 6. Modal de Composição (CORREÇÃO QUANTIDADE)
+window.verDetalhes = (id) => {
+    const item = dadosMestres.find(d => d.id === id);
+    if(!item) return;
+
+    document.getElementById('tituloComp').innerText = `Detalhes: ${item.senhaAgendamento}`;
+    const container = document.getElementById('detalhesItens');
+
+    let totalQtd = 0;
+    let tabela = `
+        <table style="width:100%; border-collapse:collapse; min-width:600px;">
+            <thead style="background:#f4f4f4;">
+                <tr><th style="padding:12px;">CÓDIGO</th><th style="padding:12px;">DESCRIÇÃO DO PRODUTO</th><th style="padding:12px;">QTD</th></tr>
+            </thead>
+            <tbody>`;
+
+    if(item.composicao && item.composicao.length > 0) {
+        item.composicao.forEach(prod => {
+            const q = parseInt(prod.qtd || prod.quantidade || 0);
+            totalQtd += q;
+            tabela += `
+                <tr>
+                    <td style="border-bottom:1px solid #eee; padding:10px; text-align:center;">${prod.codigo}</td>
+                    <td style="border-bottom:1px solid #eee; padding:10px;">${prod.descricao}</td>
+                    <td style="border-bottom:1px solid #eee; padding:10px; text-align:center; font-weight:bold; color:red;">${q}</td>
+                </tr>`;
+        });
+    }
+
+    tabela += `
+            <tr style="background:#f9f9f9; font-weight:bold;">
+                <td colspan="2" style="padding:12px; text-align:right;">TOTAL DE PEÇAS:</td>
+                <td style="padding:12px; text-align:center; color:red; font-size:16px;">${totalQtd}</td>
+            </tr>
+        </tbody></table>`;
+
+    container.innerHTML = tabela;
+    document.getElementById('modalComposicao').style.display = "flex";
+};
+
+// 7. Utilitários (Filtros por Coluna e Modais)
+window.abrirModalFiltro = (coluna) => {
+    colunaFiltroAtual = coluna;
+    const container = document.getElementById('opcoesFiltro');
+    const valoresUnicos = [...new Set(dadosMestres.map(d => String(d[coluna] || "")))].sort();
+
+    container.innerHTML = valoresUnicos.map(val => `
+        <div style="padding:8px 0; border-bottom:1px solid #eee;">
+            <label style="cursor:pointer; display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" class="chk-filtro" value="${val}" ${filtrosAtivos[coluna].includes(val) ? 'checked' : ''}> 
+                ${coluna === 'data' ? val.split('-').reverse().join('/') : val}
+            </label>
         </div>
     `).join('');
-
-    modal.style.display = "flex";
+    document.getElementById('modalFiltro').style.display = "flex";
 };
 
 window.aplicarFiltroColuna = () => {
-    const selecionados = Array.from(document.querySelectorAll('.chk-opt:checked')).map(el => el.value);
-    filtrosPorColuna[colunaSendoFiltrada] = selecionados;
+    const selecionados = Array.from(document.querySelectorAll('.chk-filtro:checked')).map(c => c.value);
+    filtrosAtivos[colunaFiltroAtual] = selecionados;
     window.atualizarFiltros();
     window.fecharModais();
 };
 
-window.toggleChecks = (status) => {
-    document.querySelectorAll('.chk-opt').forEach(chk => chk.checked = status);
-};
-
 window.fecharModais = () => {
-    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = "none");
+    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
 };
 
-function verDetalhes(id) {
-    const item = dadosMestres.find(d => d.id === id);
-    const container = document.getElementById('detalhesItens');
-    if(!item) return;
+window.marcarTodos = (el) => {
+    document.querySelectorAll('.row-check').forEach(chk => chk.checked = el.checked);
+};
 
-    if(!item.composicao || item.composicao.length === 0) {
-        container.innerHTML = "<p style='text-align:center; padding:20px;'>Nenhum item detalhado nesta carga.</p>";
-    } else {
-        container.innerHTML = `
-            <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                <thead style="background:#f4f4f4;">
-                    <tr><th style="padding:10px;">CÓD</th><th style="padding:10px;">DESCRIÇÃO</th><th style="padding:10px;">QTD</th></tr>
-                </thead>
-                <tbody>
-                ${item.composicao.map(i => `
-                    <tr>
-                        <td style="border-bottom:1px solid #eee; padding:10px; text-align:center;">${i.codigo}</td>
-                        <td style="border-bottom:1px solid #eee; padding:10px;">${i.descricao}</td>
-                        <td style="border-bottom:1px solid #eee; padding:10px; text-align:center; font-weight:bold;">${i.quantidade}</td>
-                    </tr>
-                `).join('')}
-                </tbody>
-            </table>`;
-    }
-    document.getElementById('modalComposicao').style.display = "flex";
-}
-
+// 8. Exportação (Integrada com o seu código anterior)
 window.exportar = (tipo, modo) => {
-    const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(el => el.value);
-    if(ids.length === 0) return alert("Selecione os itens na tabela primeiro!");
+    const selecionadosIds = Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
+    if(selecionadosIds.length === 0) return alert("Selecione agendamentos primeiro!");
 
-    const selecionados = dadosMestres.filter(d => ids.includes(d.id));
+    const dadosParaExportar = dadosMestres.filter(d => selecionadosIds.includes(d.id));
 
     if(tipo === 'excel') {
         const rows = [];
-        selecionados.forEach(d => {
+        dadosParaExportar.forEach(d => {
+            const base = { Senha: d.senhaAgendamento, Data: d.data, Fornecedor: d.fornecedor, Tipo: d.tipoProduto };
             if(modo === 'completo' && d.composicao) {
-                d.composicao.forEach(c => rows.push({ Senha: d.senhaAgendamento, Fornecedor: d.fornecedor, Item: c.descricao, Qtd: c.quantidade }));
+                d.composicao.forEach(c => rows.push({ ...base, Produto: c.descricao, Qtd: (c.qtd || c.quantidade) }));
             } else {
-                rows.push({ Senha: d.senhaAgendamento, Data: d.data, Fornecedor: d.fornecedor, Tipo: d.tipoProduto });
+                rows.push(base);
             }
         });
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Dados");
+        XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
         XLSX.writeFile(wb, `Simonetti_${modo}.xlsx`);
     } else {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.text("Relatorio Simonetti", 14, 10);
-        const head = modo === 'completo' ? [['Senha', 'Item', 'Qtd']] : [['Senha', 'Data', 'Fornecedor']];
+        const doc = new jsPDF('p', 'mm', 'a4');
+        
+        doc.setFillColor(192, 0, 0);
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.text("MÓVEIS SIMONETTI - RELATÓRIO", 14, 13);
+        
         const body = [];
-        selecionados.forEach(d => {
+        const head = modo === 'completo' ? [['Senha', 'Fornecedor', 'Produto', 'Qtd']] : [['Senha', 'Data', 'Central', 'Fornecedor']];
+        
+        dadosParaExportar.forEach(d => {
             if(modo === 'completo' && d.composicao) {
-                d.composicao.forEach(c => body.push([d.senhaAgendamento, c.descricao, c.quantidade]));
+                d.composicao.forEach(c => body.push([d.senhaAgendamento, d.fornecedor, c.descricao, (c.qtd || c.quantidade)]));
             } else {
-                body.push([d.senhaAgendamento, d.data, d.fornecedor]);
+                body.push([d.senhaAgendamento, d.data, d.central, d.fornecedor]);
             }
         });
-        doc.autoTable({ head, body, startY: 20 });
-        doc.save(`Simonetti_${modo}.pdf`);
+
+        doc.autoTable({ head, body, startY: 25, theme: 'grid', headStyles: { fillColor: [192, 0, 0] } });
+        doc.save(`Relatorio_Simonetti_${modo}.pdf`);
     }
 };
 
-// Dispara o init quando o DOM estiver pronto
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
+init();
