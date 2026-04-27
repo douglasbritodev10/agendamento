@@ -10,7 +10,7 @@ let itensCargaTmp = [];
 let senhaAbertaNoModal = ""; 
 
 async function verificarAcessoADM() {
-    // 1. Limpamos espaços extras que podem vir do localStorage
+    // nomeBusca aqui será o ID do documento (ex: "DBRITO")
     const nomeBusca = usuarioNome.trim(); 
 
     if (nomeBusca === "DESCONHECIDO") {
@@ -19,31 +19,34 @@ async function verificarAcessoADM() {
     }
 
     try {
-        // VERIFIQUE NO FIREBASE: O nome do campo é 'username' ou 'user'? 
-        // No seu código anterior estava 'username'.
-        const q = query(collection(db, "users"), where("username", "==", nomeBusca));
-        const querySnapshot = await getDocs(q);
+        // Referência direta ao documento dentro da coleção 'users'
+        const docRef = doc(db, "users", nomeBusca);
+        const docSnap = await getDoc(docRef);
 
-        if (!querySnapshot.empty) {
-            const dadosUser = querySnapshot.docs[0].data();
+        if (docSnap.exists()) {
+            const dadosUser = docSnap.data();
             
+            // Atualiza o display com o nome completo ou o username
             if (document.getElementById('user-display')) {
-                document.getElementById('user-display').innerText = dadosUser.username;
+                document.getElementById('user-display').innerText = dadosUser.nome || nomeBusca;
             }
 
-            // Verificação do nível (case-sensitive)
+            // Verifica o nível de acesso direto no campo do documento
             if (dadosUser.nivelAcesso !== "ADM") { 
                 alert("ACESSO NEGADO: Somente administradores.");
                 window.location.href = "portal.html";
             }
+            
+            console.log("Acesso ADM confirmado para:", nomeBusca);
+
         } else {
-            // SE CAIR AQUI: O valor de 'usuarioNome' não existe na coluna 'username' do banco
-            console.error("Tentou buscar por:", nomeBusca);
-            alert(`Usuário "${nomeBusca}" não encontrado no Firestore.`);
+            // Se o documento com esse ID não existir
+            console.error("Documento não encontrado no Firestore ID:", nomeBusca);
+            alert(`Usuário "${nomeBusca}" não encontrado.`);
             window.location.href = "index.html";
         }
     } catch (error) {
-        console.error("Erro na validação:", error);
+        console.error("Erro na validação de segurança:", error);
         window.location.href = "index.html";
     }
 }
