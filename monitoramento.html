@@ -4,90 +4,258 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitoramento de Cargas | Móveis Simonetti</title>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="css/styles.css"> <style>
-        /* Estilos específicos para o topo e filtros individuais */
-        .header-portal { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #eee; border-bottom: 2px solid #D32F2F; }
-        .titulo-central { text-align: center; color: #D32F2F; margin: 20px 0; }
-        .controles-superiores { display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
-        .export-group .btn-export { background: #D32F2F; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; margin-right: 5px; font-size: 12px; }
-        .search-container { position: relative; }
-        .search-container input { padding: 8px 30px 8px 10px; border: 1px solid #ccc; border-radius: 4px; width: 250px; }
-        
-        /* Tabela igual à imagem */
-        .table-wrapper { padding: 0 20px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
-        thead th { background: #D32F2F; color: white; padding: 8px; font-size: 11px; border: 1px solid #b71c1c; }
-        .btn-filtro-topo { display: block; width: 100%; margin-top: 5px; background: white; border: none; color: #D32F2F; font-weight: bold; cursor: pointer; padding: 4px; border-radius: 3px; font-size: 10px; }
-        
-        /* Modal de Composição */
-        #modalComposicao .modal-body { max-height: 400px; overflow-y: auto; }
-        .card-item { border-left: 4px solid #D32F2F; background: #f9f9f9; padding: 10px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; }
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #C80000;
+            --primary-dark: #960000;
+            --glass: rgba(255, 255, 255, 0.95);
+            --bg-dark: #121212;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            color: #333;
+        }
+
+        /* Topo Premium Identidade Simonetti */
+        .header-portal {
+            background-color: var(--primary);
+            color: white;
+            padding: 10px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .user-box { display: flex; align-items: center; gap: 15px; }
+        .user-box i { font-size: 20px; cursor: pointer; }
+        .user-box b { text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Controles de Ação */
+        .main-container { padding: 25px; }
+
+        .dashboard-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .export-section h4 { margin: 0 0 10px 0; font-size: 12px; color: #666; text-transform: uppercase; }
+        .btn-group { display: flex; gap: 8px; }
+
+        .btn-exp {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-exp:hover { background: #f8f8f8; border-color: var(--primary); color: var(--primary); }
+        .btn-pdf { color: #d32f2f; }
+        .btn-excel { color: #1d6f42; }
+
+        /* Busca Global */
+        .search-wrapper { position: relative; width: 350px; }
+        .search-wrapper label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #444; }
+        .search-wrapper input {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Tabela Estilo "Excel Simonetti" */
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .table-responsive { overflow-x: auto; width: 100%; }
+
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+
+        thead th {
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 8px;
+            font-size: 11px;
+            border: 1px solid var(--primary-dark);
+            text-transform: uppercase;
+        }
+
+        .btn-col-filter {
+            display: block;
+            width: 90%;
+            margin: 8px auto 0;
+            background: white;
+            color: var(--primary);
+            border: none;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        tbody td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+
+        .count-badge {
+            background: #fff;
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        /* Modais */
+        .modal-filtro {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 320px;
+            border-radius: 15px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .modal-header {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .opcoes-lista { max-height: 300px; overflow-y: auto; padding: 15px; }
+        .opcao-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+
+        .modal-footer { padding: 15px; background: #f9f9f9; display: flex; gap: 10px; border-radius: 0 0 15px 15px; }
+        .btn-apply { background: var(--primary); color: white; flex: 1; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-cancel { background: #ddd; flex: 1; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
+
     </style>
 </head>
 <body>
 
     <header class="header-portal">
-        <div class="user-info">
-            <i class="fas fa-arrow-left" onclick="history.back()" style="cursor:pointer; margin-right:15px;"></i>
-            <span>Bem-vindo, <b id="user-display">---</b></span>
+        <div class="user-box">
+            <i class="fas fa-chevron-left" onclick="window.history.back()"></i>
+            <span>BEM-VINDO, <b id="user-display">---</b></span>
         </div>
-        <button class="btn-sair" onclick="location.href='index.html'">Sair</button>
+        <div style="font-weight: bold;">
+            MONITORAMENTO <span class="count-badge">TOTAL: <span id="txtContador">0</span></span>
+        </div>
+        <div>
+            <img src="img/logo-white.png" alt="Simonetti" height="30" onerror="this.style.display='none'">
+        </div>
     </header>
 
-    <h1 class="titulo-central">MONITORAMENTO DE CARGAS - MÓVEIS SIMONETTI</h1>
+    <div class="main-container">
+        
+        <div class="dashboard-controls">
+            <div class="export-section">
+                <h4>Exportações Disponíveis</h4>
+                <div class="btn-group">
+                    <button class="btn-exp btn-pdf" onclick="exportarPDF('basico')">
+                        <i class="fas fa-file-pdf"></i> PDF BÁSICO
+                    </button>
+                    <button class="btn-exp btn-pdf" onclick="exportarPDF('completo')">
+                        <i class="fas fa-file-pdf"></i> PDF COMPLETO
+                    </button>
+                    <button class="btn-exp btn-excel" onclick="exportarExcel('basico')">
+                        <i class="fas fa-file-excel"></i> EXCEL BÁSICO
+                    </button>
+                    <button class="btn-exp btn-excel" onclick="exportarExcel('completo')">
+                        <i class="fas fa-file-excel"></i> EXCEL COMPLETO
+                    </button>
+                </div>
+            </div>
 
-    <div class="controles-superiores">
-        <div class="export-group">
-            <button class="btn-export" onclick="exportar('excel')"><i class="fas fa-file-excel"></i> Excel</button>
-            <button class="btn-export" onclick="exportar('pdf-basico')">PDF Básico</button>
-            <button class="btn-export" onclick="exportar('pdf-completo')">PDF Completo</button>
-            <button class="btn-export" onclick="exportar('csv')">CSV</button>
+            <div class="search-wrapper">
+                <label>BUSCA GLOBAL</label>
+                <input type="text" id="inputBuscaGlobal" oninput="aplicarLogicaDeFiltros()" placeholder="Busque por senha, fornecedor, item...">
+            </div>
         </div>
 
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <div>
-                <label style="font-size: 12px; display: block; font-weight: bold;">Filtrar Data:</label>
-                <input type="date" id="filtroDataGlobal" onchange="alterarDataFiltro()">
-            </div>
-            <div class="search-container">
-                <label style="font-size: 12px; display: block; font-weight: bold;">Pesquisar:</label>
-                <input type="text" id="inputBuscaGlobal" placeholder="Buscar em qualquer campo..." oninput="filtrarGeral()">
+        <div class="table-card">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="40"><i class="fas fa-check-double"></i></th>
+                            <th>SENHA <button class="btn-col-filter" onclick="abrirFiltroColuna('senhaAgendamento')">FILTRAR</button></th>
+                            <th>DATA <button class="btn-col-filter" onclick="abrirFiltroColuna('data')">FILTRAR</button></th>
+                            <th>CENTRAL <button class="btn-col-filter" onclick="abrirFiltroColuna('central')">FILTRAR</button></th>
+                            <th>CARGAS <button class="btn-col-filter" onclick="abrirFiltroColuna('cargas')">FILTRAR</button></th>
+                            <th>FORNECEDOR <button class="btn-col-filter" onclick="abrirFiltroColuna('fornecedor')">FILTRAR</button></th>
+                            <th>TIPO <button class="btn-col-filter" onclick="abrirFiltroColuna('tipoProduto')">FILTRAR</button></th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCorpo">
+                        </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>SENHA <button class="btn-filtro-topo" onclick="abrirFiltroColuna('senhaAgendamento')">Filtrar</button></th>
-                    <th>DATA <button class="btn-filtro-topo" onclick="abrirFiltroColuna('data')">Filtrar</button></th>
-                    <th>CENTRAL <button class="btn-filtro-topo" onclick="abrirFiltroColuna('central')">Filtrar</button></th>
-                    <th>CARGAS <button class="btn-filtro-topo" onclick="abrirFiltroColuna('cargas')">Filtrar</button></th>
-                    <th>FORNECEDOR <button class="btn-filtro-topo" onclick="abrirFiltroColuna('fornecedor')">Filtrar</button></th>
-                    <th>TIPO <button class="btn-filtro-topo" onclick="abrirFiltroColuna('tipoProduto')">Filtrar</button></th>
-                    <th>DETALHES</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaCorpo"></tbody>
-        </table>
-    </div>
-
-    <div id="modalComposicao" class="modal-filtro">
-        <div class="modal-content" style="width: 600px;">
+    <div id="modalFiltro" class="modal-filtro">
+        <div class="modal-content">
             <div class="modal-header">
-                <h3>COMPOSIÇÃO DA CARGA: <span id="spanSenhaCarga">---</span></h3>
-                <span onclick="fecharModalComposicao()" style="cursor:pointer">&times;</span>
+                <h3 id="tituloFiltro" style="margin:0; font-size: 14px;">FILTRAR COLUNA</h3>
+                <span onclick="fecharModal()" style="cursor:pointer">&times;</span>
             </div>
-            <div id="listaComposicao" class="modal-body" style="padding: 20px;">
+            <div class="opcoes-lista" id="listaOpcoes">
                 </div>
             <div class="modal-footer">
-                <button class="btn-modal btn-aplicar" onclick="fecharModalComposicao()">FECHAR</button>
+                <button class="btn-cancel" onclick="fecharModal()">CANCELAR</button>
+                <button class="btn-apply" onclick="executarFiltro()">APLICAR</button>
             </div>
         </div>
     </div>
 
     <script type="module" src="js/monitoramento.js"></script>
+
 </body>
 </html>
