@@ -9,30 +9,37 @@ const usuarioNome = localStorage.getItem('usuarioNome') || "DESCONHECIDO";
 let itensCargaTmp = []; 
 let senhaAbertaNoModal = ""; 
 
-// --- TRAVA DE SEGURANÇA AJUSTADA ---
 async function verificarAcessoADM() {
-    if (usuarioNome === "DESCONHECIDO") {
+    // 1. Limpamos espaços extras que podem vir do localStorage
+    const nomeBusca = usuarioNome.trim(); 
+
+    if (nomeBusca === "DESCONHECIDO") {
         window.location.href = "index.html";
         return;
     }
 
     try {
-        const q = query(collection(db, "users"), where("username", "==", usuarioNome));
+        // VERIFIQUE NO FIREBASE: O nome do campo é 'username' ou 'user'? 
+        // No seu código anterior estava 'username'.
+        const q = query(collection(db, "users"), where("username", "==", nomeBusca));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
             const dadosUser = querySnapshot.docs[0].data();
             
-            document.getElementById('user-display').innerText = dadosUser.username;
+            if (document.getElementById('user-display')) {
+                document.getElementById('user-display').innerText = dadosUser.username;
+            }
 
-            // AJUSTE AQUI: De 'nivelAcesso' para 'nivelAcesso' (com A maiúsculo)
-            // Para garantir, você pode usar a sintaxe que reflete o banco:
+            // Verificação do nível (case-sensitive)
             if (dadosUser.nivelAcesso !== "ADM") { 
-                alert("ACESSO NEGADO: Somente administradores podem acessar esta página.");
+                alert("ACESSO NEGADO: Somente administradores.");
                 window.location.href = "portal.html";
             }
         } else {
-            alert("Usuário não cadastrado no banco de dados.");
+            // SE CAIR AQUI: O valor de 'usuarioNome' não existe na coluna 'username' do banco
+            console.error("Tentou buscar por:", nomeBusca);
+            alert(`Usuário "${nomeBusca}" não encontrado no Firestore.`);
             window.location.href = "index.html";
         }
     } catch (error) {
