@@ -9,31 +9,36 @@ const usuarioNome = localStorage.getItem('usuarioNome') || "DESCONHECIDO";
 let itensCargaTmp = []; 
 let senhaAbertaNoModal = ""; 
 
-// --- TRAVA DE SEGURANÇA CORRIGIDA ---
+// --- TRAVA DE SEGURANÇA AJUSTADA ---
 async function verificarAcessoADM() {
     if (usuarioNome === "DESCONHECIDO") {
-        window.location.href = "login.html";
+        window.location.href = "index.html";
         return;
     }
 
     try {
-        // Busca na coleção 'users' onde o campo 'username' é igual ao usuarioNome
-        const q = query(collection(db, "users"), where("username", "==", username));
+        // Correção: Usando 'usuarioNome' (que vem do localStorage) para buscar no campo 'username'
+        const q = query(collection(db, "users"), where("username", "==", usuarioNome));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
             const dadosUser = querySnapshot.docs[0].data();
+            
+            // 1. Mostra o nome de usuário (ex: douglas.brito) no topo, em vez do nome completo
+            document.getElementById('user-display').innerText = dadosUser.username;
+
+            // 2. Se for ADM, ele não entra no IF e continua a execução da página normalmente
             if (dadosUser.nivelAcesso !== "ADM") {
                 alert("ACESSO NEGADO: Somente administradores podem acessar esta página.");
                 window.location.href = "portal.html";
             }
         } else {
-            alert("Usuário não cadastrado.");
-            window.location.href = "login.html";
+            alert("Usuário não cadastrado no banco de dados.");
+            window.location.href = "index.html";
         }
     } catch (error) {
         console.error("Erro na validação:", error);
-        window.location.href = "login.html";
+        window.location.href = "index.html";
     }
 }
 
@@ -49,7 +54,6 @@ verificarAcessoADM();
 document.getElementById('dataAgendamento').value = getDataBR();
 document.getElementById('buscaInicio').value = getDataBR();
 document.getElementById('buscaFim').value = getDataBR();
-document.getElementById('user-display').innerText = username;
 
 const getCoresPorTipo = (tipo) => {
     const t = (tipo || "").toUpperCase();
