@@ -1,13 +1,41 @@
 import { app } from './firebase-config.js';
 import { 
     getFirestore, doc, setDoc, collection, addDoc, onSnapshot, query, orderBy, 
-    updateDoc, getDocs, limit, serverTimestamp, deleteDoc 
+    updateDoc, getDocs, limit, serverTimestamp, deleteDoc, getDoc 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
-const usuarioNome = localStorage.getItem('usuarioNome') || "DBRITO";
+const usuarioNome = localStorage.getItem('usuarioNome') || "DESCONHECIDO";
 let itensCargaTmp = []; 
 let senhaAbertaNoModal = ""; 
+
+// --- TRAVA DE SEGURANÇA REAL (VALIDAÇÃO DE ADM NO FIRESTORE) ---
+async function verificarAcessoADM() {
+    if (usuarioNome === "DESCONHECIDO") {
+        window.location.href = "login.html";
+        return;
+    }
+
+    try {
+        // Busca o documento do usuário pelo ID (que é o nome dele) na coleção 'users'
+        const userRef = doc(db, "users", usuarioNome);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            const dadosUser = userSnap.data();
+            if (dadosUser.nivelAcesso !== "ADM") {
+                alert("ACESSO NEGADO: Somente administradores podem acessar esta página.");
+                window.location.href = "portal.html"; // Redireciona para o hub central
+            }
+        } else {
+            alert("Usuário não encontrado no sistema de permissões.");
+            window.location.href = "login.html";
+        }
+    } catch (error) {
+        console.error("Erro na validação:", error);
+        window.location.href = "login.html";
+    }
+}
 
 const getDataBR = () => {
     const d = new Date();
@@ -15,6 +43,9 @@ const getDataBR = () => {
 };
 
 // --- CONFIGURAÇÃO INICIAL ---
+// Chamamos a verificação logo de cara
+verificarAcessoADM();
+
 document.getElementById('dataAgendamento').value = getDataBR();
 document.getElementById('buscaInicio').value = getDataBR();
 document.getElementById('buscaFim').value = getDataBR();
@@ -45,6 +76,12 @@ async function gerarSenha() {
 
 // --- SALVAR/RASCUNHO ---
 async function salvarAgenda(status) {
+    // Re-verifica o nome no momento de salvar
+    if (localStorage.getItem('usuarioNome') !== usuarioNome) {
+         alert("Tentativa de alteração de identidade detectada!");
+         return;
+    }
+    
     const senha = document.getElementById('senhaAgendamento').value;
     const fornecedor = document.getElementById('selectFornecedor').value;
     if (!fornecedor) return alert("Selecione um fornecedor!");
@@ -392,6 +429,7 @@ document.getElementById('buscaInicio').onchange = carregarDados;
 document.getElementById('buscaFim').onchange = carregarDados;
 
 window.addEventListener('DOMContentLoaded', () => { 
+    await verificarAcesso(); // Espera validar o ADM antes de liberar o resto
     gerarSenha(); 
     carregarDados(); 
     carregarFornecedores(); 
