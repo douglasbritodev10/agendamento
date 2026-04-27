@@ -17,18 +17,17 @@ async function verificarAcessoADM() {
     }
 
     try {
-        // Correção: Usando 'usuarioNome' (que vem do localStorage) para buscar no campo 'username'
         const q = query(collection(db, "users"), where("username", "==", usuarioNome));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
             const dadosUser = querySnapshot.docs[0].data();
             
-            // 1. Mostra o nome de usuário (ex: douglas.brito) no topo, em vez do nome completo
             document.getElementById('user-display').innerText = dadosUser.username;
 
-            // 2. Se for ADM, ele não entra no IF e continua a execução da página normalmente
-            if (dadosUser.nivelAcesso !== "ADM") {
+            // AJUSTE AQUI: De 'nivelAcesso' para 'nivelAcesso' (com A maiúsculo)
+            // Para garantir, você pode usar a sintaxe que reflete o banco:
+            if (dadosUser.nivelAcesso !== "ADM") { 
                 alert("ACESSO NEGADO: Somente administradores podem acessar esta página.");
                 window.location.href = "portal.html";
             }
