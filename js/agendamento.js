@@ -1,7 +1,7 @@
 import { app } from './firebase-config.js';
 import { 
     getFirestore, doc, setDoc, collection, addDoc, onSnapshot, query, orderBy, 
-    updateDoc, getDocs, limit, serverTimestamp, deleteDoc, getDoc 
+    updateDoc, getDocs, limit, serverTimestamp, deleteDoc, getDoc, where 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
@@ -9,7 +9,7 @@ const usuarioNome = localStorage.getItem('usuarioNome') || "DESCONHECIDO";
 let itensCargaTmp = []; 
 let senhaAbertaNoModal = ""; 
 
-// --- TRAVA DE SEGURANÇA REAL (VALIDAÇÃO DE ADM NO FIRESTORE) ---
+// --- TRAVA DE SEGURANÇA CORRIGIDA ---
 async function verificarAcessoADM() {
     if (usuarioNome === "DESCONHECIDO") {
         window.location.href = "login.html";
@@ -17,18 +17,18 @@ async function verificarAcessoADM() {
     }
 
     try {
-        // Busca o documento do usuário pelo ID (que é o nome dele) na coleção 'users'
-        const userRef = doc(db, "users", usuarioNome);
-        const userSnap = await getDoc(userRef);
+        // Busca na coleção 'users' onde o campo 'username' é igual ao usuarioNome
+        const q = query(collection(db, "users"), where("username", "==", usuarioNome));
+        const querySnapshot = await getDocs(q);
 
-        if (userSnap.exists()) {
-            const dadosUser = userSnap.data();
+        if (!querySnapshot.empty) {
+            const dadosUser = querySnapshot.docs[0].data();
             if (dadosUser.nivelAcesso !== "ADM") {
                 alert("ACESSO NEGADO: Somente administradores podem acessar esta página.");
-                window.location.href = "portal.html"; // Redireciona para o hub central
+                window.location.href = "portal.html";
             }
         } else {
-            alert("Usuário não encontrado no sistema de permissões.");
+            alert("Usuário não cadastrado.");
             window.location.href = "login.html";
         }
     } catch (error) {
@@ -428,8 +428,8 @@ document.getElementById('buscaGeral').oninput = carregarDados;
 document.getElementById('buscaInicio').onchange = carregarDados;
 document.getElementById('buscaFim').onchange = carregarDados;
 
-window.addEventListener('DOMContentLoaded', () => { 
-    await verificarAcesso(); // Espera validar o ADM antes de liberar o resto
+window.addEventListener('DOMContentLoaded', async () => { 
+    await verificarAcessoADM(); // Agora o await funciona porque a arrow function é async
     gerarSenha(); 
     carregarDados(); 
     carregarFornecedores(); 
