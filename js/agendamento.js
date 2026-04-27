@@ -145,9 +145,9 @@ window.copiarRascunhosSelecionados = () => {
                     <b>SENHA: ${senha}</b> <span>DATA: ${data}</span>
                 </div>
                 <div style="font-size: 13px;">
-                    <b>FORN:</b> ${fornecedor}<br>
+                    <b>FORNECEDOR:</b> ${fornecedor}<br>
                     <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
-                    <b>CARGA:</b> ${cargas}
+                    <b>REFERENTE:</b> ${cargas}
                 </div>
             </div>`;
     });
