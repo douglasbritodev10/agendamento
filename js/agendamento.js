@@ -10,43 +10,55 @@ let itensCargaTmp = [];
 let senhaAbertaNoModal = ""; 
 
 async function verificarAcessoADM() {
-    const nomeParaBusca = usuarioNome.trim(); 
+    const loginParaBusca = usuarioNome.trim(); 
 
-    if (nomeParaBusca === "DESCONHECIDO") {
+    if (loginParaBusca === "DESCONHECIDO") {
         window.location.href = "index.html";
         return;
     }
 
     try {
-        // CORREÇÃO: Pesquisamos na coleção 'users' onde o campo 'nome' seja igual ao localStorage
-        const q = query(collection(db, "users"), where("nome", "==", nomeParaBusca));
+        // Mudamos aqui: Agora ele busca no campo 'username' do banco
+        // Certifique-se que o localStorage 'usuarioNome' contenha algo como "DBRITO"
+        const q = query(collection(db, "users"), where("username", "==", loginParaBusca));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-            // Pegamos os dados do primeiro documento encontrado
             const dadosUser = querySnapshot.docs[0].data();
             
-            // 1. Exibe o 'username' (DBRITO) no canto superior
+            // Exibe o username no canto superior
             if (document.getElementById('user-display')) {
                 document.getElementById('user-display').innerText = dadosUser.username;
             }
 
-            // 2. Verifica se o nível de acesso é ADM
+            // Verifica o nível de acesso
             if (dadosUser.nivelAcesso !== "ADM") { 
                 alert("ACESSO NEGADO: Somente administradores.");
                 window.location.href = "portal.html";
             }
             
-            console.log("Logado como:", dadosUser.username);
+            console.log("Acesso garantido para:", dadosUser.username);
 
         } else {
-            // Se cair aqui, o nome completo no localStorage não bate com nenhum campo 'nome' no banco
-            console.error("Nome não encontrado no campo 'nome':", nomeParaBusca);
-            alert(`Usuário "${nomeParaBusca}" não encontrado no sistema.`);
-            window.location.href = "index.html";
+            // Caso não ache pelo username, vamos tentar uma última cartada buscando pelo campo 'nome'
+            const qNome = query(collection(db, "users"), where("nome", "==", loginParaBusca));
+            const snapNome = await getDocs(qNome);
+
+            if (!snapNome.empty) {
+                const dadosU = snapNome.docs[0].data();
+                document.getElementById('user-display').innerText = dadosU.username;
+                
+                if (dadosU.nivelAcesso !== "ADM") {
+                    window.location.href = "portal.html";
+                }
+            } else {
+                console.error("Nenhuma correspondência para:", loginParaBusca);
+                alert(`Erro: O usuário "${loginParaBusca}" não foi encontrado no banco de dados.`);
+                window.location.href = "index.html";
+            }
         }
     } catch (error) {
-        console.error("Erro na validação:", error);
+        console.error("Erro técnico na verificação:", error);
         window.location.href = "index.html";
     }
 }
