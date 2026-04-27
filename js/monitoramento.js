@@ -3,240 +3,243 @@ import { getFirestore, collection, query, onSnapshot, orderBy } from "https://ww
 
 const db = getFirestore(app);
 
-let dadosOriginais = []; 
-let dadosExibidos = [];   
-let filtrosAtivos = { senhaAgendamento: [], data: [], central: [], cargas: [], fornecedor: [], tipoProduto: [] };
+// Estados Globais
+let dadosMestres = [];
+let dadosFiltrados = [];
+let filtrosPorColuna = {
+    senhaAgendamento: [],
+    data: [],
+    central: [],
+    fornecedor: [],
+    tipoProduto: []
+};
+let colunaSendoFiltrada = "";
 
-function iniciar() {
-    document.getElementById('user-display').innerText = localStorage.getItem('username') || "Douglas Brito";
-
+// 1. Inicialização
+async function init() {
+    // Pega o nome do usuário salvo no login
+    const userDisplay = document.getElementById('txtUser');
+    if(userDisplay) userDisplay.innerText = localStorage.getItem('username') || "D. BRITO";
+    
     const q = query(collection(db, "agendamentos"), orderBy("data", "desc"));
+    
+    onSnapshot(q, (snapshot) => {
+        dadosMestres = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(item => item.status !== "Rascunho");
 
-    onSnapshot(q, (snap) => {
-        dadosOriginais = snap.docs
-            .map(d => ({ id: d.id, ...d.data() }))
-            .filter(item => item.status !== "Rascunho" && item.status !== "DRAFT");
-
-        // Regra: Ao abrir, filtra pela data de hoje automaticamente
+        // Regra Simonetti: No primeiro acesso, filtra pela data de HOJE automaticamente
         const hoje = new Date().toISOString().split('T')[0];
-        if (filtrosAtivos.data.length === 0 && dadosOriginais.some(d => d.data === hoje)) {
-            filtrosAtivos.data = [hoje];
-            document.getElementById('th-data').classList.add('filtrado');
+        const temDadosHoje = dadosMestres.some(d => d.data === hoje);
+        
+        if (temDadosHoje && Object.values(filtrosPorColuna).every(v => v.length === 0)) {
+            filtrosPorColuna.data = [hoje];
         }
 
-        aplicarLogicaDeFiltros();
+        atualizarFiltros();
     });
 }
 
-// Lógica de Cores por Tipo (Igual à sua ideia original)
-const getClasseTipo = (tipo) => {
-    const t = tipo.toLowerCase();
-    if (t.includes('eletro')) return 'tipo-eletro';
-    if (t.includes('moveis') || t.includes('móveis')) return 'tipo-moveis';
-    return 'tipo-outros';
-};
+// 2. Lógica de Filtragem (Cascata + Busca Global + Composição)
+window.atualizarFiltros = () => {
+    const campoBusca = document.getElementById('inputBusca');
+    const termo = campoBusca ? campoBusca.value.toLowerCase() : "";
+    let algumFiltroAtivo = false;
 
-function aplicarLogicaDeFiltros() {
-    const termoBusca = document.getElementById('inputBuscaGlobal').value.toLowerCase();
-    
-    dadosExibidos = dadosOriginais.filter(item => {
-        // 1. Filtros de Coluna (Efeito Cascata)
-        const passaFiltros = Object.keys(filtrosAtivos).every(col => {
-            return filtrosAtivos[col].length === 0 || filtrosAtivos[col].includes(item[col]);
+    dadosFiltrados = dadosMestres.filter(item => {
+        const passaColunas = Object.keys(filtrosPorColuna).every(col => {
+            if (filtrosPorColuna[col].length === 0) return true;
+            algumFiltroAtivo = true;
+            return filtrosPorColuna[col].includes(item[col]);
         });
 
-        // 2. Busca Global Profunda (Inclui Itens da Composição)
-        const composicaoString = item.composicao ? JSON.stringify(item.composicao).toLowerCase() : "";
-        const itemString = JSON.stringify(item).toLowerCase() + composicaoString;
-        const passaBusca = itemString.includes(termoBusca);
+        // Busca profunda: olha nos dados da carga e dentro da lista de itens (composição)
+        const compStr = item.composicao ? JSON.stringify(item.composicao).toLowerCase() : "";
+        const itemStr = (JSON.stringify(item) + compStr).toLowerCase();
+        const passaTermo = itemStr.includes(termo);
 
-        return passaFiltros && passaBusca;
+        return passaColunas && passaTermo;
     });
 
+    // UI: Muda a cor do cabeçalho se houver filtro aplicado (Amarelo solicitado)
+    document.querySelectorAll('th[data-col]').forEach(th => {
+        const col = th.getAttribute('data-col');
+        if (filtrosPorColuna[col] && filtrosPorColuna[col].length > 0) {
+            th.classList.add('active-filter');
+        } else {
+            th.classList.remove('active-filter');
+        }
+    });
+
+    const labelFiltro = document.getElementById('labelFiltroAtivo');
+    if(labelFiltro) labelFiltro.style.display = algumFiltroAtivo ? "inline" : "none";
+    
     renderizarTabela();
-}
+};
 
+// 3. Renderização da Tabela com cores por tipo
 function renderizarTabela() {
-    const corpo = document.getElementById('tabelaCorpo');
-    corpo.innerHTML = "";
-    document.getElementById('txtContador').innerText = dadosExibidos.length;
+    const tbody = document.getElementById('corpoTabela');
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    document.getElementById('count').innerText = dadosFiltrados.length;
 
-    dadosExibidos.forEach(ag => {
-        corpo.innerHTML += `
-            <tr class="${getClasseTipo(ag.tipoProduto)}">
-                <td><input type="checkbox" class="check-export" value="${ag.id}"></td>
-                <td style="font-weight:bold">${ag.senhaAgendamento}</td>
-                <td>${ag.data.split('-').reverse().join('/')}</td>
-                <td>${ag.central}</td>
-                <td>${ag.cargas || '1'}</td>
-                <td>${ag.fornecedor}</td>
-                <td>${ag.tipoProduto}</td>
-                <td>
-                    <button onclick="verComposicao('${ag.id}')" style="background:none; border:none; color:var(--primary); cursor:pointer;">
-                        <i class="fas fa-eye" style="font-size:18px;"></i>
-                    </button>
-                </td>
-            </tr>`;
+    dadosFiltrados.forEach(item => {
+        // Cores baseadas na sua regra de produto
+        const tipo = item.tipoProduto?.toLowerCase() || "";
+        const classeTipo = tipo.includes('eletro') ? 'row-eletro' : 
+                          (tipo.includes('move') ? 'row-moveis' : 'row-outros');
+
+        const tr = document.createElement('tr');
+        tr.className = classeTipo;
+        tr.innerHTML = `
+            <td><input type="checkbox" class="row-check" value="${item.id}"></td>
+            <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
+            <td>${item.data ? item.data.split('-').reverse().join('/') : '---'}</td>
+            <td>${item.central || '---'}</td>
+            <td>${item.cargas || 1}</td>
+            <td>${item.fornecedor || '---'}</td>
+            <td>${item.tipoProduto || '---'}</td>
+            <td>
+                <button onclick="verDetalhes('${item.id}')" style="border:none; background:none; color:#C80000; cursor:pointer;">
+                    <i class="fas fa-eye fa-lg"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
     });
 }
 
-// --- FUNÇÕES DO MODAL DE FILTRO ---
-window.abrirFiltroColuna = (coluna) => {
-    window.colunaAtiva = coluna;
+// 4. Funções de Modal e UI
+window.abrirModalFiltro = (coluna) => {
+    colunaSendoFiltrada = coluna;
     const modal = document.getElementById('modalFiltro');
-    const lista = document.getElementById('listaOpcoes');
+    const container = document.getElementById('opcoesFiltro');
     
-    // Cascata: Mostra apenas opções que existem nos dados atualmente filtrados
-    let opcoes = [...new Set(dadosExibidos.map(d => d[coluna]))].sort((a,b) => 
-        String(a).localeCompare(String(b), undefined, {numeric: true})
-    );
+    // Opções únicas ordenadas A-Z
+    const opcoes = [...new Set(dadosMestres.map(d => d[coluna]))].sort();
 
-    lista.innerHTML = "";
-    opcoes.forEach(opt => {
-        const checked = filtrosAtivos[coluna].includes(opt);
-        const label = (coluna === 'data') ? opt.split('-').reverse().join('/') : opt;
-        lista.innerHTML += `
-            <div class="opcao-item">
-                <input type="checkbox" class="check-filtro" value="${opt}" ${checked ? 'checked' : ''}>
-                <label>${label}</label>
-            </div>`;
-    });
-    modal.style.display = 'flex';
+    container.innerHTML = opcoes.map(opt => `
+        <div style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px;">
+            <input type="checkbox" class="chk-opt" value="${opt}" ${filtrosPorColuna[coluna].includes(opt) ? 'checked' : ''}>
+            <label style="font-size:14px; cursor:pointer;">${coluna === 'data' ? opt.split('-').reverse().join('/') : opt}</label>
+        </div>
+    `).join('');
+
+    modal.style.display = "flex";
 };
 
-window.toggleTodosFiltros = (status) => {
-    document.querySelectorAll('.check-filtro').forEach(cb => cb.checked = status);
+window.aplicarFiltroColuna = () => {
+    const selecionados = Array.from(document.querySelectorAll('.chk-opt:checked')).map(el => el.value);
+    filtrosPorColuna[colunaSendoFiltrada] = selecionados;
+    atualizarFiltros();
+    fecharModais();
 };
 
-window.executarFiltro = () => {
-    const selecionados = Array.from(document.querySelectorAll('.check-filtro:checked')).map(cb => cb.value);
-    filtrosAtivos[window.colunaAtiva] = selecionados;
-    
-    // Atualiza o indicador amarelo (APLICADO)
-    const th = document.getElementById(`th-${window.colunaAtiva}`);
-    if (selecionados.length > 0) th.classList.add('filtrado');
-    else th.classList.remove('filtrado');
-
-    aplicarLogicaDeFiltros();
-    fecharModal();
+window.toggleChecks = (status) => {
+    document.querySelectorAll('.chk-opt').forEach(chk => chk.checked = status);
 };
 
-// --- MODAL DE COMPOSIÇÃO (VISUAL PREMIUM) ---
-window.verComposicao = (id) => {
-    const ag = dadosOriginais.find(d => d.id === id);
-    const container = document.getElementById('detalheItens');
+window.verDetalhes = (id) => {
+    const item = dadosMestres.find(d => d.id === id);
+    const container = document.getElementById('detalhesItens');
     
-    if (!ag.composicao || ag.composicao.length === 0) {
-        container.innerHTML = "<p style='text-align:center;'>Sem itens detalhados.</p>";
+    if(!item || !item.composicao || item.composicao.length === 0) {
+        container.innerHTML = "<p style='text-align:center; padding:20px;'>Nenhum item detalhado nesta carga.</p>";
     } else {
-        let html = `<table style="width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden;">
-            <tr style="background:#f4f4f4;">
-                <th style="padding:10px; font-size:11px;">CÓDIGO</th>
-                <th style="padding:10px; font-size:11px;">DESCRIÇÃO</th>
-                <th style="padding:10px; font-size:11px;">QTD</th>
-            </tr>`;
-        ag.composicao.forEach(item => {
-            html += `<tr>
-                <td style="padding:10px; border-top:1px solid #eee; text-align:center;">${item.codigo}</td>
-                <td style="padding:10px; border-top:1px solid #eee;">${item.descricao}</td>
-                <td style="padding:10px; border-top:1px solid #eee; text-align:center; font-weight:bold;">${item.quantidade}</td>
-            </tr>`;
-        });
-        html += `</table>`;
-        container.innerHTML = html;
+        container.innerHTML = `
+            <table style="width:100%; border-collapse:collapse;">
+                <thead style="background:#f4f4f4;">
+                    <tr><th style="padding:10px;">CÓD</th><th style="padding:10px;">DESCRIÇÃO</th><th style="padding:10px;">QTD</th></tr>
+                </thead>
+                <tbody>
+                ${item.composicao.map(i => `
+                    <tr>
+                        <td style="border-bottom:1px solid #eee; padding:10px; text-align:center;">${i.codigo}</td>
+                        <td style="border-bottom:1px solid #eee; padding:10px;">${i.descricao}</td>
+                        <td style="border-bottom:1px solid #eee; padding:10px; text-align:center; font-weight:bold;">${i.quantidade}</td>
+                    </tr>
+                `).join('')}
+                </tbody>
+            </table>
+        `;
     }
-    document.getElementById('modalComposicao').style.display = 'flex';
+    document.getElementById('modalComposicao').style.display = "flex";
 };
 
-window.fecharModalComposicao = () => document.getElementById('modalComposicao').style.display = 'none';
-window.fecharModal = () => document.getElementById('modalFiltro').style.display = 'none';
+window.fecharModais = () => {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = "none");
+};
 
-// --- EXPORTAÇÃO PDF (Sua lógica integrada) ---
-window.exportarPDF = async (modo) => {
-    const { jsPDF } = window.jspdf;
-    const docPdf = new jsPDF('p', 'mm', 'a4');
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+// 5. Exportação Robusta (4 tipos)
+window.exportar = (tipo, modo) => {
+    const checks = document.querySelectorAll('.row-check:checked');
+    const ids = Array.from(checks).map(el => el.value);
     
-    if (selecionados.length === 0) return alert("Selecione agendamentos na tabela!");
+    if(ids.length === 0) return alert("Selecione os agendamentos na tabela primeiro!");
 
-    const agendas = dadosOriginais.filter(d => selecionados.includes(d.id));
+    const itensParaExportar = dadosMestres.filter(d => ids.includes(d.id));
 
-    // Cabeçalho Simonetti
-    docPdf.setFillColor(192, 0, 0); 
-    docPdf.rect(0, 0, 210, 25, 'F');
-    docPdf.setFontSize(18);
-    docPdf.setTextColor(255, 255, 255);
-    docPdf.text("MÓVEIS SIMONETTI - MONITORAMENTO", 14, 16);
-    
-    docPdf.setFontSize(10);
-    docPdf.text(`TOTAL: ${agendas.length}`, 14, 32);
-    docPdf.setTextColor(100);
-    docPdf.text(`Emitido em: ${new Date().toLocaleString()}`, 150, 32);
-
-    let currentY = 38;
-
-    agendas.forEach((ag) => {
-        if (currentY > 250) { docPdf.addPage(); currentY = 20; }
-
-        docPdf.autoTable({
-            head: [['SENHA', 'DATA', 'CENTRAL', 'FORNECEDOR', 'TIPO']],
-            body: [[ag.senhaAgendamento, ag.data.split('-').reverse().join('/'), ag.central, ag.fornecedor, ag.tipoProduto]],
-            startY: currentY,
-            theme: 'grid',
-            headStyles: { fillColor: [192, 0, 0] },
-            styles: { fontSize: 8, halign: 'center' }
+    if(tipo === 'excel') {
+        const rows = [];
+        itensParaExportar.forEach(d => {
+            if(modo === 'completo' && d.composicao) {
+                d.composicao.forEach(c => {
+                    rows.push({ 
+                        Senha: d.senhaAgendamento, 
+                        Data: d.data,
+                        Fornecedor: d.fornecedor, 
+                        Codigo: c.codigo, 
+                        Item: c.descricao, 
+                        Qtd: c.quantidade 
+                    });
+                });
+            } else {
+                rows.push({ 
+                    Senha: d.senhaAgendamento, 
+                    Data: d.data, 
+                    Central: d.central,
+                    Fornecedor: d.fornecedor, 
+                    Tipo: d.tipoProduto 
+                });
+            }
+        });
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Simonetti_Export");
+        XLSX.writeFile(wb, `Simonetti_${modo.toUpperCase()}.xlsx`);
+    } else {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(16);
+        doc.setTextColor(200, 0, 0);
+        doc.text("MÓVEIS SIMONETTI - MONITORAMENTO", 14, 15);
+        
+        const head = modo === 'completo' ? 
+            [['SENHA', 'DESCRIÇÃO ITEM', 'QTD']] : 
+            [['SENHA', 'DATA', 'FORNECEDOR', 'CENTRAL']];
+        
+        const body = [];
+        itensParaExportar.forEach(d => {
+            if(modo === 'completo' && d.composicao) {
+                d.composicao.forEach(c => body.push([d.senhaAgendamento, c.descricao, c.quantidade]));
+            } else {
+                body.push([d.senhaAgendamento, d.data, d.fornecedor, d.central]);
+            }
         });
 
-        currentY = docPdf.lastAutoTable.finalY;
-
-        if (modo === 'completo' && ag.composicao) {
-            docPdf.autoTable({
-                head: [['CÓDIGO', 'DESCRIÇÃO', 'QTD']],
-                body: ag.composicao.map(i => [i.codigo, i.descricao, i.quantidade]),
-                startY: currentY,
-                margin: { left: 25 },
-                tableWidth: 160,
-                styles: { fontSize: 7 }
-            });
-            currentY = docPdf.lastAutoTable.finalY + 5;
-        } else {
-            currentY += 5;
-        }
-    });
-
-    docPdf.save(`Simonetti_PDF_${modo.toUpperCase()}.pdf`);
+        doc.autoTable({ 
+            head, 
+            body, 
+            startY: 25,
+            headStyles: { fillColor: [200, 0, 0] },
+            theme: 'grid'
+        });
+        
+        doc.save(`Simonetti_${modo.toUpperCase()}.pdf`);
+    }
 };
 
-// --- EXPORTAÇÃO EXCEL ---
-window.exportarExcel = async (modo) => {
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
-    if (selecionados.length === 0) return alert("Selecione agendamentos!");
-
-    const rows = [];
-    const agendas = dadosOriginais.filter(d => selecionados.includes(d.id));
-
-    agendas.forEach(d => {
-        const base = {
-            Senha: d.senhaAgendamento,
-            Data: d.data.split('-').reverse().join('/'),
-            Central: d.central,
-            Fornecedor: d.fornecedor,
-            Tipo: d.tipoProduto
-        };
-
-        if (modo === 'completo' && d.composicao) {
-            d.composicao.forEach(item => {
-                rows.push({ ...base, Codigo: item.codigo, Descricao: item.descricao, Qtd: item.quantidade });
-            });
-        } else {
-            rows.push(base);
-        }
-    });
-
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Monitoramento");
-    XLSX.writeFile(wb, `Simonetti_Excel_${modo.toUpperCase()}.xlsx`);
-};
-
-iniciar();
+// Inicia o sistema
+init();
