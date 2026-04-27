@@ -26,10 +26,10 @@ async function verificarAcessoADM() {
         if (docSnap.exists()) {
             const dadosUser = docSnap.data();
             
-            // Atualiza o display com o nome completo ou o username
-            if (document.getElementById('user-display')) {
-                document.getElementById('user-display').innerText = dadosUser.nome || nomeBusca;
-            }
+        if (document.getElementById('user-display')) {
+            // Agora vai pegar EXATAMENTE o que está no campo 'username' do Firestore
+            document.getElementById('user-display').innerText = dadosUser.username;
+        }
 
             // Verifica o nível de acesso direto no campo do documento
             if (dadosUser.nivelAcesso !== "ADM") { 
