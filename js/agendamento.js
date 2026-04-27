@@ -9,8 +9,12 @@ const usuarioNome = localStorage.getItem('usuarioNome') || "DESCONHECIDO";
 let itensCargaTmp = []; 
 let senhaAbertaNoModal = ""; 
 
+// Mudança aqui: Pegamos o 'username' que o seu auth.js já salva!
+const usuarioUsername = localStorage.getItem('username') || "DESCONHECIDO";
+const usuarioNomeCompleto = localStorage.getItem('usuarioNome') || "DESCONHECIDO";
+
 async function verificarAcessoADM() {
-    const loginParaBusca = usuarioNome.trim(); 
+    const loginParaBusca = usuarioUsername.trim(); 
 
     if (loginParaBusca === "DESCONHECIDO") {
         window.location.href = "index.html";
@@ -18,47 +22,34 @@ async function verificarAcessoADM() {
     }
 
     try {
-        // Mudamos aqui: Agora ele busca no campo 'username' do banco
-        // Certifique-se que o localStorage 'usuarioNome' contenha algo como "DBRITO"
+        // Como o seu auth.js salva o documento pelo UID, precisamos fazer uma QUERY
+        // para achar o documento onde o campo 'username' seja igual ao nosso login
         const q = query(collection(db, "users"), where("username", "==", loginParaBusca));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
             const dadosUser = querySnapshot.docs[0].data();
             
-            // Exibe o username no canto superior
+            // EXIBIÇÃO: Mostra o DBRITO no canto superior
             if (document.getElementById('user-display')) {
                 document.getElementById('user-display').innerText = dadosUser.username;
             }
 
-            // Verifica o nível de acesso
+            // SEGURANÇA: Verifica se é ADM
             if (dadosUser.nivelAcesso !== "ADM") { 
                 alert("ACESSO NEGADO: Somente administradores.");
                 window.location.href = "portal.html";
             }
             
-            console.log("Acesso garantido para:", dadosUser.username);
+            console.log("Autenticado como ADM:", dadosUser.username);
 
         } else {
-            // Caso não ache pelo username, vamos tentar uma última cartada buscando pelo campo 'nome'
-            const qNome = query(collection(db, "users"), where("nome", "==", loginParaBusca));
-            const snapNome = await getDocs(qNome);
-
-            if (!snapNome.empty) {
-                const dadosU = snapNome.docs[0].data();
-                document.getElementById('user-display').innerText = dadosU.username;
-                
-                if (dadosU.nivelAcesso !== "ADM") {
-                    window.location.href = "portal.html";
-                }
-            } else {
-                console.error("Nenhuma correspondência para:", loginParaBusca);
-                alert(`Erro: O usuário "${loginParaBusca}" não foi encontrado no banco de dados.`);
-                window.location.href = "index.html";
-            }
+            console.error("Usuário não encontrado no Firestore:", loginParaBusca);
+            alert(`Usuário "${loginParaBusca}" não encontrado.`);
+            window.location.href = "index.html";
         }
     } catch (error) {
-        console.error("Erro técnico na verificação:", error);
+        console.error("Erro na validação:", error);
         window.location.href = "index.html";
     }
 }
@@ -123,7 +114,7 @@ async function salvarAgenda(status) {
         status: status,
         composicao: itensCargaTmp, 
         timestamp: serverTimestamp(),
-        usuario: usuarioNome
+        usuario: usuarioUsername // Salva "DBRITO" em vez do nome completo
     };
 
     await setDoc(doc(db, "agendamentos", senha), dados, { merge: true });
