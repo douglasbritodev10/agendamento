@@ -388,31 +388,51 @@ window.addEventListener('DOMContentLoaded', () => {
     carregarFornecedores(); 
 });
 
-// --- FUNÇÕES DE ORDENAÇÃO (DOM) ---
-window.ordenarTabelaDefinitiva = (coluna) => ordenarDOM('corpoTabela', coluna);
-window.ordenarTabelaRascunho = (coluna) => ordenarDOM('corpoRascunhos', coluna);
+// --- FUNÇÕES DE ORDENAÇÃO DE TABELAS ---
 
-function ordenarDOM(idCorpo, indexColuna) {
+// Função para a tabela Definitiva
+window.ordenarTabelaDefinitiva = (indiceColuna) => {
+    // Somamos +1 porque a primeira coluna (index 0) é o checkbox
+    ordenarLogicaDOM('corpoTabela', indiceColuna + 1);
+};
+
+// Função para a tabela Rascunho
+window.ordenarTabelaRascunho = (indiceColuna) => {
+    // Somamos +1 porque a primeira coluna (index 0) é o checkbox
+    ordenarLogicaDOM('corpoRascunhos', indiceColuna + 1);
+};
+
+function ordenarLogicaDOM(idCorpo, indexReal) {
     const corpo = document.getElementById(idCorpo);
     const linhas = Array.from(corpo.querySelectorAll('tr'));
-    const isAsc = corpo.dataset.sortOrder !== 'asc';
     
+    // Define a direção (ascendente ou descendente)
+    const direcaoAtual = corpo.dataset.direcao === 'asc' ? 'desc' : 'asc';
+    corpo.dataset.direcao = direcaoAtual;
+
     linhas.sort((a, b) => {
-        const valA = a.cells[indexColuna].innerText.trim().toUpperCase();
-        const valB = b.cells[indexColuna].innerText.trim().toUpperCase();
+        let valA = a.cells[indexReal].innerText.trim().toUpperCase();
+        let valB = b.cells[indexReal].innerText.trim().toUpperCase();
+
+        // Tratamento especial para coluna de DATA (sempre index 2 no seu HTML)
+        if (indexReal === 2) {
+            valA = valA.split('/').reverse().join(''); // DD/MM/YYYY -> YYYYMMDD
+            valB = valB.split('/').reverse().join('');
+        }
         
-        // Lógica para datas (se for a coluna de data, geralmente a 2)
-        if (indexColuna === 2) {
-            const dateA = valA.split('/').reverse().join('');
-            const dateB = valB.split('/').reverse().join('');
-            return isAsc ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+        // Tratamento para números (Senha ou Pedido se forem só números)
+        const numA = parseFloat(valA.replace('-', '.'));
+        const numB = parseFloat(valB.replace('-', '.'));
+
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return direcaoAtual === 'asc' ? numA - numB : numB - numA;
         }
 
-        return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        return direcaoAtual === 'asc' 
+            ? valA.localeCompare(valB, 'pt-BR') 
+            : valB.localeCompare(valA, 'pt-BR');
     });
 
-    // Atualiza o DOM e salva a direção
-    corpo.dataset.sortOrder = isAsc ? 'asc' : 'desc';
+    // Reinsere as linhas ordenadas no corpo da tabela
     linhas.forEach(linha => corpo.appendChild(linha));
 }
-
