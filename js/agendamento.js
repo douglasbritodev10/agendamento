@@ -351,10 +351,17 @@ window.resetaForm = () => {
     document.getElementById('cargas').value = "";
     document.getElementById('tipoProduto').value = "";
     document.getElementById('inputExcel').value = "";
+    document.getElementById('linhaSeparacao').value = "Selecione...";
+    document.getElementById('selectFornecedor').value = "";
+    
     itensCargaTmp = [];
+    
+    // Controle dos Botões
     document.getElementById('btnSalvar').style.display = 'block';
     document.getElementById('btnRascunho').style.display = 'block';
     document.getElementById('btnAtualizar').style.display = 'none';
+    document.getElementById('btnCancelarEdicao').style.display = 'none'; // Esconde o cancelar
+    
     gerarSenha();
 };
 
