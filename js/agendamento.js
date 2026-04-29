@@ -499,3 +499,123 @@ function ordenarLogicaDOM(idCorpo, indexReal) {
     // Reinsere as linhas ordenadas no corpo da tabela
     linhas.forEach(linha => corpo.appendChild(linha));
 }
+
+// Listener para a importação em massa
+document.getElementById('inputExcelMassa').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Converte para JSON
+        const rows = XLSX.utils.sheet_to_json(worksheet);
+        
+        if (rows.length === 0) return alert("Planilha vazia!");
+
+        // Agrupar por carga/pedido (para tratar itens repetidos na mesma carga)
+        const cargasAgrupadas = {};
+
+        rows.forEach(row => {
+            // Criamos uma chave única baseada em Cargas e Pedido
+            const chave = `${row.Cargas}_${row.Pedido}`;
+            
+            if (!cargasAgrupadas[chave]) {
+                cargasAgrupadas[chave] = {
+                    data: row.Data,
+                    central: row.Central,
+                    cargas: row.Cargas,
+                    pedido: row.Pedido,
+                    fornecedor: row.Fornecedor,
+                    tipo: row.Tipo,
+                    composicao: []
+                };
+            }
+
+            // Se houver dados de item, adiciona na composição
+            if (row.Cod_Item || row.Descricao) {
+                cargasAgrupadas[chave].composicao.push({
+                    codigo: row.Cod_Item || "N/A",
+                    descricao: (row.Descricao || "SEM DESCRIÇÃO").toUpperCase(),
+                    qtd: row.Qtd || 0
+                });
+            }
+        });
+
+        // Agora salvamos cada carga no Firebase
+        let contador = 0;
+        const total = Object.keys(cargasAgrupadas).length;
+
+        try {
+            for (const chave in cargasAgrupadas) {
+                const info = cargasAgrupadas[chave];
+                
+                // Gera uma senha única para cada carga da planilha
+                const proximaSenha = await gerarSenhaParaMassa(); 
+                
+                const dados = {
+                    senhaAgendamento: proximaSenha,
+                    data: converterDataExcel(info.data),
+                    central: info.central ? info.central.toUpperCase() : "N/A",
+                    fornecedor: info.fornecedor ? info.fornecedor.toUpperCase() : "N/A",
+                    cargas: info.cargas || "",
+                    pedido: info.pedido || "",
+                    tipoProduto: info.tipo ? info.tipo.toUpperCase() : "DIVERSOS",
+                    linhaSeparacao: "EMBALADO", // Valor padrão para massa
+                    status: "Rascunho",
+                    composicao: info.composicao,
+                    timestamp: serverTimestamp(),
+                    usuario: usuarioUsername
+                };
+
+                await setDoc(doc(db, "agendamentos", proximaSenha), dados);
+                contador++;
+            }
+            alert(`${contador} agendamentos importados com sucesso como RASCUNHO!`);
+            e.target.value = ""; // Limpa o input
+        } catch (error) {
+            console.error("Erro na importação:", error);
+            alert("Erro ao importar dados. Verifique o console.");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+// Função auxiliar para gerar senhas em sequência na importação
+async function gerarSenhaParaMassa() {
+    const q = query(collection(db, "agendamentos"), orderBy("timestamp", "desc"), limit(20));
+    const snap = await getDocs(q);
+    let num = 1;
+    if (!snap.empty) {
+        const numeros = snap.docs.map(d => {
+            const s = d.data().senhaAgendamento;
+            return s && s.includes('-') ? parseInt(s.split('-')[0]) : 0;
+        });
+        num = Math.max(...numeros) + 1;
+    }
+    // Retorna a senha mas não injeta no campo da tela, pois é para o loop
+    return String(num).padStart(2, '0') + "-SM";
+}
+
+// Função para tratar a data que vem do Excel (pode vir como número ou string)
+function converterDataExcel(dataExcel) {
+    if (!dataExcel) return getDataBR();
+    
+    // Se a data vier no formato DD/MM/YYYY
+    if (typeof dataExcel === 'string' && dataExcel.includes('/')) {
+        const partes = dataExcel.split('/');
+        return `${partes[2]}-${partes[1]}-${partes[0]}`;
+    }
+    
+    // Se vier como número serial do Excel
+    if (typeof dataExcel === 'number') {
+        const date = new Date((dataExcel - 25569) * 86400 * 1000);
+        return date.toISOString().split('T')[0];
+    }
+
+    return dataExcel; // Retorna o que vier se já estiver no padrão YYYY-MM-DD
+}
