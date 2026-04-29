@@ -287,19 +287,17 @@ function carregarDados() {
             const cores = getCoresPorTipo(ag.tipoProduto);
             const dataFormat = ag.data.split('-').reverse().join('/');
             
-            // Verifica nos dados principais
-            const buscaNoPrincipal = ag.senhaAgendamento.toLowerCase().includes(termo) || 
-                                     ag.fornecedor.toLowerCase().includes(termo) || 
-                                     (ag.pedido && ag.pedido.toLowerCase().includes(termo));
+            const atendeBusca = ag.senhaAgendamento.toLowerCase().includes(termo) || 
+                                ag.fornecedor.toLowerCase().includes(termo) || 
+                                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
+                                (ag.composicao && ag.composicao.some(item => 
+                                    (item.codigo && item.codigo.toLowerCase().includes(termo)) || 
+                                    (item.descricao && item.descricao.toLowerCase().includes(termo))
+                                ));
 
-            // Verifica se o termo está em algum item da composição (Código ou Descrição)
-            const buscaNosItens = ag.composicao && ag.composicao.some(item => 
-                (item.codigo && item.codigo.toLowerCase().includes(termo)) || 
-                (item.descricao && item.descricao.toLowerCase().includes(termo))
-            );
+            // Badge estilizado para o Tipo
+            const badgeTipo = `<span style="background-color: ${cores.bg}; color: ${cores.text}; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; border: 1px solid rgba(0,0,0,0.1);">${ag.tipoProduto}</span>`;
 
-            const atendeBusca = buscaNoPrincipal || buscaNosItens;
-            
             const acoes = `
                 <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Itens" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
                 <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
@@ -307,7 +305,7 @@ function carregarDados() {
 
             if (ag.status === "Rascunho") {
                 rascunhos.innerHTML += `
-                    <tr data-tipo="${(ag.tipoProduto || '').toUpperCase()}">
+                    <tr>
                         <td><input type="checkbox" class="check-copy-rascunho" value="${ag.senhaAgendamento}"></td>
                         <td><b>${ag.senhaAgendamento}</b></td>
                         <td>${dataFormat}</td>
@@ -315,7 +313,7 @@ function carregarDados() {
                         <td>${ag.cargas || '-'}</td>
                         <td>${ag.pedido || '-'}</td>
                         <td>${ag.fornecedor}</td>
-                        <td>${ag.tipoProduto}</td>
+                        <td>${badgeTipo}</td>
                         <td>
                             <button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>
                             ${acoes}
@@ -324,7 +322,7 @@ function carregarDados() {
             } else {
                 if (ag.data >= dIni && ag.data <= dFim && atendeBusca) {
                     corpo.innerHTML += `
-                        <tr style="background-color: ${cores.bg}; color: ${cores.text}">
+                        <tr>
                             <td><input type="checkbox" class="check-export" value="${ag.senhaAgendamento}"></td>
                             <td><b>${ag.senhaAgendamento}</b></td>
                             <td>${dataFormat}</td>
@@ -332,7 +330,7 @@ function carregarDados() {
                             <td>${ag.cargas || '-'}</td>
                             <td>${ag.pedido || '-'}</td>
                             <td>${ag.fornecedor}</td>
-                            <td>${ag.tipoProduto}</td>
+                            <td>${badgeTipo}</td>
                             <td>${acoes}</td>
                         </tr>`;
                 }
@@ -401,6 +399,7 @@ document.getElementById('btnSalvarEdicaoItens').onclick = async () => {
 window.editarAg = async (senha) => {
     const snap = await getDocs(collection(db, "agendamentos"));
     const d = snap.docs.find(x => x.id === senha).data();
+    
     document.getElementById('senhaAgendamento').value = d.senhaAgendamento;
     document.getElementById('dataAgendamento').value = d.data;
     document.getElementById('central').value = d.central;
@@ -408,10 +407,20 @@ window.editarAg = async (senha) => {
     document.getElementById('tipoProduto').value = d.tipoProduto;
     document.getElementById('pedido').value = d.pedido || "";
     document.getElementById('cargas').value = d.cargas || "";
+    
     itensCargaTmp = d.composicao || [];
+    
+    // Alterna visibilidade dos botões
     document.getElementById('btnSalvar').style.display = 'none';
     document.getElementById('btnRascunho').style.display = 'none';
     document.getElementById('btnAtualizar').style.display = 'block';
+    
+    // Se você tiver um botão de cancelar no HTML, mostre-o:
+    const btnCancel = document.getElementById('btnCancelarEdicao');
+    if(btnCancel) btnCancel.style.display = 'block';
+
+    // Rola a página para o topo para facilitar a edição
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // --- FORNECEDORES ---
