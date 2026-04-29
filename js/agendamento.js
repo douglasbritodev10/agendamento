@@ -512,36 +512,38 @@ document.getElementById('inputExcelMassa').addEventListener('change', function(e
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Converte para JSON
-        const rows = XLSX.utils.sheet_to_json(worksheet);
-        
-        if (rows.length === 0) return alert("Planilha vazia!");
+        // Dentro da função reader.onload do inputExcelMassa:
 
-        // Agrupar por carga/pedido (para tratar itens repetidos na mesma carga)
+        const rows = XLSX.utils.sheet_to_json(worksheet);
         const cargasAgrupadas = {};
 
         rows.forEach(row => {
-            // Criamos uma chave única baseada em Cargas e Pedido
-            const chave = `${row.Cargas}_${row.Pedido}`;
-            
+            // IGNORA LINHAS TOTALMENTE VAZIAS (como o espaço que você deu entre as cargas)
+            if (!row.Cargas && !row.Pedido) return;
+
+            // Se a linha tem Pedido mas não tem Carga (ou vice-versa), 
+            // ou se é uma linha de continuação de itens.
+            // Usamos Carga + Pedido + Data como "Chave Única"
+            const chave = `${row.Cargas}_${row.Pedido}_${row.Data}`;
+    
             if (!cargasAgrupadas[chave]) {
                 cargasAgrupadas[chave] = {
                     data: row.Data,
-                    central: row.Central,
-                    cargas: row.Cargas,
-                    pedido: row.Pedido,
-                    fornecedor: row.Fornecedor,
-                    tipo: row.Tipo,
+                    central: row.Central || "N/A",
+                    cargas: row.Cargas || "N/A",
+                    pedido: row.Pedido || "N/A",
+                    fornecedor: row.Fornecedor || "N/A",
+                    tipo: row.Tipo || "DIVERSOS",
                     composicao: []
                 };
             }
 
-            // Se houver dados de item, adiciona na composição
+            // Adiciona o item na composição se houver código ou descrição
             if (row.Cod_Item || row.Descricao) {
                 cargasAgrupadas[chave].composicao.push({
-                    codigo: row.Cod_Item || "N/A",
+                    codigo: String(row.Cod_Item || "N/A"),
                     descricao: (row.Descricao || "SEM DESCRIÇÃO").toUpperCase(),
-                    qtd: row.Qtd || 0
+                    qtd: parseInt(row.Qtd || 0)
                 });
             }
         });
