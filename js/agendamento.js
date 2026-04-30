@@ -252,6 +252,7 @@ window.exportarExcel = async (modo) => {
                 Pedido: d.pedido,
                 Fornecedor: d.fornecedor,
                 Tipo: d.tipoProduto
+                linhaSeparacao: d.linhaSeparacao || "N/A"
             };
 
             // Se for completo, expande as linhas para cada item
@@ -550,6 +551,7 @@ document.getElementById('inputExcelMassa').addEventListener('change', function(e
                     pedido: row.Pedido || "N/A",
                     fornecedor: row.Fornecedor || "N/A",
                     tipo: row.Tipo || "DIVERSOS",
+                    linhaSeparacao: row.linhaSeparacao || "EMBALADO",
                     composicao: []
                 };
             }
@@ -583,7 +585,7 @@ document.getElementById('inputExcelMassa').addEventListener('change', function(e
                     cargas: info.cargas || "",
                     pedido: info.pedido || "",
                     tipoProduto: info.tipo ? info.tipo.toUpperCase() : "DIVERSOS",
-                    linhaSeparacao: "EMBALADO", // Valor padrão para massa
+                    linhaSeparacao: info.linhaSeparacao ? info.linhaSeparacao.toUpperCase() : "EMBALADO",
                     status: "Rascunho",
                     composicao: info.composicao,
                     timestamp: serverTimestamp(),
