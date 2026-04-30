@@ -251,7 +251,7 @@ window.exportarExcel = async (modo) => {
                 Cargas: d.cargas,
                 Pedido: d.pedido,
                 Fornecedor: d.fornecedor,
-                Tipo: d.tipoProduto
+                Tipo: d.tipoProduto,
                 linhaSeparacao: d.linhaSeparacao || "N/A"
             };
 
