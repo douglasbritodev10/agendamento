@@ -273,7 +273,6 @@ window.exportarExcel = async (modo) => {
     XLSX.writeFile(wb, `Simonetti_Export_${modo.toUpperCase()}.xlsx`);
 };
 
-// --- CARREGAR E MONITORAR (REAL-TIME) ---
 function carregarDados() {
     onSnapshot(query(collection(db, "agendamentos"), orderBy("timestamp", "desc")), (snap) => {
         const corpo = document.getElementById('corpoTabela');
@@ -291,19 +290,17 @@ function carregarDados() {
             
             const atendeBusca = ag.senhaAgendamento.toLowerCase().includes(termo) || 
                                 ag.fornecedor.toLowerCase().includes(termo) || 
-                                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
-                                (ag.composicao && ag.composicao.some(item => 
-                                    (item.codigo && item.codigo.toLowerCase().includes(termo)) || 
-                                    (item.descricao && item.descricao.toLowerCase().includes(termo))
-                                ));
+                                (ag.pedido && ag.pedido.toLowerCase().includes(termo));
 
-            // Badge estilizado para o Tipo
             const badgeTipo = `<span style="background-color: ${cores.bg}; color: ${cores.text}; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; border: 1px solid rgba(0,0,0,0.1);">${ag.tipoProduto}</span>`;
 
             const acoes = `
                 <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Itens" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
                 <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
             `;
+
+            // Coluna extra para a Linha de Separação
+            const celulaLinha = `<td>${ag.linhaSeparacao || '-'}</td>`;
 
             if (ag.status === "Rascunho") {
                 rascunhos.innerHTML += `
@@ -316,6 +313,7 @@ function carregarDados() {
                         <td>${ag.pedido || '-'}</td>
                         <td>${ag.fornecedor}</td>
                         <td>${badgeTipo}</td>
+                        ${celulaLinha} <!-- ADICIONADO AQUI -->
                         <td>
                             <button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>
                             ${acoes}
@@ -333,6 +331,7 @@ function carregarDados() {
                             <td>${ag.pedido || '-'}</td>
                             <td>${ag.fornecedor}</td>
                             <td>${badgeTipo}</td>
+                            ${celulaLinha} <!-- ADICIONADO AQUI -->
                             <td>${acoes}</td>
                         </tr>`;
                 }
