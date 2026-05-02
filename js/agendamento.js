@@ -117,9 +117,14 @@ async function salvarAgenda(status) {
         usuario: usuarioUsername // Salva "DBRITO" em vez do nome completo
     };
 
-    await setDoc(doc(db, "agendamentos", senha), dados, { merge: true });
-    alert(status === "Rascunho" ? "Rascunho Salvo!" : "Agendamento Finalizado!");
-    resetaForm();
+    try {
+        await setDoc(doc(db, "agendamentos", senha), dados, { merge: true });
+        alert(status === "Rascunho" ? "Rascunho Atualizado!" : "Agendamento Finalizado com Sucesso!");
+        resetaForm();
+    } catch (error) {
+        console.error("Erro ao salvar:", error);
+        alert("Erro ao processar operação.");
+    }
 }
 
 // --- COPIAR RASCUNHOS (VERSÃO COMPRIMIDA) ---
@@ -349,6 +354,7 @@ window.finalizarDireto = async (senha) => {
 };
 
 window.resetaForm = () => {
+    document.getElementById('central').value = "";
     document.getElementById('pedido').value = "";
     document.getElementById('cargas').value = "";
     document.getElementById('tipoProduto').value = "";
@@ -356,10 +362,15 @@ window.resetaForm = () => {
     document.getElementById('linhaSeparacao').value = "Selecione...";
     document.getElementById('selectFornecedor').value = "";
     itensCargaTmp = [];
+    // Volta para o estado inicial
     document.getElementById('btnSalvar').style.display = 'block';
     document.getElementById('btnRascunho').style.display = 'block';
+    
+    // Esconde os botões de edição
     document.getElementById('btnAtualizar').style.display = 'none';
+    if(document.getElementById('btnAtualizarRascunho')) document.getElementById('btnAtualizarRascunho').style.display = 'none';
     if(document.getElementById('btnCancelarEdicao')) document.getElementById('btnCancelarEdicao').style.display = 'none';
+    
     gerarSenha();
 };
 
@@ -498,13 +509,14 @@ window.editarAg = async (senha) => {
     // Alterna visibilidade dos botões
     document.getElementById('btnSalvar').style.display = 'none';
     document.getElementById('btnRascunho').style.display = 'none';
-    document.getElementById('btnAtualizar').style.display = 'block';
     
-    // Se você tiver um botão de cancelar no HTML, mostre-o:
-    const btnCancel = document.getElementById('btnCancelarEdicao');
-    if(btnCancel) btnCancel.style.display = 'block';
-
-    // Rola a página para o topo para facilitar a edição
+    // Mostra as 3 opções de edição
+    document.getElementById('btnAtualizar').style.display = 'inline-block'; // Salvar Definitivo
+    if(document.getElementById('btnAtualizarRascunho')) 
+        document.getElementById('btnAtualizarRascunho').style.display = 'inline-block'; // Atualizar Rascunho
+    if(document.getElementById('btnCancelarEdicao')) 
+        document.getElementById('btnCancelarEdicao').style.display = 'inline-block'; // Cancelar
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -530,10 +542,33 @@ document.getElementById('btnAddForn').onclick = async () => {
 };
 window.removerForn = async (id) => { if (confirm("Excluir?")) await deleteDoc(doc(db, "fornecedores", id)); };
 
+window.cancelarEdicao = () => {
+    if(confirm("Deseja cancelar a edição? As alterações não salvas serão perdidas.")) {
+        resetaForm();
+    }
+};
+
 // --- LISTENERS ---
+// Ação de Salvar Novo (quando não está editando)
 document.getElementById('btnSalvar').onclick = () => salvarAgenda("Agendada");
 document.getElementById('btnRascunho').onclick = () => salvarAgenda("Rascunho");
+
+// Ações de Edição (Aparecem após clicar em Editar)
+// 1. Salvar Definitivo (Muda para agendada)
 document.getElementById('btnAtualizar').onclick = () => salvarAgenda("Agendada");
+
+// 2. Atualizar Rascunho (Mantém como rascunho)
+// Se você criar um botão com id="btnAtualizarRascunho" no HTML:
+const btnAtuRascunho = document.getElementById('btnAtualizarRascunho');
+if(btnAtuRascunho) {
+    btnAtuRascunho.onclick = () => salvarAgenda("Rascunho");
+}
+
+// 3. Cancelar Edição
+const btnCancel = document.getElementById('btnCancelarEdicao');
+if(btnCancel) {
+    btnCancel.onclick = () => cancelarEdicao();
+}
 document.getElementById('buscaGeral').oninput = carregarDados;
 document.getElementById('buscaInicio').onchange = carregarDados;
 document.getElementById('buscaFim').onchange = carregarDados;
