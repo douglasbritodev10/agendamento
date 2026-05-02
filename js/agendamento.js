@@ -427,6 +427,62 @@ window.confirmarEdicaoItens = async () => {
     }
 };
 
+// Função para adicionar item manualmente dentro do modal de edição
+window.adicionarItemManual = () => {
+    const codInput = document.getElementById('itemCod');
+    const descInput = document.getElementById('itemDesc');
+    const qtdInput = document.getElementById('itemQtd');
+
+    const codigo = codInput.value.trim();
+    const descricao = descInput.value.toUpperCase().trim();
+    const qtd = parseInt(qtdInput.value);
+
+    if (!codigo || !descricao || isNaN(qtd)) {
+        return alert("Preencha código, descrição e quantidade corretamente!");
+    }
+
+    // Adiciona ao array temporário que o seu verComp já criou
+    window.tempComposicao.push({
+        codigo: codigo,
+        descricao: descricao,
+        qtd: qtd
+    });
+
+    // Limpa os campos de entrada
+    codInput.value = "";
+    descInput.value = "";
+    qtdInput.value = "";
+
+    // Atualiza a tela do modal para mostrar o novo item
+    renderizarItensModal();
+};
+
+// Função auxiliar para redesenhar a lista no modal (Necessária para o Adicionar e o Remover)
+window.renderizarItensModal = () => {
+    const listaComp = document.getElementById('listaComposicaoModal');
+    if (!listaComp) return;
+
+    listaComp.innerHTML = "";
+    let total = 0;
+
+    window.tempComposicao.forEach((item, index) => {
+        total += (item.qtd || 0);
+        listaComp.innerHTML += `
+            <div style="display: flex; gap: 5px; margin-bottom: 8px; align-items: center; background: rgba(255,255,255,0.1); padding: 5px; border-radius: 5px;">
+                <input type="text" value="${item.codigo}" onchange="atualizarArrayLocal(${index}, 'codigo', this.value)" style="width: 80px;" placeholder="Cód">
+                <input type="text" value="${item.descricao}" onchange="atualizarArrayLocal(${index}, 'descricao', this.value)" style="flex: 1;" placeholder="Descrição">
+                <input type="number" value="${item.qtd}" onchange="atualizarArrayLocal(${index}, 'qtd', this.value)" style="width: 60px;" placeholder="Qtd">
+                <button onclick="removerItemComposicao(${index})" style="color: #ff4d4d; background: none; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+    });
+
+    // Atualiza o contador de total de peças no modal
+    if(document.getElementById('totalPecas')) {
+        document.getElementById('totalPecas').innerText = total;
+    }
+};
+
 window.editarAg = async (senha) => {
     const snap = await getDocs(collection(db, "agendamentos"));
     const d = snap.docs.find(x => x.id === senha).data();
