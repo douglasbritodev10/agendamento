@@ -269,17 +269,15 @@ window.exportarExcel = async (modo) => {
 };
 
 function carregarDados() {
-    // Escuta em tempo real as mudanças na coleção "agendamentos" ordenadas por timestamp
     onSnapshot(query(collection(db, "agendamentos"), orderBy("timestamp", "desc")), (snap) => {
         const corpo = document.getElementById('corpoTabela');
         const rascunhos = document.getElementById('corpoRascunhos');
         
-        // Captura valores dos filtros
+        // Filtros do seu HTML
         const dIni = document.getElementById('buscaInicio').value;
         const dFim = document.getElementById('buscaFim').value;
         const termo = document.getElementById('buscaGeral').value.toLowerCase();
 
-        // Limpa as tabelas antes de renderizar
         corpo.innerHTML = ""; 
         rascunhos.innerHTML = "";
 
@@ -287,28 +285,30 @@ function carregarDados() {
             const ag = d.data();
             const cores = getCoresPorTipo(ag.tipoProduto);
             
-            // Converte data ISO (YYYY-MM-DD) para padrão Brasileiro (DD/MM/YYYY)
+            // Data no padrão brasileiro (DD/MM/YYYY) para exibição
             const dataFormat = ag.data ? ag.data.split('-').reverse().join('/') : '-'; 
             
-            // Lógica de Busca Global: verifica campos principais e itens da composição
+            // Busca Geral (Busca na Senha, Fornecedor, Pedido, Linha ou nos itens da carga)
             const atendeBusca = 
                 ag.senhaAgendamento.toLowerCase().includes(termo) || 
                 ag.fornecedor.toLowerCase().includes(termo) || 
+                (ag.linhaSeparacao && ag.linhaSeparacao.toLowerCase().includes(termo)) ||
                 (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
                 (ag.composicao && ag.composicao.some(item => 
                     (item.codigo && String(item.codigo).toLowerCase().includes(termo)) || 
                     (item.descricao && item.descricao.toLowerCase().includes(termo))
                 ));
 
-            // Componentes de UI (Badge e Botões)
+            // Badge de Tipo de Produto
             const badgeTipo = `<span style="background-color: ${cores.bg}; color: ${cores.text}; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; border: 1px solid rgba(0,0,0,0.1);">${ag.tipoProduto}</span>`;
 
+            // Botões de Ação
             const btnAcoes = `
                 <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Itens" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
                 <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
             `;
 
-            // Template da linha da tabela
+            // Montagem da Linha respeitando exatamente as 10 colunas do seu HTML
             const gerarLinha = (classeCheck) => `
                 <tr>
                     <td><input type="checkbox" class="${classeCheck}" value="${ag.senhaAgendamento}"></td>
@@ -319,19 +319,20 @@ function carregarDados() {
                     <td>${ag.pedido || '-'}</td>
                     <td>${ag.fornecedor}</td>
                     <td>${badgeTipo}</td>
+                    <td style="font-weight: bold;">${ag.linhaSeparacao || '-'}</td>
                     <td>
-                        ${ag.status === "Rascunho" ? `<button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>` : ''}
+                        ${ag.status === "Rascunho" ? `<button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer; margin-right:8px;"><i class="fas fa-check-circle"></i></button>` : ''}
                         ${btnAcoes}
                     </td>
                 </tr>`;
 
-            // Distribuição dos dados nas tabelas (Rascunhos vs Definitivos)
+            // Separação entre Rascunho e Definitivo
             if (ag.status === "Rascunho") {
                 if (atendeBusca) {
                     rascunhos.innerHTML += gerarLinha("check-copy-rascunho");
                 }
             } else {
-                // Filtro de data aplicado apenas para agendamentos finalizados
+                // Filtro de data (apenas para agendamentos finalizados)
                 if (ag.data >= dIni && ag.data <= dFim && atendeBusca) {
                     corpo.innerHTML += gerarLinha("check-export");
                 }
