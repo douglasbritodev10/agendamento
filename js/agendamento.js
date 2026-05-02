@@ -175,8 +175,7 @@ window.exportarPDF = async (modo) => {
     const agendas = [];
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
-    // --- ESTILIZAÇÃO DO CABEÇALHO (Inspirado no print) ---
-    docPdf.setFillColor(192, 0, 0); // Vermelho Simonetti
+    docPdf.setFillColor(192, 0, 0); 
     docPdf.rect(0, 0, 210, 25, 'F');
     docPdf.setFontSize(18);
     docPdf.setTextColor(255, 255, 255);
@@ -190,10 +189,8 @@ window.exportarPDF = async (modo) => {
     let currentY = 38;
 
     agendas.forEach((ag, index) => {
-        // Verifica se precisa de nova página
         if (currentY > 260) { docPdf.addPage(); currentY = 20; }
 
-        // Tabela da Carga (Cabeçalho Vermelho para cada carga)
         docPdf.autoTable({
             head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
             body: [[
@@ -203,7 +200,7 @@ window.exportarPDF = async (modo) => {
                 ag.cargas || '-', 
                 ag.fornecedor, 
                 ag.tipoProduto,
-                ag.linhaSeparacao || 'N/A' // ADICIONAR AQUI
+                ag.linhaSeparacao || 'N/A'
             ]],
             startY: currentY,
             theme: 'grid',
@@ -214,13 +211,12 @@ window.exportarPDF = async (modo) => {
 
         currentY = docPdf.lastAutoTable.finalY;
 
-        // Se for modo completo, desenha a composição logo abaixo
         if (modo === 'completo' && ag.composicao && ag.composicao.length > 0) {
             docPdf.autoTable({
                 head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
                 body: ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]),
                 startY: currentY,
-                margin: { left: 25 }, // Recuo para parecer sub-item
+                margin: { left: 25 }, 
                 tableWidth: 160,
                 theme: 'plain',
                 headStyles: { fillColor: [240, 240, 240], textColor: 50, fontSize: 7 },
@@ -256,7 +252,6 @@ window.exportarExcel = async (modo) => {
                 linhaSeparacao: d.linhaSeparacao || "N/A"
             };
 
-            // Se for completo, expande as linhas para cada item
             if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
                 d.composicao.forEach(item => {
                     rows.push({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
@@ -290,7 +285,11 @@ function carregarDados() {
             
             const atendeBusca = ag.senhaAgendamento.toLowerCase().includes(termo) || 
                                 ag.fornecedor.toLowerCase().includes(termo) || 
-                                (ag.pedido && ag.pedido.toLowerCase().includes(termo));
+                                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
+                                (ag.composicao && ag.composicao.some(item => 
+                                    (item.codigo && item.codigo.toLowerCase().includes(termo)) || 
+                                    (item.descricao && item.descricao.toLowerCase().includes(termo))
+                                ));
 
             const badgeTipo = `<span style="background-color: ${cores.bg}; color: ${cores.text}; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; border: 1px solid rgba(0,0,0,0.1);">${ag.tipoProduto}</span>`;
 
@@ -298,9 +297,6 @@ function carregarDados() {
                 <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Itens" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
                 <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
             `;
-
-            // Coluna extra para a Linha de Separação
-            const celulaLinha = `<td>${ag.linhaSeparacao || '-'}</td>`;
 
             if (ag.status === "Rascunho") {
                 rascunhos.innerHTML += `
@@ -313,7 +309,6 @@ function carregarDados() {
                         <td>${ag.pedido || '-'}</td>
                         <td>${ag.fornecedor}</td>
                         <td>${badgeTipo}</td>
-                        ${celulaLinha} <!-- ADICIONADO AQUI -->
                         <td>
                             <button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>
                             ${acoes}
@@ -331,7 +326,6 @@ function carregarDados() {
                             <td>${ag.pedido || '-'}</td>
                             <td>${ag.fornecedor}</td>
                             <td>${badgeTipo}</td>
-                            ${celulaLinha} <!-- ADICIONADO AQUI -->
                             <td>${acoes}</td>
                         </tr>`;
                 }
@@ -354,15 +348,11 @@ window.resetaForm = () => {
     document.getElementById('inputExcel').value = "";
     document.getElementById('linhaSeparacao').value = "Selecione...";
     document.getElementById('selectFornecedor').value = "";
-    
     itensCargaTmp = [];
-    
-    // Controle dos Botões
     document.getElementById('btnSalvar').style.display = 'block';
     document.getElementById('btnRascunho').style.display = 'block';
     document.getElementById('btnAtualizar').style.display = 'none';
-    document.getElementById('btnCancelarEdicao').style.display = 'none'; // Esconde o cancelar
-    
+    if(document.getElementById('btnCancelarEdicao')) document.getElementById('btnCancelarEdicao').style.display = 'none';
     gerarSenha();
 };
 
@@ -463,7 +453,7 @@ document.getElementById('buscaInicio').onchange = carregarDados;
 document.getElementById('buscaFim').onchange = carregarDados;
 
 window.addEventListener('DOMContentLoaded', async () => { 
-    await verificarAcessoADM(); // Garante que o usuário é ADM primeiro
+    await verificarAcessoADM(); 
     gerarSenha();  
     carregarDados(); 
     carregarFornecedores(); 
@@ -483,11 +473,9 @@ window.ordenarTabelaRascunho = (indiceColuna) => {
     ordenarLogicaDOM('corpoRascunhos', indiceColuna + 1);
 };
 
-function ordenarLogicaDOM(idCorpo, indexReal) {
+window.ordenarLogicaDOM = (idCorpo, indexReal) => {
     const corpo = document.getElementById(idCorpo);
     const linhas = Array.from(corpo.querySelectorAll('tr'));
-    
-    // Define a direção (ascendente ou descendente)
     const direcaoAtual = corpo.dataset.direcao === 'asc' ? 'desc' : 'asc';
     corpo.dataset.direcao = direcaoAtual;
 
@@ -495,13 +483,11 @@ function ordenarLogicaDOM(idCorpo, indexReal) {
         let valA = a.cells[indexReal].innerText.trim().toUpperCase();
         let valB = b.cells[indexReal].innerText.trim().toUpperCase();
 
-        // Tratamento especial para coluna de DATA (sempre index 2 no seu HTML)
-        if (indexReal === 2) {
-            valA = valA.split('/').reverse().join(''); // DD/MM/YYYY -> YYYYMMDD
+        if (indexReal === 2) { // Data
+            valA = valA.split('/').reverse().join('');
             valB = valB.split('/').reverse().join('');
         }
         
-        // Tratamento para números (Senha ou Pedido se forem só números)
         const numA = parseFloat(valA.replace('-', '.'));
         const numB = parseFloat(valB.replace('-', '.'));
 
@@ -509,14 +495,10 @@ function ordenarLogicaDOM(idCorpo, indexReal) {
             return direcaoAtual === 'asc' ? numA - numB : numB - numA;
         }
 
-        return direcaoAtual === 'asc' 
-            ? valA.localeCompare(valB, 'pt-BR') 
-            : valB.localeCompare(valA, 'pt-BR');
+        return direcaoAtual === 'asc' ? valA.localeCompare(valB, 'pt-BR') : valB.localeCompare(valA, 'pt-BR');
     });
-
-    // Reinsere as linhas ordenadas no corpo da tabela
     linhas.forEach(linha => corpo.appendChild(linha));
-}
+};
 
 // Listener para a importação em massa
 document.getElementById('inputExcelMassa').addEventListener('change', function(e) {
