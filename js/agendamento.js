@@ -195,14 +195,15 @@ window.exportarPDF = async (modo) => {
 
         // Tabela da Carga (Cabeçalho Vermelho para cada carga)
         docPdf.autoTable({
-            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO']],
+            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
             body: [[
                 ag.senhaAgendamento, 
                 ag.data.split('-').reverse().join('/'), 
                 ag.central, 
                 ag.cargas || '-', 
                 ag.fornecedor, 
-                ag.tipoProduto
+                ag.tipoProduto,
+                ag.linhaSeparacao || 'N/A' // ADICIONAR AQUI
             ]],
             startY: currentY,
             theme: 'grid',
@@ -415,6 +416,7 @@ window.editarAg = async (senha) => {
     document.getElementById('tipoProduto').value = d.tipoProduto;
     document.getElementById('pedido').value = d.pedido || "";
     document.getElementById('cargas').value = d.cargas || "";
+    document.getElementById('linhaSeparacao').value = d.linhaSeparacao || "Selecione..."; // ADICIONAR ISSO
     
     itensCargaTmp = d.composicao || [];
     
