@@ -225,28 +225,40 @@
         </main>
     </div>
 
-    <div id="modalComp" class="modal">
-        <div class="modal-content">
-            <h3 id="tituloComp">Itens da Carga</h3>
-            <div style="display:flex; gap:5px; margin: 15px 0;">
-                <input type="text" id="itemCod" placeholder="Cód" style="width:80px; padding: 5px;">
-                <input type="text" id="itemDesc" placeholder="Descrição" style="flex:1; padding: 5px;">
-                <input type="number" id="itemQtd" placeholder="Qtd" style="width:80px; padding: 5px;">
-                <button onclick="adicionarItemManual()" class="btn-save" style="padding: 5px 15px; border-radius: 5px; border:none; color:white;"><i class="fas fa-plus"></i></button>
-            </div>
-            <div class="table-responsive" style="max-height: 40vh;">
-                <table>
-                    <thead><tr><th>Cód</th><th>Descrição</th><th>Qtd</th><th>Ação</th></tr></thead>
-                    <tbody id="corpoItensComp"></tbody>
-                </table>
-            </div>
-            <div style="margin-top:15px; font-weight:bold; color:var(--vermelho);">TOTAL: <span id="totalPecas">0</span></div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button onclick="fecharModais()" class="btn-main" style="background:#eee;">FECHAR</button>
-                <button id="btnSalvarEdicaoItens" class="btn-main btn-save">SALVAR ALTERAÇÕES</button>
-            </div>
+<!-- ID corrigido para modalComposicao para bater com o JS -->
+<div id="modalComposicao" class="modal"> 
+    <div class="modal-content">
+        <h3 id="tituloComp">Itens da Carga</h3>
+        
+        <!-- Inputs para adição manual -->
+        <div style="display:flex; gap:5px; margin: 15px 0;">
+            <input type="text" id="itemCod" placeholder="Cód" style="width:80px; padding: 5px;">
+            <input type="text" id="itemDesc" placeholder="Descrição" style="flex:1; padding: 5px;">
+            <input type="number" id="itemQtd" placeholder="Qtd" style="width:80px; padding: 5px;">
+            <button onclick="adicionarItemManual()" class="btn-save" style="padding: 5px 15px; border-radius: 5px; border:none; color:white;">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        <div class="table-responsive" style="max-height: 40vh;">
+            <!-- O JS injeta o conteúdo aqui. Ajustado para listaComposicaoModal -->
+            <div id="listaComposicaoModal"></div> 
+            
+            <!-- Se você preferir manter a estrutura de tabela pura, 
+                 o seu JS verComp precisará ser alterado para criar <tr> em vez de <div> -->
+        </div>
+
+        <div style="margin-top:15px; font-weight:bold; color:var(--vermelho);">
+            TOTAL: <span id="totalPecas">0</span>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button onclick="fecharModais()" class="btn-main" style="background:#666; color: white;">FECHAR</button>
+            <!-- ID corrigido para confirmarEdicaoItens para bater com o JS -->
+            <button onclick="confirmarEdicaoItens()" class="btn-main btn-save">SALVAR ALTERAÇÕES</button>
         </div>
     </div>
+</div>
 
     <div id="modalFornecedor" class="modal">
         <div class="modal-content">
