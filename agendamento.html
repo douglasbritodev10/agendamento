@@ -158,22 +158,25 @@
                 <div class="form-group" style="margin:0; flex: 1;"><label>Até:</label><input type="date" id="buscaFim"></div>
                 <input type="text" id="buscaGeral" placeholder="🔍 Buscar..." style="flex:2; height: 41px; padding: 0 10px; border: 1px solid #ddd; border-radius: 8px;">
                 
-                <div class="export-actions">
-                    <button onclick="exportarExcel('basico')" class="btn-exp" style="background:#2e7d32;" title="Apenas colunas principais">
-                        <i class="fas fa-file-excel"></i> EXCEL BÁSICO
-                    </button>
-                    <button onclick="exportarExcel('completo')" class="btn-exp" style="background:#1b5e20;" title="Inclui composição da carga">
-                        <i class="fas fa-file-excel"></i> EXCEL COMPLETO
-                    </button>
+<div class="export-actions" style="display: flex; gap: 10px; align-items: center;">
+    <!-- Botão Copiar Selecionados (Igual ao rascunho) -->
+    <button onclick="copiarAgendamentosSelecionados()" class="btn-exp" style="background:#fb8c00;" title="Copiar para o WhatsApp/Área de Transferência">
+        <i class="fas fa-copy"></i> COPIAR SELECIONADOS
+    </button>
 
-                    <button onclick="exportarPDF('basico')" class="btn-exp" style="background:#1565c0;" title="Apenas colunas principais">
-                        <i class="fas fa-file-pdf"></i> PDF BÁSICO
-                    </button>
-                    <button onclick="exportarPDF('completo')" class="btn-exp" style="background:#d32f2f;" title="Inclui composição da carga">
-                        <i class="fas fa-file-pdf"></i> PDF COMPLETO
-                    </button>
-                </div>
-            </div>
+    <!-- Dropdown de Compartilhar/Exportar -->
+    <div class="dropdown" style="position: relative; display: inline-block;">
+        <button onclick="toggleDropdownExport()" class="btn-exp" style="background:#1565c0;">
+            <i class="fas fa-share-alt"></i> COMPARTILHAR <i class="fas fa-caret-down"></i>
+        </button>
+        <div id="menuExport" style="display: none; position: absolute; right: 0; background-color: white; min-width: 180px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2); z-index: 1001; border-radius: 8px; margin-top: 5px;">
+            <a href="#" onclick="exportarExcel('basico')" style="color: black; padding: 12px 16px; text-decoration: none; display: block; font-size: 13px; border-bottom: 1px solid #eee;"><i class="fas fa-file-excel" style="color: #2e7d32;"></i> Excel Básico</a>
+            <a href="#" onclick="exportarExcel('completo')" style="color: black; padding: 12px 16px; text-decoration: none; display: block; font-size: 13px; border-bottom: 1px solid #eee;"><i class="fas fa-file-excel" style="color: #1b5e20;"></i> Excel Completo</a>
+            <a href="#" onclick="exportarPDF('basico')" style="color: black; padding: 12px 16px; text-decoration: none; display: block; font-size: 13px; border-bottom: 1px solid #eee;"><i class="fas fa-file-pdf" style="color: #1565c0;"></i> PDF Básico</a>
+            <a href="#" onclick="exportarPDF('completo')" style="color: black; padding: 12px 16px; text-decoration: none; display: block; font-size: 13px;"><i class="fas fa-file-pdf" style="color: #d32f2f;"></i> PDF Completo</a>
+        </div>
+    </div>
+</div>
 
             <div class="table-responsive">
                 <table id="tabelaAgendas">
