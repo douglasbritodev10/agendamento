@@ -371,37 +371,34 @@ window.verComp = async (senha) => {
     if (!docSnap.exists()) return;
 
     const dados = docSnap.data();
-    const listaComp = document.getElementById('listaComposicaoModal');
     
-    // Verificação de segurança para o erro de null
-    if (!listaComp) {
-        console.error("Erro: Elemento 'listaComposicaoModal' não encontrado no HTML.");
-        return;
-    }
+    // 1. Salvamos os dados no array temporário
+    window.tempComposicao = [...(dados.composicao || [])];
 
-    listaComp.innerHTML = "";
+    // 2. Chamamos a função que você já tem para desenhar a lista E calcular o total
+    // Isso garante que o TOTAL: X apareça correto assim que o modal abrir
+    renderizarItensModal(); 
 
-    // Se não houver composição, evita erro de undefined
-    const composicao = dados.composicao || [];
-
-    composicao.forEach((item, index) => {
-        listaComp.innerHTML += `
-            <div style="display: flex; gap: 5px; margin-bottom: 8px; align-items: center; background: rgba(255,255,255,0.1); padding: 5px; border-radius: 5px;">
-                <input type="text" value="${item.codigo || ''}" onchange="atualizarArrayLocal(${index}, 'codigo', this.value)" style="width: 80px;" placeholder="Cód">
-                <input type="text" value="${item.descricao || ''}" onchange="atualizarArrayLocal(${index}, 'descricao', this.value)" style="flex: 1;" placeholder="Descrição">
-                <input type="number" value="${item.qtd || 0}" onchange="atualizarArrayLocal(${index}, 'qtd', this.value)" style="width: 60px;" placeholder="Qtd">
-                <button onclick="removerItemComposicao(${index})" style="color: #ff4d4d; background: none; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-    });
-    
-    window.tempComposicao = [...composicao];
-    document.getElementById('modalComposicao').style.display = 'block';
+    // 3. Abre o modal
+    const modal = document.getElementById('modalComposicao');
+    if (modal) modal.style.display = 'block';
 };
 
 // Atualiza o array em memória enquanto o usuário digita
 window.atualizarArrayLocal = (index, campo, valor) => {
-    window.tempComposicao[index][campo] = campo === 'qtd' ? parseInt(valor) : valor.toUpperCase();
+    // Atualiza o valor no array (convertendo para número se for quantidade)
+    window.tempComposicao[index][campo] = campo === 'qtd' ? parseInt(valor || 0) : valor.toUpperCase();
+    
+    // Se o usuário mexeu na quantidade, recalculamos o total na tela imediatamente
+    if (campo === 'qtd') {
+        let novoTotal = 0;
+        window.tempComposicao.forEach(item => {
+            novoTotal += (parseInt(item.qtd) || 0);
+        });
+        
+        const spanTotal = document.getElementById('totalPecas');
+        if (spanTotal) spanTotal.innerText = novoTotal;
+    }
 };
 
 // Remove do array em memória e atualiza a tela do modal
