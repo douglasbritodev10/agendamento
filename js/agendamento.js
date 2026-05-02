@@ -269,65 +269,71 @@ window.exportarExcel = async (modo) => {
 };
 
 function carregarDados() {
+    // Escuta em tempo real as mudanças na coleção "agendamentos" ordenadas por timestamp
     onSnapshot(query(collection(db, "agendamentos"), orderBy("timestamp", "desc")), (snap) => {
         const corpo = document.getElementById('corpoTabela');
         const rascunhos = document.getElementById('corpoRascunhos');
+        
+        // Captura valores dos filtros
         const dIni = document.getElementById('buscaInicio').value;
         const dFim = document.getElementById('buscaFim').value;
         const termo = document.getElementById('buscaGeral').value.toLowerCase();
 
-        corpo.innerHTML = ""; rascunhos.innerHTML = "";
+        // Limpa as tabelas antes de renderizar
+        corpo.innerHTML = ""; 
+        rascunhos.innerHTML = "";
 
         snap.forEach(d => {
             const ag = d.data();
             const cores = getCoresPorTipo(ag.tipoProduto);
-            const dataFormat = ag.data.split('-').reverse().join('/');
             
-            const atendeBusca = ag.senhaAgendamento.toLowerCase().includes(termo) || 
-                                ag.fornecedor.toLowerCase().includes(termo) || 
-                                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
-                                (ag.composicao && ag.composicao.some(item => 
-                                    (item.codigo && item.codigo.toLowerCase().includes(termo)) || 
-                                    (item.descricao && item.descricao.toLowerCase().includes(termo))
-                                ));
+            // Converte data ISO (YYYY-MM-DD) para padrão Brasileiro (DD/MM/YYYY)
+            const dataFormat = ag.data ? ag.data.split('-').reverse().join('/') : '-'; 
+            
+            // Lógica de Busca Global: verifica campos principais e itens da composição
+            const atendeBusca = 
+                ag.senhaAgendamento.toLowerCase().includes(termo) || 
+                ag.fornecedor.toLowerCase().includes(termo) || 
+                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
+                (ag.composicao && ag.composicao.some(item => 
+                    (item.codigo && String(item.codigo).toLowerCase().includes(termo)) || 
+                    (item.descricao && item.descricao.toLowerCase().includes(termo))
+                ));
 
+            // Componentes de UI (Badge e Botões)
             const badgeTipo = `<span style="background-color: ${cores.bg}; color: ${cores.text}; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; border: 1px solid rgba(0,0,0,0.1);">${ag.tipoProduto}</span>`;
 
-            const acoes = `
+            const btnAcoes = `
                 <button onclick="verComp('${ag.senhaAgendamento}')" title="Ver Itens" style="border:none; background:none; cursor:pointer;"><i class="fas fa-boxes"></i></button>
                 <button onclick="editarAg('${ag.senhaAgendamento}')" title="Editar" style="border:none; background:none; cursor:pointer;"><i class="fas fa-edit"></i></button>
             `;
 
+            // Template da linha da tabela
+            const gerarLinha = (classeCheck) => `
+                <tr>
+                    <td><input type="checkbox" class="${classeCheck}" value="${ag.senhaAgendamento}"></td>
+                    <td><b>${ag.senhaAgendamento}</b></td>
+                    <td>${dataFormat}</td>
+                    <td>${ag.central}</td>
+                    <td>${ag.cargas || '-'}</td>
+                    <td>${ag.pedido || '-'}</td>
+                    <td>${ag.fornecedor}</td>
+                    <td>${badgeTipo}</td>
+                    <td>
+                        ${ag.status === "Rascunho" ? `<button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>` : ''}
+                        ${btnAcoes}
+                    </td>
+                </tr>`;
+
+            // Distribuição dos dados nas tabelas (Rascunhos vs Definitivos)
             if (ag.status === "Rascunho") {
-                rascunhos.innerHTML += `
-                    <tr>
-                        <td><input type="checkbox" class="check-copy-rascunho" value="${ag.senhaAgendamento}"></td>
-                        <td><b>${ag.senhaAgendamento}</b></td>
-                        <td>${dataFormat}</td>
-                        <td>${ag.central}</td>
-                        <td>${ag.cargas || '-'}</td>
-                        <td>${ag.pedido || '-'}</td>
-                        <td>${ag.fornecedor}</td>
-                        <td>${badgeTipo}</td>
-                        <td>
-                            <button onclick="finalizarDireto('${ag.senhaAgendamento}')" title="Finalizar" style="color:green; border:none; background:none; cursor:pointer;"><i class="fas fa-check-circle"></i></button>
-                            ${acoes}
-                        </td>
-                    </tr>`;
+                if (atendeBusca) {
+                    rascunhos.innerHTML += gerarLinha("check-copy-rascunho");
+                }
             } else {
+                // Filtro de data aplicado apenas para agendamentos finalizados
                 if (ag.data >= dIni && ag.data <= dFim && atendeBusca) {
-                    corpo.innerHTML += `
-                        <tr>
-                            <td><input type="checkbox" class="check-export" value="${ag.senhaAgendamento}"></td>
-                            <td><b>${ag.senhaAgendamento}</b></td>
-                            <td>${dataFormat}</td>
-                            <td>${ag.central}</td>
-                            <td>${ag.cargas || '-'}</td>
-                            <td>${ag.pedido || '-'}</td>
-                            <td>${ag.fornecedor}</td>
-                            <td>${badgeTipo}</td>
-                            <td>${acoes}</td>
-                        </tr>`;
+                    corpo.innerHTML += gerarLinha("check-export");
                 }
             }
         });
@@ -360,38 +366,55 @@ window.fecharModais = () => document.querySelectorAll('.modal').forEach(m => m.s
 
 window.verComp = async (senha) => {
     senhaAbertaNoModal = senha;
-    const snap = await getDocs(collection(db, "agendamentos"));
-    const docEncontrado = snap.docs.find(x => x.id === senha);
-    if(!docEncontrado) return;
-    itensCargaTmp = docEncontrado.data().composicao || [];
-    renderizarItensModal();
-    document.getElementById('tituloComp').innerText = "Carga: " + senha;
-    document.getElementById('modalComp').style.display = 'flex';
-};
+    const docSnap = await getDoc(doc(db, "agendamentos", senha));
+    if (!docSnap.exists()) return;
 
-function renderizarItensModal() {
-    const corpo = document.getElementById('corpoItensComp');
-    corpo.innerHTML = ""; let total = 0;
-    itensCargaTmp.forEach((item, index) => {
-        total += parseInt(item.qtd || 0);
-        corpo.innerHTML += `<tr><td>${item.codigo}</td><td>${item.descricao}</td><td>${item.qtd}</td><td><button onclick="removerItemLocal(${index})" style="color:red; border:none; background:none;"><i class="fas fa-trash"></i></button></td></tr>`;
+    const dados = docSnap.data();
+    const listaComp = document.getElementById('listaComposicaoModal');
+    listaComp.innerHTML = "";
+
+    dados.composicao.forEach((item, index) => {
+        listaComp.innerHTML += `
+            <div style="display: flex; gap: 5px; margin-bottom: 8px; align-items: center; background: rgba(255,255,255,0.1); padding: 5px; border-radius: 5px;">
+                <input type="text" value="${item.codigo}" onchange="atualizarArrayLocal(${index}, 'codigo', this.value)" style="width: 80px;" placeholder="Cód">
+                <input type="text" value="${item.descricao}" onchange="atualizarArrayLocal(${index}, 'descricao', this.value)" style="flex: 1;" placeholder="Descrição">
+                <input type="number" value="${item.qtd}" onchange="atualizarArrayLocal(${index}, 'qtd', this.value)" style="width: 60px;" placeholder="Qtd">
+                <button onclick="removerItemComposicao(${index})" style="color: #ff4d4d; background: none; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
     });
-    document.getElementById('totalPecas').innerText = total;
-}
-
-window.removerItemLocal = (i) => { itensCargaTmp.splice(i,1); renderizarItensModal(); };
-window.adicionarItemManual = () => {
-    const cod = document.getElementById('itemCod').value || "N/A";
-    const desc = document.getElementById('itemDesc').value.toUpperCase();
-    const qtd = parseInt(document.getElementById('itemQtd').value);
-    if(!desc || isNaN(qtd)) return alert("Preencha descrição e quantidade!");
-    itensCargaTmp.push({ codigo: cod, descricao: desc, qtd: qtd });
-    renderizarItensModal();
+    
+    // Armazena temporariamente para edição
+    window.tempComposicao = [...dados.composicao];
+    document.getElementById('modalComposicao').style.display = 'block';
 };
 
-document.getElementById('btnSalvarEdicaoItens').onclick = async () => {
-    await updateDoc(doc(db, "agendamentos", senhaAbertaNoModal), { composicao: itensCargaTmp });
-    fecharModais();
+// Atualiza o array em memória enquanto o usuário digita
+window.atualizarArrayLocal = (index, campo, valor) => {
+    window.tempComposicao[index][campo] = campo === 'qtd' ? parseInt(valor) : valor.toUpperCase();
+};
+
+// Remove do array em memória e atualiza a tela do modal
+window.removerItemComposicao = (index) => {
+    if(confirm("Deseja remover este item?")) {
+        window.tempComposicao.splice(index, 1);
+        renderizarItensModal(); // Função simples para reler window.tempComposicao
+    }
+};
+
+// Salva as alterações da composição no Firestore
+window.confirmarEdicaoItens = async () => {
+    try {
+        const docRef = doc(db, "agendamentos", senhaAbertaNoModal);
+        await updateDoc(docRef, {
+            composicao: window.tempComposicao
+        });
+        alert("Composição atualizada com sucesso!");
+        document.getElementById('modalComposicao').style.display = 'none';
+    } catch (e) {
+        console.error("Erro ao atualizar itens:", e);
+        alert("Erro ao salvar alterações.");
+    }
 };
 
 window.editarAg = async (senha) => {
