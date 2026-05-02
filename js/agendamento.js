@@ -288,15 +288,15 @@ function carregarDados() {
             // Data no padrão brasileiro (DD/MM/YYYY) para exibição
             const dataFormat = ag.data ? ag.data.split('-').reverse().join('/') : '-'; 
             
-            // Busca Geral (Busca na Senha, Fornecedor, Pedido, Linha ou nos itens da carga)
+            // Busca Geral (Tratando números para evitar erro de toLowerCase)
             const atendeBusca = 
-                ag.senhaAgendamento.toLowerCase().includes(termo) || 
-                ag.fornecedor.toLowerCase().includes(termo) || 
-                (ag.linhaSeparacao && ag.linhaSeparacao.toLowerCase().includes(termo)) ||
-                (ag.pedido && ag.pedido.toLowerCase().includes(termo)) ||
+                (ag.senhaAgendamento ? String(ag.senhaAgendamento).toLowerCase().includes(termo) : false) || 
+                (ag.fornecedor ? String(ag.fornecedor).toLowerCase().includes(termo) : false) || 
+                (ag.linhaSeparacao && String(ag.linhaSeparacao).toLowerCase().includes(termo)) ||
+                (ag.pedido && String(ag.pedido).toLowerCase().includes(termo)) || // <--- Aqui garante que vira String
                 (ag.composicao && ag.composicao.some(item => 
                     (item.codigo && String(item.codigo).toLowerCase().includes(termo)) || 
-                    (item.descricao && item.descricao.toLowerCase().includes(termo))
+                    (item.descricao && String(item.descricao).toLowerCase().includes(termo))
                 ));
 
             // Badge de Tipo de Produto
@@ -372,21 +372,30 @@ window.verComp = async (senha) => {
 
     const dados = docSnap.data();
     const listaComp = document.getElementById('listaComposicaoModal');
+    
+    // Verificação de segurança para o erro de null
+    if (!listaComp) {
+        console.error("Erro: Elemento 'listaComposicaoModal' não encontrado no HTML.");
+        return;
+    }
+
     listaComp.innerHTML = "";
 
-    dados.composicao.forEach((item, index) => {
+    // Se não houver composição, evita erro de undefined
+    const composicao = dados.composicao || [];
+
+    composicao.forEach((item, index) => {
         listaComp.innerHTML += `
             <div style="display: flex; gap: 5px; margin-bottom: 8px; align-items: center; background: rgba(255,255,255,0.1); padding: 5px; border-radius: 5px;">
-                <input type="text" value="${item.codigo}" onchange="atualizarArrayLocal(${index}, 'codigo', this.value)" style="width: 80px;" placeholder="Cód">
-                <input type="text" value="${item.descricao}" onchange="atualizarArrayLocal(${index}, 'descricao', this.value)" style="flex: 1;" placeholder="Descrição">
-                <input type="number" value="${item.qtd}" onchange="atualizarArrayLocal(${index}, 'qtd', this.value)" style="width: 60px;" placeholder="Qtd">
+                <input type="text" value="${item.codigo || ''}" onchange="atualizarArrayLocal(${index}, 'codigo', this.value)" style="width: 80px;" placeholder="Cód">
+                <input type="text" value="${item.descricao || ''}" onchange="atualizarArrayLocal(${index}, 'descricao', this.value)" style="flex: 1;" placeholder="Descrição">
+                <input type="number" value="${item.qtd || 0}" onchange="atualizarArrayLocal(${index}, 'qtd', this.value)" style="width: 60px;" placeholder="Qtd">
                 <button onclick="removerItemComposicao(${index})" style="color: #ff4d4d; background: none; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
             </div>
         `;
     });
     
-    // Armazena temporariamente para edição
-    window.tempComposicao = [...dados.composicao];
+    window.tempComposicao = [...composicao];
     document.getElementById('modalComposicao').style.display = 'block';
 };
 
