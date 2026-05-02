@@ -708,3 +708,58 @@ function converterDataExcel(dataExcel) {
 
     return dataExcel; // Retorna o que vier se já estiver no padrão YYYY-MM-DD
 }
+
+// Função para abrir/fechar o menu de exportação
+window.toggleDropdownExport = () => {
+    const menu = document.getElementById('menuExport');
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+};
+
+// Fecha o menu se clicar fora dele
+window.onclick = function(event) {
+    if (!event.target.matches('.btn-exp') && !event.target.matches('.fa-share-alt') && !event.target.matches('.fa-caret-down')) {
+        const dropdowns = document.getElementsByClassName("dropdown-content"); // Caso use classe
+        const menu = document.getElementById('menuExport');
+        if (menu && menu.style.display === 'block') {
+            menu.style.display = 'none';
+        }
+    }
+};
+
+// Nova função para copiar agendamentos salvos (Tabela Principal)
+window.copiarAgendamentosSelecionados = () => {
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked'));
+    if (selecionados.length === 0) return alert("Selecione os agendamentos na tabela!");
+
+    let html = `<div style="font-family: Arial, sans-serif; max-width: 400px;">`;
+
+    selecionados.forEach(cb => {
+        const tr = cb.closest('tr');
+        const senha = tr.cells[1].innerText;
+        const data = tr.cells[2].innerText;
+        const central = tr.cells[3].innerText;
+        const cargas = tr.cells[4].innerText;
+        const fornecedor = tr.cells[6].innerText;
+        const tipo = tr.cells[7].innerText;
+        
+        // Buscamos as cores originais baseadas no tipo para manter o padrão visual
+        const cores = getCoresPorTipo(tipo);
+
+        html += `
+            <div style="background: ${cores.bg}; color: ${cores.text}; padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #ccc;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 4px; margin-bottom: 4px;">
+                    <b>SENHA: ${senha}</b> <span>DATA: ${data}</span>
+                </div>
+                <div style="font-size: 13px;">
+                    <b>FORNECEDOR:</b> ${fornecedor}<br>
+                    <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
+                    <b>REFERENTE:</b> ${cargas}
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const data = [new ClipboardItem({ 'text/html': blob })];
+    navigator.clipboard.write(data).then(() => alert("Agendamentos copiados!"));
+};
