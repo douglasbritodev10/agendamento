@@ -354,7 +354,7 @@ window.finalizarDireto = async (senha) => {
 };
 
 window.resetaForm = () => {
-    document.getElementById('central').value = "";
+    document.getElementById('central').value = "Selecione...";
     document.getElementById('pedido').value = "";
     document.getElementById('cargas').value = "";
     document.getElementById('tipoProduto').value = "";
