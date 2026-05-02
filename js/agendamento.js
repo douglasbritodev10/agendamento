@@ -173,41 +173,44 @@ window.exportarPDF = async (modo) => {
     const { jsPDF } = window.jspdf;
     const docPdf = new jsPDF('p', 'mm', 'a4');
     
-    // 1. Captura os IDs na ordem exata em que aparecem na tela (tabela do DOM)
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked'))
-        .map(c => c.value);
-    
+    // Função interna para respeitar sua lógica de cores
+    const getCoresPorTipo = (tipo) => {
+        const t = (tipo || "").toUpperCase();
+        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
+            return { rgb: [255, 255, 0], text: [0, 0, 0] }; // Amarelo
+        if (t.includes('MESA')) 
+            return { rgb: [76, 175, 80], text: [255, 255, 255] }; // Verde
+        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
+            return { rgb: [0, 191, 255], text: [255, 255, 255] }; // Azul
+        return { rgb: [255, 255, 255], text: [0, 0, 0] }; // Branco padrão
+    };
+
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
-    // 2. Busca os dados e garante a ordenação da tabela da interface
     const snap = await getDocs(collection(db, "agendamentos"));
     const agendasMap = {};
     snap.forEach(d => { agendasMap[d.id] = d.data(); });
     
-    // Filtra e ordena conforme a ordem dos IDs selecionados no DOM
     const agendas = selecionados.map(id => agendasMap[id]).filter(a => a !== undefined);
 
-    // 3. Cabeçalho Principal (Logo e Título)
-    docPdf.setFillColor(192, 0, 0); // Vermelho Simonetti
+    // Cabeçalho Principal
+    docPdf.setFillColor(192, 0, 0); 
     docPdf.rect(0, 0, 210, 25, 'F');
     docPdf.setFontSize(18);
     docPdf.setTextColor(255, 255, 255);
     docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16);
     
-    // 4. Sub-cabeçalho com Informações de Resumo
     docPdf.setFontSize(10);
-    docPdf.setTextColor(50);
     docPdf.text(`TOTAL DE AGENDAMENTOS: ${agendas.length}`, 14, 32);
     docPdf.setTextColor(100);
-    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 140, 32);
+    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32);
 
     let currentY = 38;
 
-    agendas.forEach((ag, index) => {
-        // Quebra de página se necessário
+    agendas.forEach((ag) => {
         if (currentY > 250) { docPdf.addPage(); currentY = 20; }
 
-        // 5. Tabela Principal com cores salteadas e fundo condicional no TIPO
         docPdf.autoTable({
             head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
             body: [[
@@ -220,28 +223,23 @@ window.exportarPDF = async (modo) => {
                 ag.linhaSeparacao || 'N/A'
             ]],
             startY: currentY,
-            theme: 'striped', // Aplica linhas salteadas automaticamente
-            headStyles: { fillColor: [40, 40, 40], textColor: 255, fontSize: 8, halign: 'center' },
+            theme: 'striped',
+            // Título da coluna com o mesmo vermelho do cabeçalho superior
+            headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
             styles: { fontSize: 8, halign: 'center', cellPadding: 3 },
             
-            // Lógica para cores no campo TIPO (ex: Amarelo para Roupeiro)
             didParseCell: function (data) {
+                // Aplica a lógica de cores apenas na coluna TIPO (índice 5)
                 if (data.section === 'body' && data.column.index === 5) {
-                    const tipo = data.cell.raw.toUpperCase();
-                    if (tipo.includes('ROUPEIRO')) {
-                        data.cell.styles.fillColor = [255, 255, 0]; // Amarelo
-                        data.cell.styles.textColor = [0, 0, 0];
-                    } else if (tipo.includes('ESTOFADO')) {
-                        data.cell.styles.fillColor = [144, 238, 144]; // Verde claro
-                    }
-                    // Adicione outras condições de cores aqui conforme sua necessidade
+                    const estilo = getCoresPorTipo(data.cell.raw);
+                    data.cell.styles.fillColor = estilo.rgb;
+                    data.cell.styles.textColor = estilo.text;
                 }
             }
         });
 
         currentY = docPdf.lastAutoTable.finalY;
 
-        // 6. Seção de Composição (Apenas se houver dados e modo completo)
         if (modo === 'completo' && ag.composicao && ag.composicao.length > 0) {
             docPdf.autoTable({
                 head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
@@ -250,8 +248,9 @@ window.exportarPDF = async (modo) => {
                 margin: { left: 20 }, 
                 tableWidth: 170,
                 theme: 'grid',
-                headStyles: { fillColor: [220, 220, 220], textColor: 0, fontSize: 7, fontStyle: 'bold' },
-                styles: { fontSize: 7, fillColor: [250, 250, 250] },
+                // Cabeçalho da composição em cinza claro para diferenciar da agenda principal
+                headStyles: { fillColor: [230, 230, 230], textColor: 0, fontSize: 7, fontStyle: 'bold' },
+                styles: { fontSize: 7 },
                 columnStyles: {
                     0: { cellWidth: 30 },
                     2: { cellWidth: 20, halign: 'center' }
