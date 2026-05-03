@@ -130,7 +130,7 @@ function renderizarTabela() {
 }
 
 // --- 4. MODAL FILTRO INTELIGENTE ---
-window.abrirModalFiltro = (coluna) => {
+window.abrirFiltro = (coluna) => {
     colunaFiltroAtual = coluna;
     document.getElementById('nomeColunaFiltro').innerText = `Filtrar: ${coluna.toUpperCase()}`;
     const container = document.getElementById('opcoesFiltro');
