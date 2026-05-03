@@ -1,189 +1,396 @@
-import { app } from './firebase-config.js';
-import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { db } from './firebase-config.js'; 
+import { collection, query, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const db = getFirestore(app);
-
-// CORREÇÃO DAS CHAVES (Baseado no seu auth.js)
-const usuarioNome = localStorage.getItem('usuarioNome') || "D. BRITO";
-const nivelAcesso = localStorage.getItem('nivelAcesso'); // ADM, COLABORADOR, etc.
-const usernameAtivo = localStorage.getItem('username');
-
-let dadosMestres = [];
+// --- ESTADO GLOBAL ---
+let dadosOriginais = [];
 let dadosFiltrados = [];
-let filtrosAtivos = { 
-    senhaAgendamento: [], data: [], central: [], fornecedor: [], 
-    tipoProduto: [], notaFiscal: [], cte: [], situacao: [] 
-};
-let colunaFiltroAtual = "";
+let paginaAtual = 1;
+let itensPorPagina = 50;
+let colunaFiltroAtual = '';
+let filtrosSelecionados = {}; // Armazena filtros de múltiplas colunas
 
-// --- 1. PROTEÇÃO E INICIALIZAÇÃO ---
-function init() {
-    // Se não tiver username, manda pro login
-    if (!usernameAtivo) {
-        window.location.href = 'index.html';
-        return;
-    }
+// --- INICIALIZAÇÃO ---
+document.addEventListener('DOMContentLoaded', () => {
+    escutarDadosFirebase();
+});
 
-    document.getElementById('txtUser').innerText = usuarioNome;
-
-    // Busca apenas agendamentos com status "Agendado"
-    const q = query(collection(db, "agendamentos"), where("status", "==", "Agendado"));
+// --- BUSCA DE DADOS EM TEMPO REAL ---
+function escutarDadosFirebase() {
+    const q = query(collection(db, "agendamentos"));
     
-    onSnapshot(q, (snapshot) => {
-        dadosMestres = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        window.atualizarFiltros();
-    });
-}
-
-// --- 2. LOGICA DE FILTROS (IGUAL MONITORAMENTO) ---
-window.atualizarFiltros = () => {
-    dadosFiltrados = dadosMestres.filter(item => {
-        return Object.keys(filtrosAtivos).every(col => {
-            if (!filtrosAtivos[col] || filtrosAtivos[col].length === 0) return true;
-            return filtrosAtivos[col].includes(String(item[col] || ""));
+    onSnapshot(q, (querySnapshot) => {
+        dadosOriginais = [];
+        querySnapshot.forEach((doc) => {
+            dadosOriginais.push({ id: doc.id, ...doc.data() });
         });
-    });
-    atualizarIndicadoresVisuais();
-    renderizarTabela();
-};
-
-function atualizarIndicadoresVisuais() {
-    Object.keys(filtrosAtivos).forEach(col => {
-        const btn = document.getElementById(`btn-filter-${col}`);
-        if (btn) {
-            if (filtrosAtivos[col].length > 0) {
-                btn.innerText = 'APLICADO';
-                btn.style.backgroundColor = '#fff176';
-                btn.style.color = '#333';
-                btn.style.padding = '2px 5px';
-                btn.style.borderRadius = '4px';
-                btn.style.fontWeight = 'bold';
-            } else {
-                btn.innerText = 'FILTRO';
-                btn.style = "";
-            }
-        }
+        aplicarFiltrosEBusca();
     });
 }
 
-// --- 3. RENDERIZAÇÃO E CORES (DO SEU PRINT) ---
-function renderizarTabela() {
-    const tbody = document.getElementById('corpoTabela');
-    tbody.innerHTML = "";
+// --- RENDERIZAÇÃO DA TABELA ---
+window.renderizarTabela = function() {
+    const corpo = document.getElementById('corpoTabela');
+    corpo.innerHTML = '';
 
-    dadosFiltrados.forEach(item => {
+    const inicio = (paginaAtual - 1) * itensPorPagina;
+    const fim = inicio + itensPorPagina;
+    const listaExibicao = dadosFiltrados.slice(inicio, fim);
+
+    listaExibicao.forEach(item => {
         const tr = document.createElement('tr');
-        const classeSit = getClasseSituacao(item.situacao || 'OC PENDENTE');
-        
         tr.innerHTML = `
-            <td><input type="checkbox" class="row-check" value="${item.id}"></td>
-            <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
-            <td>${item.data ? item.data.split('-').reverse().join('/') : '---'}</td>
-            <td>${item.central || '---'}</td>
-            <td>${item.fornecedor || '---'}</td>
-            <td>${item.tipoProduto || '---'}</td>
-            <td>${item.notaFiscal || '---'}</td>
-            <td>${item.cte || '---'}</td>
-            <td><span class="badge-situacao ${classeSit}">${item.situacao || 'OC PENDENTE'}</span></td>
+            <td><input type="checkbox" value="${item.id}"></td>
+            <td style="font-weight:bold; color:var(--primary)">${item.senhaAgendamento || '-'}</td>
+            <td>${formatarData(item.data)}</td>
+            <td>${item.central || '-'}</td>
+            <td>${item.cargas || '-'}</td>
             <td>
-                <button onclick="abrirEdicao('${item.id}')" style="background:none; border:none; cursor:pointer; color:var(--primary)">
-                    <i class="fas ${item.editandoPor ? 'fa-lock' : 'fa-edit'} fa-lg"></i>
+                <input type="text" class="control-input" style="padding:4px; width:90%; text-align:center" 
+                value="${item.nf_cte || ''}" onchange="atualizarCampo('${item.id}', 'nf_cte', this.value)">
+            </td>
+            <td>${renderizarSelectSituacao(item)}</td>
+            <td style="text-align:left">${item.fornecedor || '-'}</td>
+            <td>${item.tipoProduto || '-'}</td>
+            <td>${item.linhaSeparacao || '-'}</td>
+            <td>
+                <button onclick="abrirComposicao('${item.id}')" style="border:none; background:none; cursor:pointer; color:#1565c0">
+                    <i class="fas fa-eye"></i>
                 </button>
             </td>
         `;
-        tbody.appendChild(tr);
+        corpo.appendChild(tr);
     });
-}
 
-function getClasseSituacao(sit) {
-    const mapa = {
-        'OK NO AJUSTE': 'sit-ok', 'SEM NOTA': 'sit-sem-nota', 'REAGENDADA': 'sit-reagendada',
-        'SOBRE AJUSTE': 'sit-sobre-ajuste', 'CANCELADA': 'sit-cancelada', 'OC PENDENTE': 'sit-oc-pendente',
-        'SEM TRIANGULAÇÃO': 'sit-sem-triangulacao', 'VENCIMENTO ERRADO': 'sit-vencimento-errado',
-        'FALTA CTe': 'sit-falta-cte', 'NOTA ERRADA': 'sit-nota-errada', 'CTe DIVERGENTE': 'sit-cte-divergente'
-    };
-    return mapa[sit] || 'sit-oc-pendente';
-}
-
-// --- 4. BLOQUEIO E EDIÇÃO ---
-window.abrirEdicao = async (id) => {
-    // Verifica nível de acesso
-    if (nivelAcesso === 'LEITOR') {
-        alert("Seu nível de acesso permite apenas visualização.");
-        return;
-    }
-
-    const item = dadosMestres.find(d => d.id === id);
-    
-    // Trava de segurança (Lock)
-    if (item.editandoPor && item.editandoPor !== usernameAtivo) {
-        alert(`Bloqueado: O usuário ${item.editandoPor} está editando esta agenda agora.`);
-        return;
-    }
-
-    // Marca no Firebase que você está editando
-    await updateDoc(doc(db, "agendamentos", id), { editandoPor: usernameAtivo });
-
-    document.getElementById('editId').value = id;
-    document.getElementById('inputNF').value = item.notaFiscal || '';
-    document.getElementById('inputCTe').value = item.cte || '';
-    document.getElementById('selectSituacao').value = item.situacao || 'OC PENDENTE';
-    document.getElementById('modalEdicao').style.display = 'flex';
+    atualizarControlesPaginacao();
 };
 
-window.cancelarEdicao = async () => {
-    const id = document.getElementById('editId').value;
-    if (id) await updateDoc(doc(db, "agendamentos", id), { editandoPor: null });
-    fecharModais();
+// --- FILTROS E BUSCA ---
+window.atualizarFiltros = function() {
+    aplicarFiltrosEBusca();
 };
 
-window.salvarAlteracoes = async () => {
-    const id = document.getElementById('editId').value;
-    const btn = document.getElementById('btnSalvar');
+function aplicarFiltrosEBusca() {
+    const termoBusca = document.getElementById('inputBusca').value.toLowerCase();
     
-    btn.innerText = "SALVANDO...";
-    btn.disabled = true;
-
-    try {
-        await updateDoc(doc(db, "agendamentos", id), {
-            notaFiscal: document.getElementById('inputNF').value,
-            cte: document.getElementById('inputCTe').value,
-            situacao: document.getElementById('selectSituacao').value,
-            editandoPor: null, // Libera a trava
-            ultimaEdicao: new Date().toISOString()
+    dadosFiltrados = dadosOriginais.filter(item => {
+        // Busca Geral
+        const matchBusca = Object.values(item).some(val => String(val).toLowerCase().includes(termoBusca));
+        
+        // Filtros por Coluna (Filtro Inteligente)
+        const matchFiltros = Object.keys(filtrosSelecionados).every(coluna => {
+            if (filtrosSelecionados[coluna].length === 0) return true;
+            return filtrosSelecionados[coluna].includes(String(item[coluna]));
         });
-        fecharModais();
-    } catch (e) {
-        alert("Erro ao salvar dados.");
-    } finally {
-        btn.innerText = "SALVAR DADOS";
-        btn.disabled = false;
-    }
-};
 
-// --- FILTROS (REAPROVEITADO DO MONITORAMENTO) ---
-window.abrirFiltro = (coluna, event) => {
+        return matchBusca && matchFiltros;
+    });
+
+    paginaAtual = 1;
+    renderizarTabela();
+}
+
+// --- MODAL DE FILTRO INTELIGENTE ---
+window.abrirFiltro = function(coluna, event) {
     event.stopPropagation();
     colunaFiltroAtual = coluna;
+    const modal = document.getElementById('modalFiltro');
     const container = document.getElementById('opcoesFiltro');
-    const valoresUnicos = [...new Set(dadosMestres.map(d => String(d[coluna] || "")))].sort();
-
-    container.innerHTML = valoresUnicos.map(val => `
-        <label style="display:block; margin:5px 0; cursor:pointer">
-            <input type="checkbox" class="chk-filtro" value="${val}" ${filtrosAtivos[coluna].includes(val) ? 'checked' : ''}> ${val}
+    
+    // Pegar valores únicos da coluna
+    const valoresUnicos = [...new Set(dadosOriginais.map(item => String(item[coluna] || '')))].sort();
+    
+    container.innerHTML = valoresUnicos.map(valor => `
+        <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer">
+            <input type="checkbox" value="${valor}" ${filtrosSelecionados[coluna]?.includes(valor) ? 'checked' : ''} class="check-item-filtro"> 
+            ${valor === '' ? '(Vazio)' : valor}
         </label>
     `).join('');
-    document.getElementById('modalFiltro').style.display = 'flex';
+
+    modal.style.display = 'flex';
 };
 
-window.aplicarFiltroColuna = () => {
-    const selecionados = Array.from(document.querySelectorAll('.chk-filtro:checked')).map(c => c.value);
-    filtrosAtivos[colunaFiltroAtual] = selecionados;
-    window.atualizarFiltros();
+window.aplicarFiltroColuna = function() {
+    const selecionados = Array.from(document.querySelectorAll('.check-item-filtro:checked')).map(cb => cb.value);
+    filtrosSelecionados[colunaFiltroAtual] = selecionados;
     fecharModais();
+    aplicarFiltrosEBusca();
 };
 
-window.fecharModais = () => { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); };
-window.marcarTodos = (el) => { document.querySelectorAll('.row-check').forEach(c => c.checked = el.checked); };
+window.exportarPDF = async (modo) => {
+    const { jsPDF } = window.jspdf;
+    const docPdf = new jsPDF('p', 'mm', 'a4');
+    
+    const getCoresPorTipo = (tipo) => {
+        const t = (tipo || "").toUpperCase();
+        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
+            return { rgb: [255, 255, 0], text: [0, 0, 0] };
+        if (t.includes('MESA')) 
+            return { rgb: [76, 175, 80], text: [255, 255, 255] };
+        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
+            return { rgb: [0, 191, 255], text: [255, 255, 255] };
+        return { rgb: [255, 255, 255], text: [0, 0, 0] };
+    };
 
-init();
+    const selecionados = Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
+    if (selecionados.length === 0) return alert("Selecione agendamentos!");
+
+    const snap = await getDocs(collection(db, "agendamentos"));
+    const agendasMap = {};
+    snap.forEach(d => { agendasMap[d.id] = d.data(); });
+    const agendas = selecionados.map(id => agendasMap[id]).filter(a => a !== undefined);
+
+    // Cabeçalho fixo do topo
+    docPdf.setFillColor(192, 0, 0); 
+    docPdf.rect(0, 0, 210, 25, 'F');
+    docPdf.setFontSize(18);
+    docPdf.setTextColor(255, 255, 255);
+    docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16); //
+    
+    docPdf.setFontSize(10);
+    docPdf.setTextColor(0, 0, 0);
+    docPdf.text(`TOTAL DE AGENDAS: ${agendas.length}`, 14, 32);
+    docPdf.setTextColor(100);
+    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32); //
+
+    let currentY = 38;
+
+    if (modo === 'completo') {
+        // --- LÓGICA PARA O PDF COMPLETO (Blocos Elegantes) ---
+        agendas.forEach((ag) => {
+            if (currentY > 240) { docPdf.addPage(); currentY = 20; }
+
+            docPdf.autoTable({
+                head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
+                body: [[
+                    ag.senhaAgendamento, 
+                    ag.data.split('-').reverse().join('/'), 
+                    ag.central, 
+                    ag.cargas || '-', 
+                    ag.fornecedor, 
+                    ag.tipoProduto,
+                    ag.linhaSeparacao || 'N/A'
+                ]],
+                startY: currentY,
+                theme: 'grid',
+                headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.column.index === 5) {
+                        const estilo = getCoresPorTipo(data.cell.raw);
+                        data.cell.styles.fillColor = estilo.rgb;
+                        data.cell.styles.textColor = estilo.text;
+                    }
+                }
+            });
+
+            currentY = docPdf.lastAutoTable.finalY;
+
+            if (ag.composicao && ag.composicao.length > 0) {
+                docPdf.autoTable({
+                    head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
+                    body: ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]),
+                    startY: currentY,
+                    margin: { left: 14 },
+                    theme: 'grid',
+                    headStyles: { fillColor: [235, 235, 235], textColor: 0, fontSize: 7.5, fontStyle: 'bold' },
+                    styles: { fontSize: 7.5, cellPadding: 2 },
+                    columnStyles: { 0: { cellWidth: 30 }, 2: { cellWidth: 20, halign: 'center' } }
+                });
+                currentY = docPdf.lastAutoTable.finalY + 10; // Espaço maior entre blocos
+            } else {
+                currentY += 8;
+            }
+        });
+    } else {
+        // --- LÓGICA PARA O PDF BÁSICO (Tabela Contínua do Print) ---
+        const tableBody = agendas.map(ag => [
+            ag.senhaAgendamento,
+            ag.data.split('-').reverse().join('/'),
+            ag.central,
+            ag.cargas || '-',
+            ag.fornecedor,
+            ag.tipoProduto,
+            ag.linhaSeparacao || 'N/A'
+        ]);
+
+        docPdf.autoTable({
+            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
+            body: tableBody,
+            startY: currentY,
+            theme: 'grid',
+            headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
+            styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 5) {
+                    const estilo = getCoresPorTipo(data.cell.raw);
+                    data.cell.styles.fillColor = estilo.rgb;
+                    data.cell.styles.textColor = estilo.text;
+                }
+            }
+        });
+    }
+
+    docPdf.save(`Relatorio_Simonetti_${modo.toUpperCase()}.pdf`);
+};
+
+window.exportarExcel = async (modo) => {
+    const selecionados = Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
+    if (selecionados.length === 0) return alert("Selecione agendamentos!");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Relatorio');
+
+    const getEstiloExcel = (tipo) => {
+        const t = (tipo || "").toUpperCase();
+        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
+            return { fg: 'FFFF00', txt: '000000' }; 
+        if (t.includes('MESA')) 
+            return { fg: '4CAF50', txt: 'FFFFFF' }; 
+        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
+            return { fg: '00BFFF', txt: 'FFFFFF' }; 
+        return { fg: 'FFFFFF', txt: '000000' }; 
+    };
+
+    const columns = [
+        { header: 'Senha', key: 'Senha', width: 25 },
+        { header: 'Data', key: 'Data', width: 12 },
+        { header: 'Central', key: 'Central', width: 15 },
+        { header: 'Cargas', key: 'Cargas', width: 15 },
+        { header: 'Pedido', key: 'Pedido', width: 15 },
+        { header: 'Fornecedor', key: 'Fornecedor', width: 25 },
+        { header: 'Tipo', key: 'Tipo', width: 20 },
+        { header: 'Linha', key: 'linhaSeparacao', width: 15 }
+    ];
+
+    if (modo === 'completo') {
+        columns.push(
+            { header: 'Cód. Item', key: 'Cod_Item', width: 15 },
+            { header: 'Descrição', key: 'Descricao', width: 40 },
+            { header: 'Qtd', key: 'Qtd', width: 10 }
+        );
+    }
+    worksheet.columns = columns;
+
+    const snap = await getDocs(collection(db, "agendamentos"));
+    
+    // Filtramos e ordenamos por data para a separação funcionar corretamente
+    const agendamentosProcessados = [];
+    snap.forEach(doc => {
+        if (selecionados.includes(doc.id)) {
+            agendamentosProcessados.push(doc.data());
+        }
+    });
+    
+    // Ordenar por data (garante que agendamentos do mesmo dia fiquem juntos)
+    agendamentosProcessados.sort((a, b) => a.data.localeCompare(b.data));
+
+    let dataAnterior = null;
+
+    agendamentosProcessados.forEach(d => {
+        const dataFormatada = d.data.split('-').reverse().join('/');
+        
+        // Se a data mudou e não é a primeira linha, insere linha em branco
+        if (dataAnterior && dataAnterior !== dataFormatada) {
+            worksheet.addRow({}); 
+        }
+
+        const base = {
+            Senha: d.senhaAgendamento,
+            Data: dataFormatada,
+            Central: d.central,
+            Cargas: d.cargas,
+            Pedido: d.pedido,
+            Fornecedor: d.fornecedor,
+            Tipo: d.tipoProduto,
+            linhaSeparacao: d.linhaSeparacao || "N/A"
+        };
+
+        if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
+            d.composicao.forEach(item => {
+                const row = worksheet.addRow({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
+                aplicarEstiloCelula(row, d.tipoProduto);
+            });
+        } else {
+            const row = worksheet.addRow(base);
+            aplicarEstiloCelula(row, d.tipoProduto);
+        }
+
+        dataAnterior = dataFormatada;
+    });
+
+    // Função para aplicar bordas e cores
+    function aplicarEstiloCelula(row, tipo) {
+        row.eachCell({ includeEmpty: false }, (cell) => {
+            // Aplicar bordas em todas as células com dados
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+            
+            // Centralizar dados (opcional, para ficar mais limpo)
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        // Aplicar cor na coluna Tipo
+        const estilo = getEstiloExcel(tipo);
+        const cellTipo = row.getCell('Tipo');
+        cellTipo.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: estilo.fg }
+        };
+        cellTipo.font = { color: { argb: estilo.txt }, bold: true };
+    }
+
+    // Estilo do Cabeçalho Vermelho Simonetti
+    worksheet.getRow(1).eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C00000' } };
+        cell.font = { color: { argb: 'FFFFFF' }, bold: true };
+        cell.alignment = { horizontal: 'center' };
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Simonetti_Export_${modo.toUpperCase()}.xlsx`;
+    a.click();
+};
+
+// --- AUXILIARES ---
+async function atualizarCampo(id, campo, valor) {
+    try {
+        await updateDoc(doc(db, "agendamentos", id), { [campo]: valor });
+    } catch (e) { console.error("Erro ao atualizar:", e); }
+}
+
+function renderizarSelectSituacao(item) {
+    const status = ['AGUARDANDO', 'EM PROCESSO', 'FINALIZADO', 'PENDENTE'];
+    const cores = { 'AGUARDANDO': '#666', 'EM PROCESSO': '#1565c0', 'FINALIZADO': '#2e7d32', 'PENDENTE': '#d32f2f' };
+    
+    return `
+        <select onchange="atualizarCampo('${item.id}', 'situacao', this.value)" 
+            style="background:${cores[item.situacao] || '#eee'}; color:white; border:none; border-radius:15px; padding:4px 8px; font-size:10px; font-weight:bold;">
+            ${status.map(s => `<option value="${s}" ${item.situacao === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+    `;
+}
+
+function formatarData(data) {
+    if (!data) return '-';
+    const [ano, mes, dia] = data.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+window.fecharModais = function() {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+};
