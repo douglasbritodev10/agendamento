@@ -67,17 +67,29 @@ window.atualizarFiltros = () => {
 };
 
 function atualizarIndicadoresVisuais() {
-    // Remove badges antigos
-    document.querySelectorAll('.badge-filtro').forEach(b => b.remove());
+    // Lista de todas as colunas que possuem filtro
+    const colunas = ['senhaAgendamento', 'data', 'central', 'cargas', 'fornecedor', 'tipoProduto', 'linhaSeparacao'];
 
-    Object.keys(filtrosAtivos).forEach(col => {
-        if (filtrosAtivos[col].length > 0) {
-            const container = document.getElementById(`th-${col}`);
-            if (container) {
-                const badge = document.createElement('span');
-                badge.className = 'badge-filtro';
-                badge.innerText = 'FILTRO APLICADO';
-                container.appendChild(badge);
+    colunas.forEach(col => {
+        const btn = document.getElementById(`btn-filter-${col}`);
+        if (btn) {
+            if (filtrosAtivos[col] && filtrosAtivos[col].length > 0) {
+                // Estilo quando o filtro está ATIVO
+                btn.innerText = 'APLICADO';
+                btn.style.backgroundColor = '#fff176'; // Amarelo
+                btn.style.color = '#333';
+                btn.style.padding = '2px 6px';
+                btn.style.borderRadius = '4px';
+                btn.style.fontWeight = 'bold';
+                btn.style.border = '1px solid #fbc02d';
+            } else {
+                // Estilo PADRÃO
+                btn.innerText = 'FILTRO';
+                btn.style.backgroundColor = 'transparent';
+                btn.style.color = 'inherit';
+                btn.style.border = 'none';
+                btn.style.fontWeight = 'normal';
+                btn.style.padding = '0';
             }
         }
     });
