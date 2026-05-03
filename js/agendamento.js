@@ -290,23 +290,20 @@ window.exportarExcel = async (modo) => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
-    // Precisamos da biblioteca ExcelJS para suportar cores
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Relatorio');
 
-    // Definição das cores (mesma lógica do PDF)
     const getEstiloExcel = (tipo) => {
         const t = (tipo || "").toUpperCase();
         if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
-            return { fg: 'FFFF00', txt: '000000' }; // Amarelo
+            return { fg: 'FFFF00', txt: '000000' }; 
         if (t.includes('MESA')) 
-            return { fg: '4CAF50', txt: 'FFFFFF' }; // Verde
+            return { fg: '4CAF50', txt: 'FFFFFF' }; 
         if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
-            return { fg: '00BFFF', txt: 'FFFFFF' }; // Azul
-        return { fg: 'FFFFFF', txt: '000000' }; // Branco
+            return { fg: '00BFFF', txt: 'FFFFFF' }; 
+        return { fg: 'FFFFFF', txt: '000000' }; 
     };
 
-    // Configuração das colunas
     const columns = [
         { header: 'Senha', key: 'Senha', width: 25 },
         { header: 'Data', key: 'Data', width: 12 },
@@ -328,35 +325,68 @@ window.exportarExcel = async (modo) => {
     worksheet.columns = columns;
 
     const snap = await getDocs(collection(db, "agendamentos"));
-
+    
+    // Filtramos e ordenamos por data para a separação funcionar corretamente
+    const agendamentosProcessados = [];
     snap.forEach(doc => {
         if (selecionados.includes(doc.id)) {
-            const d = doc.data();
-            const base = {
-                Senha: d.senhaAgendamento,
-                Data: d.data.split('-').reverse().join('/'),
-                Central: d.central,
-                Cargas: d.cargas,
-                Pedido: d.pedido,
-                Fornecedor: d.fornecedor,
-                Tipo: d.tipoProduto,
-                linhaSeparacao: d.linhaSeparacao || "N/A"
-            };
-
-            if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
-                d.composicao.forEach(item => {
-                    const row = worksheet.addRow({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
-                    aplicarCorTipo(row, d.tipoProduto);
-                });
-            } else {
-                const row = worksheet.addRow(base);
-                aplicarCorTipo(row, d.tipoProduto);
-            }
+            agendamentosProcessados.push(doc.data());
         }
     });
+    
+    // Ordenar por data (garante que agendamentos do mesmo dia fiquem juntos)
+    agendamentosProcessados.sort((a, b) => a.data.localeCompare(b.data));
 
-    // Função auxiliar para pintar a célula da coluna "Tipo" (coluna G ou 7)
-    function aplicarCorTipo(row, tipo) {
+    let dataAnterior = null;
+
+    agendamentosProcessados.forEach(d => {
+        const dataFormatada = d.data.split('-').reverse().join('/');
+        
+        // Se a data mudou e não é a primeira linha, insere linha em branco
+        if (dataAnterior && dataAnterior !== dataFormatada) {
+            worksheet.addRow({}); 
+        }
+
+        const base = {
+            Senha: d.senhaAgendamento,
+            Data: dataFormatada,
+            Central: d.central,
+            Cargas: d.cargas,
+            Pedido: d.pedido,
+            Fornecedor: d.fornecedor,
+            Tipo: d.tipoProduto,
+            linhaSeparacao: d.linhaSeparacao || "N/A"
+        };
+
+        if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
+            d.composicao.forEach(item => {
+                const row = worksheet.addRow({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
+                aplicarEstiloCelula(row, d.tipoProduto);
+            });
+        } else {
+            const row = worksheet.addRow(base);
+            aplicarEstiloCelula(row, d.tipoProduto);
+        }
+
+        dataAnterior = dataFormatada;
+    });
+
+    // Função para aplicar bordas e cores
+    function aplicarEstiloCelula(row, tipo) {
+        row.eachCell({ includeEmpty: false }, (cell) => {
+            // Aplicar bordas em todas as células com dados
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+            
+            // Centralizar dados (opcional, para ficar mais limpo)
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        // Aplicar cor na coluna Tipo
         const estilo = getEstiloExcel(tipo);
         const cellTipo = row.getCell('Tipo');
         cellTipo.fill = {
@@ -367,14 +397,19 @@ window.exportarExcel = async (modo) => {
         cellTipo.font = { color: { argb: estilo.txt }, bold: true };
     }
 
-    // Estilização do cabeçalho (Vermelho Simonetti)
+    // Estilo do Cabeçalho Vermelho Simonetti
     worksheet.getRow(1).eachCell((cell) => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C00000' } };
         cell.font = { color: { argb: 'FFFFFF' }, bold: true };
         cell.alignment = { horizontal: 'center' };
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
     });
 
-    // Gerar e baixar o arquivo
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
