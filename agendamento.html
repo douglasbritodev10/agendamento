@@ -11,53 +11,116 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
-    <style>
-        :root { --vermelho: #D32F2F; --preto: #212121; --fundo: #F0F2F5; --branco: #FFFFFF; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background: var(--fundo); color: var(--preto); }
+<style>
+    :root { 
+        --vermelho: #D32F2F; 
+        --preto: #212121; 
+        --fundo: #F0F2F5; 
+        --branco: #FFFFFF; 
+        --borda: #dddddd;
+    }
 
-        .tipo-amarelo { background-color: #FFFF00 !important; color: #000; font-weight: bold; }
-        .tipo-verde { background-color: #4CAF50 !important; color: #fff; font-weight: bold; }
-        .tipo-azul { background-color: #00BFFF !important; color: #fff; font-weight: bold; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background: var(--fundo); color: var(--preto); }
 
-        .navbar { background: var(--vermelho); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-        .logo { font-weight: bold; font-size: 1.2rem; }
-        .logo span { font-weight: 300; }
+    /* Estilos de Cores por Tipo */
+    .tipo-amarelo { background-color: #FFFF00 !important; color: #000; font-weight: bold; border-radius: 4px; padding: 2px 6px; }
+    .tipo-verde { background-color: #4CAF50 !important; color: #fff; font-weight: bold; border-radius: 4px; padding: 2px 6px; }
+    .tipo-azul { background-color: #00BFFF !important; color: #fff; font-weight: bold; border-radius: 4px; padding: 2px 6px; }
 
-        .container { display: grid; grid-template-columns: 350px 1fr; gap: 20px; padding: 20px; max-width: 1800px; margin: 0 auto; }
+    .navbar { background: var(--vermelho); color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+    .logo { font-weight: bold; font-size: 1.2rem; }
+    .logo span { font-weight: 300; }
 
-        .card { background: var(--branco); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .card-header { border-bottom: 2px solid var(--fundo); margin-bottom: 15px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .card-header h3 { font-size: 0.9rem; color: var(--vermelho); text-transform: uppercase; }
+    /* Container: No PC ocupa quase toda a tela */
+    .container { 
+        display: grid; 
+        grid-template-columns: 320px 1fr; 
+        gap: 20px; 
+        padding: 20px; 
+        max-width: 98%; /* Aumentado para preencher melhor o PC */
+        margin: 0 auto; 
+    }
 
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 0.75rem; font-weight: bold; color: #666; margin-bottom: 4px; text-transform: uppercase; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
-        .readonly { background: #f0f0f0; font-weight: bold; color: var(--vermelho); }
+    .card { background: var(--branco); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .card-header { border-bottom: 2px solid var(--fundo); margin-bottom: 15px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .card-header h3 { font-size: 0.9rem; color: var(--vermelho); text-transform: uppercase; }
 
-        .btn-main { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 8px; }
-        .btn-save { background: var(--vermelho); color: white; }
-        .btn-draft { background: #607D8B; color: white; }
-        
-        .filter-bar { background: white; padding: 15px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
-        .export-actions { display: flex; gap: 5px; margin-left: auto; }
-        .btn-exp { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold; color: white; display: flex; align-items: center; gap: 5px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.75rem; font-weight: bold; color: #666; margin-bottom: 4px; text-transform: uppercase; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; }
+    .readonly { background: #f0f0f0; font-weight: bold; color: var(--vermelho); }
 
-        .table-responsive { background: white; border-radius: 12px; overflow-x: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 800px; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; color: #666; border-bottom: 2px solid #eee; cursor: pointer; white-space: nowrap; }
-        td { padding: 12px; border-bottom: 1px solid #eee; }
+    .btn-main { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 8px; }
+    .btn-save { background: var(--vermelho); color: white; }
+    .btn-draft { background: #607D8B; color: white; }
+    
+    .filter-bar { background: white; padding: 15px; border-radius: 12px; display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
+    .export-actions { display: flex; gap: 10px; margin-left: auto; }
+    .btn-exp { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; color: white; display: flex; align-items: center; gap: 5px; }
 
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 10px; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+    /* TABELAS - ORGANIZAÇÃO E VISUAL */
+    .table-responsive { 
+        background: white; 
+        border-radius: 12px; 
+        overflow-x: auto; /* Garante rolagem lateral no celular */
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+        margin-bottom: 20px;
+    }
 
-        .secao-rascunho { border: 2px dashed #607D8B; background: #f8f9fb; padding: 15px; border-radius: 12px; margin-top: 20px; }
-        
-        @media (max-width: 1024px) {
-            .container { grid-template-columns: 1fr; }
-            .export-actions { width: 100%; justify-content: space-between; }
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        font-size: 0.85rem; 
+        min-width: 1000px; /* Força a rolagem no celular e mantém colunas legíveis */
+    }
+
+    /* Títulos com cor de fundo e linhas verticais */
+    th { 
+        background: #f1f1f1; /* Cor de fundo nos títulos */
+        padding: 12px 10px; 
+        text-align: left; 
+        color: var(--preto); 
+        border-bottom: 2px solid var(--vermelho); 
+        border-right: 1px solid var(--borda); /* Linha vertical */
+        cursor: pointer; 
+        white-space: nowrap;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+    }
+
+    th:last-child { border-right: none; }
+
+    /* Células com linhas verticais */
+    td { 
+        padding: 10px; 
+        border-bottom: 1px solid #eee; 
+        border-right: 1px solid #f0f0f0; /* Linha vertical suave entre colunas */
+    }
+
+    td:last-child { border-right: none; }
+
+    tr:hover { background-color: #fafafa; }
+
+    /* Rascunhos */
+    .secao-rascunho { border: 2px dashed #607D8B; background: #f8f9fb; padding: 15px; border-radius: 12px; margin-top: 20px; }
+
+    /* RESPONSIVIDADE */
+    @media (max-width: 1024px) {
+        .container { 
+            grid-template-columns: 1fr; 
+            padding: 10px;
         }
-    </style>
+        .export-actions { 
+            width: 100%; 
+            justify-content: space-between; 
+            margin-top: 10px;
+        }
+        .btn-exp { flex: 1; justify-content: center; }
+        
+        /* No mobile, a sidebar (aside) vem primeiro, depois a tabela com scroll */
+    }
+</style>
 </head>
 <body>
 
