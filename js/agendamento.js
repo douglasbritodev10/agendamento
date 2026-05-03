@@ -192,25 +192,71 @@ window.exportarPDF = async (modo) => {
     snap.forEach(d => { agendasMap[d.id] = d.data(); });
     const agendas = selecionados.map(id => agendasMap[id]).filter(a => a !== undefined);
 
-    // Cabeçalho Estático do Documento
+    // Cabeçalho fixo do topo
     docPdf.setFillColor(192, 0, 0); 
     docPdf.rect(0, 0, 210, 25, 'F');
     docPdf.setFontSize(18);
     docPdf.setTextColor(255, 255, 255);
-    docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16);
+    docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16); //
     
     docPdf.setFontSize(10);
     docPdf.setTextColor(0, 0, 0);
     docPdf.text(`TOTAL DE AGENDAS: ${agendas.length}`, 14, 32);
     docPdf.setTextColor(100);
-    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32);
+    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32); //
 
-    // PREPARAÇÃO DOS DADOS DA TABELA
-    const tableBody = [];
-    
-    agendas.forEach((ag) => {
-        // Linha Principal
-        tableBody.push([
+    let currentY = 38;
+
+    if (modo === 'completo') {
+        // --- LÓGICA PARA O PDF COMPLETO (Blocos Elegantes) ---
+        agendas.forEach((ag) => {
+            if (currentY > 240) { docPdf.addPage(); currentY = 20; }
+
+            docPdf.autoTable({
+                head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
+                body: [[
+                    ag.senhaAgendamento, 
+                    ag.data.split('-').reverse().join('/'), 
+                    ag.central, 
+                    ag.cargas || '-', 
+                    ag.fornecedor, 
+                    ag.tipoProduto,
+                    ag.linhaSeparacao || 'N/A'
+                ]],
+                startY: currentY,
+                theme: 'grid',
+                headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.column.index === 5) {
+                        const estilo = getCoresPorTipo(data.cell.raw);
+                        data.cell.styles.fillColor = estilo.rgb;
+                        data.cell.styles.textColor = estilo.text;
+                    }
+                }
+            });
+
+            currentY = docPdf.lastAutoTable.finalY;
+
+            if (ag.composicao && ag.composicao.length > 0) {
+                docPdf.autoTable({
+                    head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
+                    body: ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]),
+                    startY: currentY,
+                    margin: { left: 14 },
+                    theme: 'grid',
+                    headStyles: { fillColor: [235, 235, 235], textColor: 0, fontSize: 7.5, fontStyle: 'bold' },
+                    styles: { fontSize: 7.5, cellPadding: 2 },
+                    columnStyles: { 0: { cellWidth: 30 }, 2: { cellWidth: 20, halign: 'center' } }
+                });
+                currentY = docPdf.lastAutoTable.finalY + 10; // Espaço maior entre blocos
+            } else {
+                currentY += 8;
+            }
+        });
+    } else {
+        // --- LÓGICA PARA O PDF BÁSICO (Tabela Contínua do Print) ---
+        const tableBody = agendas.map(ag => [
             ag.senhaAgendamento,
             ag.data.split('-').reverse().join('/'),
             ag.central,
@@ -220,44 +266,22 @@ window.exportarPDF = async (modo) => {
             ag.linhaSeparacao || 'N/A'
         ]);
 
-        // Se for modo completo, adicionamos a composição como linhas extras
-        if (modo === 'completo' && ag.composicao && ag.composicao.length > 0) {
-            // Linha de título da composição (opcional, para clareza)
-            tableBody.push([{ content: 'COMPOSIÇÃO DO AGENDAMENTO:', colSpan: 7, styles: { fillColor: [245, 245, 245], fontStyle: 'bold', halign: 'left' } }]);
-            
-            ag.composicao.forEach(item => {
-                tableBody.push([
-                    { content: `Cód: ${item.codigo}`, colSpan: 1, styles: { halign: 'left' } },
-                    { content: item.descricao, colSpan: 5, styles: { halign: 'left' } },
-                    { content: `Qtd: ${item.qtd}`, colSpan: 1, styles: { halign: 'center' } }
-                ]);
-            });
-        }
-    });
-
-    // GERAÇÃO DA TABELA ÚNICA
-    docPdf.autoTable({
-        head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
-        body: tableBody,
-        startY: 38,
-        theme: 'grid',
-        headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
-        styles: { fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1 },
-        columnStyles: {
-            0: { cellWidth: 'auto' },
-            5: { halign: 'center' }
-        },
-        didParseCell: function (data) {
-            // Aplicar cores apenas nas linhas principais (que não são as de composição/mescladas)
-            if (data.section === 'body' && data.column.index === 5 && data.cell.raw && typeof data.cell.raw === 'string') {
-                const estilo = getCoresPorTipo(data.cell.raw);
-                if (estilo.rgb[0] !== 255 || estilo.rgb[1] !== 255 || estilo.rgb[2] !== 255) {
+        docPdf.autoTable({
+            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
+            body: tableBody,
+            startY: currentY,
+            theme: 'grid',
+            headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
+            styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 5) {
+                    const estilo = getCoresPorTipo(data.cell.raw);
                     data.cell.styles.fillColor = estilo.rgb;
                     data.cell.styles.textColor = estilo.text;
                 }
             }
-        }
-    });
+        });
+    }
 
     docPdf.save(`Relatorio_Simonetti_${modo.toUpperCase()}.pdf`);
 };
