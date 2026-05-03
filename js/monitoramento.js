@@ -97,8 +97,8 @@ function renderizarTabela() {
     });
 
     const inicio = (paginaAtual - 1) * registrosPorPagina;
-    const dadosPaginados = dadosOrdenados.slice(inicio, inicio + registrosPorPagina);
-
+    const dadosPaginados = dadosFiltrados.slice(inicio, inicio + registrosPorPagina);
+    
     tbody.innerHTML = "";
     dadosPaginados.forEach(item => {
         const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
@@ -183,10 +183,10 @@ window.aplicarFiltroColuna = () => {
     window.fecharModais();
 };
 
-let ordemAtual = { coluna: null, direcao: 'asc' };
+let ordemAtual = { coluna: 'data', direcao: 'desc' }; // Começa por data desc
 
 window.ordenarTabela = (coluna, el) => {
-    // 1. Alternar direção se clicar na mesma coluna
+    // 1. Alternar direção
     if (ordemAtual.coluna === coluna) {
         ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
     } else {
@@ -194,45 +194,50 @@ window.ordenarTabela = (coluna, el) => {
         ordemAtual.direcao = 'asc';
     }
 
-    // 2. Lógica de comparação
+    // 2. Lógica de comparação robusta
     dadosFiltrados.sort((a, b) => {
-        let valA = a[coluna] || '';
-        let valB = b[coluna] || '';
+        let valA = a[coluna];
+        let valB = b[coluna];
 
-        // Tratativa para Datas (considerando padrão brasileiro DD/MM/YYYY)
-        if (coluna === 'data') {
-            const converterData = (d) => {
-                const parts = d.split('/');
-                return new Date(parts[2], parts[1] - 1, parts[0]);
-            };
-            valA = converterData(valA);
-            valB = converterData(valB);
-        } 
-        // Tratativa para Números
-        else if (!isNaN(valA) && valA !== '') {
-            valA = Number(valA);
-            valB = Number(valB);
-        } 
-        // Tratativa para Texto
-        else {
-            valA = valA.toString().toLowerCase();
-            valB = valB.toString().toLowerCase();
+        // Tratar valores nulos/vazios para ficarem sempre no fim
+        if (valA === undefined || valA === null) valA = '';
+        if (valB === undefined || valB === null) valB = '';
+
+        // Comparação de Números (ex: cargas)
+        if (typeof valA === 'number' && typeof valB === 'number') {
+            return ordemAtual.direcao === 'asc' ? valA - valB : valB - valA;
         }
 
-        if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
-        if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
-        return 0;
+        // Comparação de Strings / Datas ISO (YYYY-MM-DD funciona com localeCompare)
+        // Usamos numeric: true para que "Senha 10" venha depois de "Senha 2"
+        const comparacao = String(valA).localeCompare(String(valB), undefined, { 
+            numeric: true, 
+            sensitivity: 'base' 
+        });
+
+        return ordemAtual.direcao === 'asc' ? comparacao : -comparacao;
     });
 
-    // 3. Atualizar ícones visualmente (opcional, mas fica profissional)
-    document.querySelectorAll('thead th i.fas').forEach(icon => {
-        icon.className = 'fas fa-sort'; // reseta todos
-    });
-    const icon = el.querySelector('i');
-    icon.className = ordemAtual.direcao === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+    // 3. Feedback Visual nos ícones
+    atualizarIconesOrdenacao(el);
 
     renderizarTabela();
 };
+
+function atualizarIconesOrdenacao(elementoClicado) {
+    // Reseta todos os ícones das THs para o estado neutro
+    document.querySelectorAll('thead th i.fas.fa-sort, i.fas.fa-sort-up, i.fas.fa-sort-down').forEach(icon => {
+        icon.className = 'fas fa-sort';
+        icon.style.opacity = "0.5";
+    });
+
+    // Destaca o ícone da coluna atual
+    const icon = elementoClicado.querySelector('i.fas');
+    if (icon) {
+        icon.className = ordemAtual.direcao === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+        icon.style.opacity = "1";
+    }
+}
 
 // --- 5. DETALHES ---
 window.verDetalhes = (id) => {
