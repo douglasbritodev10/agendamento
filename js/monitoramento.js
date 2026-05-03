@@ -183,6 +183,57 @@ window.aplicarFiltroColuna = () => {
     window.fecharModais();
 };
 
+let ordemAtual = { coluna: null, direcao: 'asc' };
+
+window.ordenarTabela = (coluna, el) => {
+    // 1. Alternar direção se clicar na mesma coluna
+    if (ordemAtual.coluna === coluna) {
+        ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
+    } else {
+        ordemAtual.coluna = coluna;
+        ordemAtual.direcao = 'asc';
+    }
+
+    // 2. Lógica de comparação
+    dadosFiltrados.sort((a, b) => {
+        let valA = a[coluna] || '';
+        let valB = b[coluna] || '';
+
+        // Tratativa para Datas (considerando padrão brasileiro DD/MM/YYYY)
+        if (coluna === 'data') {
+            const converterData = (d) => {
+                const parts = d.split('/');
+                return new Date(parts[2], parts[1] - 1, parts[0]);
+            };
+            valA = converterData(valA);
+            valB = converterData(valB);
+        } 
+        // Tratativa para Números
+        else if (!isNaN(valA) && valA !== '') {
+            valA = Number(valA);
+            valB = Number(valB);
+        } 
+        // Tratativa para Texto
+        else {
+            valA = valA.toString().toLowerCase();
+            valB = valB.toString().toLowerCase();
+        }
+
+        if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
+        if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // 3. Atualizar ícones visualmente (opcional, mas fica profissional)
+    document.querySelectorAll('thead th i.fas').forEach(icon => {
+        icon.className = 'fas fa-sort'; // reseta todos
+    });
+    const icon = el.querySelector('i');
+    icon.className = ordemAtual.direcao === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+
+    renderizarTabela();
+};
+
 // --- 5. DETALHES ---
 window.verDetalhes = (id) => {
     const item = dadosMestres.find(d => d.id === id);
