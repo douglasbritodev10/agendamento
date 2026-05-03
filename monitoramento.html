@@ -322,41 +322,70 @@
 <thead>
     <tr>
         <th width="40"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
+        
+        <!-- Coluna Senha -->
         <th onclick="ordenarTabela('senhaAgendamento', this)" style="cursor:pointer">
-            <div class="th-content" id="th-senhaAgendamento">
+            <div class="th-content">
                 <span>Senha <i class="fas fa-sort"></i></span>
+                <i class="fas fa-filter" onclick="abrirFiltro('senhaAgendamento', event)" style="margin-top:5px; font-size: 0.7rem; opacity: 0.6;"></i>
+                <div id="badge-senhaAgendamento"></div>
             </div>
         </th>
+
+        <!-- Coluna Data -->
         <th onclick="ordenarTabela('data', this)" style="cursor:pointer">
-            <div class="th-content" id="th-data">
+            <div class="th-content">
                 <span>Data <i class="fas fa-sort"></i></span>
+                <i class="fas fa-filter" onclick="abrirFiltro('data', event)" style="margin-top:5px; font-size: 0.7rem; opacity: 0.6;"></i>
+                <div id="badge-data"></div>
             </div>
         </th>
+
+        <!-- Coluna Central -->
         <th onclick="ordenarTabela('central', this)" style="cursor:pointer">
-            <div class="th-content" id="th-central">
+            <div class="th-content">
                 <span>Central <i class="fas fa-sort"></i></span>
+                <i class="fas fa-filter" onclick="abrirFiltro('central', event)" style="margin-top:5px; font-size: 0.7rem; opacity: 0.6;"></i>
+                <div id="badge-central"></div>
             </div>
         </th>
+
+        <!-- Coluna Cargas -->
         <th onclick="ordenarTabela('cargas', this)" style="cursor:pointer">
-            <div class="th-content" id="th-cargas">
+            <div class="th-content">
                 <span>Cargas <i class="fas fa-sort"></i></span>
+                <i class="fas fa-filter" onclick="abrirFiltro('cargas', event)" style="margin-top:5px; font-size: 0.7rem; opacity: 0.6;"></i>
+                <div id="badge-cargas"></div>
             </div>
         </th>
+
+        <!-- Coluna Fornecedor -->
         <th onclick="ordenarTabela('fornecedor', this)" style="cursor:pointer">
-            <div class="th-content" id="th-fornecedor">
+            <div class="th-content">
                 <span>Fornecedor <i class="fas fa-sort"></i></span>
+                <i class="fas fa-filter" onclick="abrirFiltro('fornecedor', event)" style="margin-top:5px; font-size: 0.7rem; opacity: 0.6;"></i>
+                <div id="badge-fornecedor"></div>
             </div>
         </th>
+
+        <!-- Coluna Tipo -->
         <th onclick="ordenarTabela('tipoProduto', this)" style="cursor:pointer">
-            <div class="th-content" id="th-tipoProduto">
+            <div class="th-content">
                 <span>Tipo <i class="fas fa-sort"></i></span>
+                <i class="fas fa-filter" onclick="abrirFiltro('tipoProduto', event)" style="margin-top:5px; font-size: 0.7rem; opacity: 0.6;"></i>
+                <div id="badge-tipoProduto"></div>
             </div>
         </th>
+
+        <!-- Coluna Linha -->
         <th onclick="ordenarTabela('linhaSeparacao', this)" style="cursor:pointer">
-            <div class="th-content" id="th-linhaSeparacao">
+            <div class="th-content">
                 <span>Linha <i class="fas fa-sort"></i></span>
+                <i class="fas fa-filter" onclick="abrirFiltro('linhaSeparacao', event)" style="margin-top:5px; font-size: 0.7rem; opacity: 0.6;"></i>
+                <div id="badge-linhaSeparacao"></div>
             </div>
         </th>
+
         <th width="50">Ações</th>
     </tr>
 </thead>
