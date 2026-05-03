@@ -400,3 +400,60 @@ function formatarData(data) {
 window.fecharModais = function() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
 };
+
+// --- PAGINAÇÃO ---
+window.atualizarControlesPaginacao = function() {
+    const totalPaginas = Math.ceil(dadosFiltrados.length / itensPorPagina);
+    const info = document.getElementById('infoPaginacao'); // Certifique-se que este ID existe no HTML
+    if (info) info.innerText = `Página ${paginaAtual} de ${totalPaginas}`;
+};
+
+window.mudarPagina = function(direcao) {
+    const totalPaginas = Math.ceil(dadosFiltrados.length / itensPorPagina);
+    if (direcao === 'proximo' && paginaAtual < totalPaginas) {
+        paginaAtual++;
+    } else if (direcao === 'anterior' && paginaAtual > 1) {
+        paginaAtual--;
+    }
+    renderizarTabela();
+};
+
+// --- ATUALIZAÇÃO DE CAMPOS ---
+window.atualizarCampo = async function(id, campo, valor) {
+    try {
+        const docRef = doc(db, "agendamentos", id);
+        await updateDoc(docRef, { [campo]: valor });
+        console.log("Atualizado com sucesso!");
+    } catch (e) {
+        console.error("Erro ao atualizar campo:", e);
+    }
+};
+
+window.marcarTodos = function(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('#corpoTabela input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+};
+
+window.marcarTodosFiltro = function(valor) {
+    const checkboxes = document.querySelectorAll('.check-item-filtro');
+    checkboxes.forEach(cb => cb.checked = valor);
+};
+
+window.ordenarTabela = function(coluna) {
+    dadosFiltrados.sort((a, b) => {
+        const valA = String(a[coluna] || "").toLowerCase();
+        const valB = String(b[coluna] || "").toLowerCase();
+        return valA.localeCompare(valB);
+    });
+    renderizarTabela();
+};
+
+window.abrirComposicao = async function(id) {
+    const docSnap = await getDoc(doc(db, "agendamentos", id));
+    if (docSnap.exists()) {
+        const dados = docSnap.data();
+        console.log("Composição:", dados.composicao);
+        // Aqui você deve disparar o seu modal de composição original
+        // Exemplo: alert(JSON.stringify(dados.composicao));
+    }
+};
