@@ -8,9 +8,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     
+    <!-- Bibliotecas de Exportação -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
     <style>
         :root {
@@ -68,7 +69,7 @@
         /* CONTAINER PRINCIPAL */
         .main-container { padding: 20px; max-width: 100%; margin: auto; }
 
-        /* PAINEL DE CONTROLE REESTRUTURADO */
+        /* PAINEL DE CONTROLE */
         .control-panel {
             display: flex;
             justify-content: space-between;
@@ -155,7 +156,6 @@
         }
 
         .dropdown-content a:hover { background-color: #f8f9fa; color: var(--primary); }
-        .dropdown-content a:last-child { border-bottom: none; }
 
         /* TABELA */
         .table-container { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
@@ -169,9 +169,29 @@
             font-size: 12px;
             text-transform: uppercase;
             text-align: center;
+            position: relative;
+        }
+
+        .th-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
         }
         
         tbody td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #eee; font-size: 13px; }
+
+        /* BADGE DE FILTRO ATIVO */
+        .badge-filtro {
+            background-color: #fff176;
+            color: #333;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 1px solid #fbc02d;
+            margin-top: 4px;
+        }
 
         /* PAGINAÇÃO */
         .pagination {
@@ -201,14 +221,18 @@
         .modal-glass {
             background: white;
             width: 90%;
-            max-width: 800px;
+            max-width: 500px; /* Reduzi para o filtro */
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             overflow: hidden;
         }
 
+        #modalComposicao .modal-glass { max-width: 800px; }
+
         .modal-header { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+
+        .option-disabled { opacity: 0.5; color: #999; font-style: italic; }
     </style>
 </head>
 <body>
@@ -229,7 +253,6 @@
     <div class="main-container">
         
         <div class="control-panel">
-            <!-- ESQUERDA: Exibir e Pesquisar -->
             <div class="left-controls">
                 <div class="control-group">
                     <label>Exibir</label>
@@ -242,28 +265,27 @@
                 </div>
                 
                 <div class="control-group" style="width: 300px;">
-                    <label>Pesquisar</label>
+                    <label>Pesquisar Geral</label>
                     <input type="text" id="inputBusca" placeholder="Buscar por fornecedor, senha..." 
                            class="control-input" style="width: 100%;" oninput="atualizarFiltros()">
                 </div>
             </div>
 
-            <!-- DIREITA: Compartilhar -->
             <div class="dropdown">
                 <button onclick="toggleDropdownExport()" class="btn-share" id="btnShare">
                     <i class="fas fa-share-alt"></i> COMPARTILHAR <i class="fas fa-caret-down"></i>
                 </button>
                 <div id="menuExport" class="dropdown-content">
-                    <a href="#" onclick="exportar('excel', 'basico')">
+                    <a href="#" onclick="exportarExcel('basico')">
                         <i class="fas fa-file-excel" style="color: #2e7d32;"></i> Excel Básico
                     </a>
-                    <a href="#" onclick="exportar('excel', 'completo')">
+                    <a href="#" onclick="exportarExcel('completo')">
                         <i class="fas fa-file-excel" style="color: #1b5e20;"></i> Excel Completo
                     </a>
-                    <a href="#" onclick="exportar('pdf', 'basico')">
+                    <a href="#" onclick="exportarPDF('basico')">
                         <i class="fas fa-file-pdf" style="color: #1565c0;"></i> PDF Básico
                     </a>
-                    <a href="#" onclick="exportar('pdf', 'completo')">
+                    <a href="#" onclick="exportarPDF('completo')">
                         <i class="fas fa-file-pdf" style="color: #d32f2f;"></i> PDF Completo
                     </a>
                 </div>
@@ -276,12 +298,22 @@
                     <thead>
                         <tr>
                             <th width="40"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
-                            <th>Senha</th>
-                            <th>Data</th>
-                            <th>Central</th>
+                            <th onclick="abrirModalFiltro('senhaAgendamento')" style="cursor:pointer">
+                                <div class="th-content" id="th-senhaAgendamento"><span>Senha</span><i class="fas fa-filter"></i></div>
+                            </th>
+                            <th onclick="abrirModalFiltro('data')" style="cursor:pointer">
+                                <div class="th-content" id="th-data"><span>Data</span><i class="fas fa-filter"></i></div>
+                            </th>
+                            <th onclick="abrirModalFiltro('central')" style="cursor:pointer">
+                                <div class="th-content" id="th-central"><span>Central</span><i class="fas fa-filter"></i></div>
+                            </th>
                             <th>Cargas</th>
-                            <th>Fornecedor</th>
-                            <th>Tipo</th>
+                            <th onclick="abrirModalFiltro('fornecedor')" style="cursor:pointer">
+                                <div class="th-content" id="th-fornecedor"><span>Fornecedor</span><i class="fas fa-filter"></i></div>
+                            </th>
+                            <th onclick="abrirModalFiltro('tipoProduto')" style="cursor:pointer">
+                                <div class="th-content" id="th-tipoProduto"><span>Tipo</span><i class="fas fa-filter"></i></div>
+                            </th>
                             <th>Ver</th>
                         </tr>
                     </thead>
@@ -296,18 +328,49 @@
         </div>
     </div>
 
-    <!-- Scripts de Controle do Dropdown -->
+    <!-- MODAL FILTRO INTELIGENTE -->
+    <div id="modalFiltro" class="modal-overlay">
+        <div class="modal-glass">
+            <div class="modal-header">
+                <span id="nomeColunaFiltro" style="font-weight: bold; text-transform: uppercase;">Filtrar</span>
+                <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button onclick="marcarTodosFiltro(true)" class="btn-page" style="flex:1">Marcar Todos</button>
+                    <button onclick="marcarTodosFiltro(false)" class="btn-page" style="flex:1">Desmarcar</button>
+                </div>
+                
+                <div id="opcoesFiltro" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px;"></div>
+
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button onclick="fecharModais()" class="btn-page" style="flex:1">Cancelar</button>
+                    <button onclick="aplicarFiltroColuna()" class="btn-logout" style="flex:2; background: #2e7d32;">Aplicar Filtro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALHES -->
+    <div id="modalComposicao" class="modal-overlay">
+        <div class="modal-glass">
+            <div class="modal-header">
+                <h2 id="tituloComp" style="margin:0; font-size:1.2rem;">Detalhes do Agendamento</h2>
+                <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
+            </div>
+            <div class="modal-body" id="detalhesItens"></div>
+        </div>
+    </div>
+
     <script>
         function toggleDropdownExport() {
             const menu = document.getElementById('menuExport');
-            const isVisible = menu.style.display === 'block';
-            menu.style.display = isVisible ? 'none' : 'block';
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
         }
-
-        // Fechar dropdown ao clicar fora
         window.onclick = function(event) {
             if (!event.target.closest('.dropdown')) {
-                document.getElementById('menuExport').style.display = 'none';
+                const menu = document.getElementById('menuExport');
+                if(menu) menu.style.display = 'none';
             }
         }
     </script>
