@@ -1,5 +1,8 @@
-import { db } from './firebase-config.js'; 
-import { collection, query, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { app } from './firebase-config.js';
+import { 
+    getFirestore, doc, setDoc, collection, addDoc, onSnapshot, query, orderBy, 
+    updateDoc, getDocs, limit, serverTimestamp, deleteDoc, getDoc, where 
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // --- ESTADO GLOBAL ---
 let dadosOriginais = [];
