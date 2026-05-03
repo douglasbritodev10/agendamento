@@ -170,6 +170,7 @@
             text-transform: uppercase;
             text-align: center;
             position: relative;
+            border-right: 1px solid rgba(255,255,255,0.1);
         }
 
         .th-content {
@@ -179,7 +180,18 @@
             gap: 5px;
         }
         
-        tbody td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #eee; font-size: 13px; }
+        tbody td { 
+            padding: 12px 10px; 
+            text-align: center; 
+            border-bottom: 1px solid #eee; 
+            border-right: 1px solid #f0f0f0; /* LINHA VERTICAL SUAVE */
+            font-size: 13px; 
+        }
+
+        /* Remove a linha da última coluna para não ficar estranho */
+        tbody td:last-child {
+            border-right: none;
+        }
 
         /* BADGE DE FILTRO ATIVO */
         .badge-filtro {
@@ -233,6 +245,18 @@
         .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
 
         .option-disabled { opacity: 0.5; color: #999; font-style: italic; }
+        
+        /* Efeito ao passar o mouse no cabeçalho */
+        thead th:hover {
+            background-color: var(--primary-dark) !important;
+        }
+
+        /* Ajuste no ícone de ordenação */
+        .th-content span i {
+            margin-left: 5px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -292,38 +316,52 @@
             </div>
         </div>
 
-        <div class="table-container">
-            <div class="scroll-area">
-                <table id="tabelaDados">
-                    <thead>
-                        <tr>
-                            <th width="40"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
-                            <th onclick="abrirModalFiltro('senhaAgendamento')" style="cursor:pointer">
-                                <div class="th-content" id="th-senhaAgendamento"><span>Senha</span><i class="fas fa-filter"></i></div>
-                            </th>
-                            <th onclick="abrirModalFiltro('data')" style="cursor:pointer">
-                                <div class="th-content" id="th-data"><span>Data</span><i class="fas fa-filter"></i></div>
-                            </th>
-                            <th onclick="abrirModalFiltro('central')" style="cursor:pointer">
-                                <div class="th-content" id="th-central"><span>Central</span><i class="fas fa-filter"></i></div>
-                            </th>
-                            <th onclick="abrirModalFiltro('cargas')" style="cursor:pointer">
-                                <div class="th-content" id="th-cargas"><span>Cargas</span><i class="fas fa-filter"></i></div>
-                            </th>
-                            <th onclick="abrirModalFiltro('fornecedor')" style="cursor:pointer">
-                                <div class="th-content" id="th-fornecedor"><span>Fornecedor</span><i class="fas fa-filter"></i></div>
-                            </th>
-                            <th onclick="abrirModalFiltro('tipoProduto')" style="cursor:pointer">
-                                <div class="th-content" id="th-tipoProduto"><span>Tipo</span><i class="fas fa-filter"></i></div>
-                            </th>
-                            <th onclick="abrirModalFiltro('linhaSeparacao')" style="cursor:pointer">
-                                <div class="th-content" id="th-tipoProduto"><span>Linha</span><i class="fas fa-filter"></i></div>
-                            </th>
-                            <th>Ver</th>
-                        </tr>
-                    </thead>
-                    <tbody id="corpoTabela"></tbody>
-                </table>
+<div class="table-container">
+<div class="scroll-area">
+<table id="tabelaDados">
+<thead>
+    <tr>
+        <th width="40"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
+        <th onclick="ordenarTabela('senhaAgendamento', this)" style="cursor:pointer">
+            <div class="th-content" id="th-senhaAgendamento">
+                <span>Senha <i class="fas fa-sort"></i></span>
+            </div>
+        </th>
+        <th onclick="ordenarTabela('data', this)" style="cursor:pointer">
+            <div class="th-content" id="th-data">
+                <span>Data <i class="fas fa-sort"></i></span>
+            </div>
+        </th>
+        <th onclick="ordenarTabela('central', this)" style="cursor:pointer">
+            <div class="th-content" id="th-central">
+                <span>Central <i class="fas fa-sort"></i></span>
+            </div>
+        </th>
+        <th onclick="ordenarTabela('cargas', this)" style="cursor:pointer">
+            <div class="th-content" id="th-cargas">
+                <span>Cargas <i class="fas fa-sort"></i></span>
+            </div>
+        </th>
+        <th onclick="ordenarTabela('fornecedor', this)" style="cursor:pointer">
+            <div class="th-content" id="th-fornecedor">
+                <span>Fornecedor <i class="fas fa-sort"></i></span>
+            </div>
+        </th>
+        <th onclick="ordenarTabela('tipoProduto', this)" style="cursor:pointer">
+            <div class="th-content" id="th-tipoProduto">
+                <span>Tipo <i class="fas fa-sort"></i></span>
+            </div>
+        </th>
+        <th onclick="ordenarTabela('linhaSeparacao', this)" style="cursor:pointer">
+            <div class="th-content" id="th-linhaSeparacao">
+                <span>Linha <i class="fas fa-sort"></i></span>
+            </div>
+        </th>
+        <th width="50">Ações</th>
+    </tr>
+</thead>
+<tbody id="corpoTabela"></tbody>
+</table>
             </div>
 
             <div class="pagination">
