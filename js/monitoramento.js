@@ -1,12 +1,19 @@
 import { app } from './firebase-config.js';
-import { getFirestore, collection, query, onSnapshot, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, query, onSnapshot, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
 
 // --- ESTADOS GLOBAIS ---
 let dadosMestres = [];
 let dadosFiltrados = [];
-let filtrosAtivos = { senhaAgendamento: [], data: [], central: [], fornecedor: [], tipoProduto: [] };
+let filtrosAtivos = { 
+    senhaAgendamento: [], 
+    data: [], 
+    central: [], 
+    fornecedor: [], 
+    tipoProduto: [],
+    linhaSeparacao: [] // ADICIONE ESTA LINHA
+};
 let colunaFiltroAtual = "";
 
 let paginaAtual = 1;
@@ -105,7 +112,7 @@ function renderizarTabela() {
             <td>${item.cargas || 1}</td>
             <td>${item.fornecedor || '---'}</td>
             <td class="cell-tipo" data-tipo="${item.tipoProduto}">${item.tipoProduto || '---'}</td>
-            td style="font-weight: bold;">${ag.linhaSeparacao || '-'}</td>
+            <td style="font-weight: bold;">${item.linhaSeparacao || '-'}</td> <!-- AJUSTADO AQUI -->
             <td>
                 <button onclick="verDetalhes('${item.id}')" style="background:none; border:none; color:var(--primary); cursor:pointer;">
                     <i class="fas fa-eye fa-lg"></i>
