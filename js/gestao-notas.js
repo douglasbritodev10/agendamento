@@ -2,20 +2,29 @@ import { app } from './firebase-config.js';
 import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
-const usuarioAtivo = localStorage.getItem('username') || "D. BRITO";
-const nivelAcesso = localStorage.getItem('userRole') || 'admin'; // admin, colaborador, leitor
+
+// CORREÇÃO DAS CHAVES (Baseado no seu auth.js)
+const usuarioNome = localStorage.getItem('usuarioNome') || "D. BRITO";
+const nivelAcesso = localStorage.getItem('nivelAcesso'); // ADM, COLABORADOR, etc.
+const usernameAtivo = localStorage.getItem('username');
 
 let dadosMestres = [];
 let dadosFiltrados = [];
 let filtrosAtivos = { 
-    senhaAgendamento: [], data: [], fornecedor: [], 
-    notaFiscal: [], cte: [], situacao: [] 
+    senhaAgendamento: [], data: [], central: [], fornecedor: [], 
+    tipoProduto: [], notaFiscal: [], cte: [], situacao: [] 
 };
 let colunaFiltroAtual = "";
 
-// 1. INICIALIZAÇÃO
+// --- 1. PROTEÇÃO E INICIALIZAÇÃO ---
 function init() {
-    if (!localStorage.getItem('userId')) window.location.href = 'index.html';
+    // Se não tiver username, manda pro login
+    if (!usernameAtivo) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    document.getElementById('txtUser').innerText = usuarioNome;
 
     // Busca apenas agendamentos com status "Agendado"
     const q = query(collection(db, "agendamentos"), where("status", "==", "Agendado"));
@@ -26,7 +35,7 @@ function init() {
     });
 }
 
-// 2. FILTROS E INDICADORES
+// --- 2. LOGICA DE FILTROS (IGUAL MONITORAMENTO) ---
 window.atualizarFiltros = () => {
     dadosFiltrados = dadosMestres.filter(item => {
         return Object.keys(filtrosAtivos).every(col => {
@@ -48,6 +57,7 @@ function atualizarIndicadoresVisuais() {
                 btn.style.color = '#333';
                 btn.style.padding = '2px 5px';
                 btn.style.borderRadius = '4px';
+                btn.style.fontWeight = 'bold';
             } else {
                 btn.innerText = 'FILTRO';
                 btn.style = "";
@@ -56,7 +66,7 @@ function atualizarIndicadoresVisuais() {
     });
 }
 
-// 3. RENDERIZAÇÃO E CORES
+// --- 3. RENDERIZAÇÃO E CORES (DO SEU PRINT) ---
 function renderizarTabela() {
     const tbody = document.getElementById('corpoTabela');
     tbody.innerHTML = "";
@@ -67,14 +77,16 @@ function renderizarTabela() {
         
         tr.innerHTML = `
             <td><input type="checkbox" class="row-check" value="${item.id}"></td>
-            <td style="font-weight:bold">${item.senhaAgendamento}</td>
-            <td>${item.data.split('-').reverse().join('/')}</td>
-            <td>${item.fornecedor}</td>
+            <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
+            <td>${item.data ? item.data.split('-').reverse().join('/') : '---'}</td>
+            <td>${item.central || '---'}</td>
+            <td>${item.fornecedor || '---'}</td>
+            <td>${item.tipoProduto || '---'}</td>
             <td>${item.notaFiscal || '---'}</td>
             <td>${item.cte || '---'}</td>
             <td><span class="badge-situacao ${classeSit}">${item.situacao || 'OC PENDENTE'}</span></td>
             <td>
-                <button onclick="abrirEdicaoNota('${item.id}')" style="background:none; border:none; cursor:pointer; color:var(--primary)">
+                <button onclick="abrirEdicao('${item.id}')" style="background:none; border:none; cursor:pointer; color:var(--primary)">
                     <i class="fas ${item.editandoPor ? 'fa-lock' : 'fa-edit'} fa-lg"></i>
                 </button>
             </td>
@@ -93,43 +105,85 @@ function getClasseSituacao(sit) {
     return mapa[sit] || 'sit-oc-pendente';
 }
 
-// 4. LÓGICA DE BLOQUEIO (LOCK)
-window.abrirEdicaoNota = async (id) => {
-    if (nivelAcesso === 'leitor') return alert("Acesso apenas para visualização.");
-
-    const item = dadosMestres.find(d => d.id === id);
-    if (item.editandoPor && item.editandoPor !== usuarioAtivo) {
-        return alert(`Agenda bloqueada! ${item.editandoPor} está editando agora.`);
+// --- 4. BLOQUEIO E EDIÇÃO ---
+window.abrirEdicao = async (id) => {
+    // Verifica nível de acesso
+    if (nivelAcesso === 'LEITOR') {
+        alert("Seu nível de acesso permite apenas visualização.");
+        return;
     }
 
-    // Trava a agenda no Firebase
-    await updateDoc(doc(db, "agendamentos", id), { editandoPor: usuarioAtivo });
+    const item = dadosMestres.find(d => d.id === id);
+    
+    // Trava de segurança (Lock)
+    if (item.editandoPor && item.editandoPor !== usernameAtivo) {
+        alert(`Bloqueado: O usuário ${item.editandoPor} está editando esta agenda agora.`);
+        return;
+    }
 
-    document.getElementById('editIdAgendamento').value = id;
+    // Marca no Firebase que você está editando
+    await updateDoc(doc(db, "agendamentos", id), { editandoPor: usernameAtivo });
+
+    document.getElementById('editId').value = id;
     document.getElementById('inputNF').value = item.notaFiscal || '';
     document.getElementById('inputCTe').value = item.cte || '';
     document.getElementById('selectSituacao').value = item.situacao || 'OC PENDENTE';
-    document.getElementById('modalNotas').style.display = 'flex';
+    document.getElementById('modalEdicao').style.display = 'flex';
 };
 
 window.cancelarEdicao = async () => {
-    const id = document.getElementById('editIdAgendamento').value;
+    const id = document.getElementById('editId').value;
     if (id) await updateDoc(doc(db, "agendamentos", id), { editandoPor: null });
     fecharModais();
 };
 
-window.salvarDadosNota = async () => {
-    const id = document.getElementById('editIdAgendamento').value;
-    await updateDoc(doc(db, "agendamentos", id), {
-        notaFiscal: document.getElementById('inputNF').value,
-        cte: document.getElementById('inputCTe').value,
-        situacao: document.getElementById('selectSituacao').value,
-        editandoPor: null // Libera a trava
-    });
+window.salvarAlteracoes = async () => {
+    const id = document.getElementById('editId').value;
+    const btn = document.getElementById('btnSalvar');
+    
+    btn.innerText = "SALVANDO...";
+    btn.disabled = true;
+
+    try {
+        await updateDoc(doc(db, "agendamentos", id), {
+            notaFiscal: document.getElementById('inputNF').value,
+            cte: document.getElementById('inputCTe').value,
+            situacao: document.getElementById('selectSituacao').value,
+            editandoPor: null, // Libera a trava
+            ultimaEdicao: new Date().toISOString()
+        });
+        fecharModais();
+    } catch (e) {
+        alert("Erro ao salvar dados.");
+    } finally {
+        btn.innerText = "SALVAR DADOS";
+        btn.disabled = false;
+    }
+};
+
+// --- FILTROS (REAPROVEITADO DO MONITORAMENTO) ---
+window.abrirFiltro = (coluna, event) => {
+    event.stopPropagation();
+    colunaFiltroAtual = coluna;
+    const container = document.getElementById('opcoesFiltro');
+    const valoresUnicos = [...new Set(dadosMestres.map(d => String(d[coluna] || "")))].sort();
+
+    container.innerHTML = valoresUnicos.map(val => `
+        <label style="display:block; margin:5px 0; cursor:pointer">
+            <input type="checkbox" class="chk-filtro" value="${val}" ${filtrosAtivos[coluna].includes(val) ? 'checked' : ''}> ${val}
+        </label>
+    `).join('');
+    document.getElementById('modalFiltro').style.display = 'flex';
+};
+
+window.aplicarFiltroColuna = () => {
+    const selecionados = Array.from(document.querySelectorAll('.chk-filtro:checked')).map(c => c.value);
+    filtrosAtivos[colunaFiltroAtual] = selecionados;
+    window.atualizarFiltros();
     fecharModais();
 };
 
 window.fecharModais = () => { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); };
+window.marcarTodos = (el) => { document.querySelectorAll('.row-check').forEach(c => c.checked = el.checked); };
 
-// Inicializa
 init();
