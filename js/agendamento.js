@@ -290,11 +290,47 @@ window.exportarExcel = async (modo) => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
+    // Precisamos da biblioteca ExcelJS para suportar cores
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Relatorio');
+
+    // Definição das cores (mesma lógica do PDF)
+    const getEstiloExcel = (tipo) => {
+        const t = (tipo || "").toUpperCase();
+        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
+            return { fg: 'FFFF00', txt: '000000' }; // Amarelo
+        if (t.includes('MESA')) 
+            return { fg: '4CAF50', txt: 'FFFFFF' }; // Verde
+        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
+            return { fg: '00BFFF', txt: 'FFFFFF' }; // Azul
+        return { fg: 'FFFFFF', txt: '000000' }; // Branco
+    };
+
+    // Configuração das colunas
+    const columns = [
+        { header: 'Senha', key: 'Senha', width: 25 },
+        { header: 'Data', key: 'Data', width: 12 },
+        { header: 'Central', key: 'Central', width: 15 },
+        { header: 'Cargas', key: 'Cargas', width: 15 },
+        { header: 'Pedido', key: 'Pedido', width: 15 },
+        { header: 'Fornecedor', key: 'Fornecedor', width: 25 },
+        { header: 'Tipo', key: 'Tipo', width: 20 },
+        { header: 'Linha', key: 'linhaSeparacao', width: 15 }
+    ];
+
+    if (modo === 'completo') {
+        columns.push(
+            { header: 'Cód. Item', key: 'Cod_Item', width: 15 },
+            { header: 'Descrição', key: 'Descricao', width: 40 },
+            { header: 'Qtd', key: 'Qtd', width: 10 }
+        );
+    }
+    worksheet.columns = columns;
+
     const snap = await getDocs(collection(db, "agendamentos"));
-    const rows = [];
 
     snap.forEach(doc => {
-        if(selecionados.includes(doc.id)) {
+        if (selecionados.includes(doc.id)) {
             const d = doc.data();
             const base = {
                 Senha: d.senhaAgendamento,
@@ -309,18 +345,43 @@ window.exportarExcel = async (modo) => {
 
             if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
                 d.composicao.forEach(item => {
-                    rows.push({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
+                    const row = worksheet.addRow({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
+                    aplicarCorTipo(row, d.tipoProduto);
                 });
             } else {
-                rows.push(base);
+                const row = worksheet.addRow(base);
+                aplicarCorTipo(row, d.tipoProduto);
             }
         }
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
-    XLSX.writeFile(wb, `Simonetti_Export_${modo.toUpperCase()}.xlsx`);
+    // Função auxiliar para pintar a célula da coluna "Tipo" (coluna G ou 7)
+    function aplicarCorTipo(row, tipo) {
+        const estilo = getEstiloExcel(tipo);
+        const cellTipo = row.getCell('Tipo');
+        cellTipo.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: estilo.fg }
+        };
+        cellTipo.font = { color: { argb: estilo.txt }, bold: true };
+    }
+
+    // Estilização do cabeçalho (Vermelho Simonetti)
+    worksheet.getRow(1).eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C00000' } };
+        cell.font = { color: { argb: 'FFFFFF' }, bold: true };
+        cell.alignment = { horizontal: 'center' };
+    });
+
+    // Gerar e baixar o arquivo
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Simonetti_Export_${modo.toUpperCase()}.xlsx`;
+    a.click();
 };
 
 function carregarDados() {
