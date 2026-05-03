@@ -173,16 +173,15 @@ window.exportarPDF = async (modo) => {
     const { jsPDF } = window.jspdf;
     const docPdf = new jsPDF('p', 'mm', 'a4');
     
-    // Função interna para respeitar sua lógica de cores
     const getCoresPorTipo = (tipo) => {
         const t = (tipo || "").toUpperCase();
         if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
-            return { rgb: [255, 255, 0], text: [0, 0, 0] }; // Amarelo
+            return { rgb: [255, 255, 0], text: [0, 0, 0] };
         if (t.includes('MESA')) 
-            return { rgb: [76, 175, 80], text: [255, 255, 255] }; // Verde
+            return { rgb: [76, 175, 80], text: [255, 255, 255] };
         if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
-            return { rgb: [0, 191, 255], text: [255, 255, 255] }; // Azul
-        return { rgb: [255, 255, 255], text: [0, 0, 0] }; // Branco padrão
+            return { rgb: [0, 191, 255], text: [255, 255, 255] };
+        return { rgb: [255, 255, 255], text: [0, 0, 0] };
     };
 
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
@@ -202,7 +201,8 @@ window.exportarPDF = async (modo) => {
     docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16);
     
     docPdf.setFontSize(10);
-    docPdf.text(`TOTAL DE AGENDAMENTOS: ${agendas.length}`, 14, 32);
+    docPdf.setTextColor(0, 0, 0);
+    docPdf.text(`TOTAL DE AGENDAS: ${agendas.length}`, 14, 32);
     docPdf.setTextColor(100);
     docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32);
 
@@ -211,6 +211,7 @@ window.exportarPDF = async (modo) => {
     agendas.forEach((ag) => {
         if (currentY > 250) { docPdf.addPage(); currentY = 20; }
 
+        // Tabela Principal com grid (bordas em tudo)
         docPdf.autoTable({
             head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
             body: [[
@@ -223,13 +224,11 @@ window.exportarPDF = async (modo) => {
                 ag.linhaSeparacao || 'N/A'
             ]],
             startY: currentY,
-            theme: 'striped',
-            // Título da coluna com o mesmo vermelho do cabeçalho superior
+            theme: 'grid', // Alterado para 'grid' para ter bordas horizontais e verticais
             headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
-            styles: { fontSize: 8, halign: 'center', cellPadding: 3 },
+            styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
             
             didParseCell: function (data) {
-                // Aplica a lógica de cores apenas na coluna TIPO (índice 5)
                 if (data.section === 'body' && data.column.index === 5) {
                     const estilo = getCoresPorTipo(data.cell.raw);
                     data.cell.styles.fillColor = estilo.rgb;
@@ -245,14 +244,14 @@ window.exportarPDF = async (modo) => {
                 head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
                 body: ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]),
                 startY: currentY,
-                margin: { left: 20 }, 
-                tableWidth: 170,
-                theme: 'grid',
-                // Cabeçalho da composição em cinza claro para diferenciar da agenda principal
-                headStyles: { fillColor: [230, 230, 230], textColor: 0, fontSize: 7, fontStyle: 'bold' },
-                styles: { fontSize: 7 },
+                margin: { left: 14 }, // Alinhado com o início da tabela superior
+                tableWidth: 182,      // Ajustado para manter alinhamento proporcional
+                theme: 'grid',        // Bordas na composição também
+                headStyles: { fillColor: [230, 230, 230], textColor: 0, fontSize: 7, fontStyle: 'bold', halign: 'center' },
+                styles: { fontSize: 7, cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.1 },
                 columnStyles: {
                     0: { cellWidth: 30 },
+                    1: { halign: 'left' },
                     2: { cellWidth: 20, halign: 'center' }
                 }
             });
