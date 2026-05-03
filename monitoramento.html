@@ -14,78 +14,151 @@
 
     <style>
         :root {
-            --primary: #C80000;
-            --primary-dark: #960000;
-            --glass: rgba(255, 255, 255, 0.9);
-            --shadow: 0 4px 12px rgba(0,0,0,0.15);
+            --primary: #D32F2F;
+            --primary-dark: #B71C1C;
+            --bg-light: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #e0e0e0;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
         body {
             font-family: 'Roboto', sans-serif;
-            background-color: #f4f7f6;
+            background-color: var(--bg-light);
             margin: 0;
-            color: #333;
+            color: var(--text-main);
         }
 
-        /* HEADER REESTRUTURADO */
+        /* HEADER */
         .header-portal {
             background: #fff;
-            color: #333;
             padding: 10px 20px;
             display: grid;
-            grid-template-columns: 1fr auto 1fr; /* Esquerda, Centro, Direita */
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: sticky; top: 0; z-index: 1000;
+            position: sticky; 
+            top: 0; 
+            z-index: 1000;
         }
 
         .header-left { display: flex; align-items: center; gap: 15px; }
         .header-center { text-align: center; }
         .header-right { text-align: right; }
 
-        .btn-back { font-size: 1.2rem; cursor: pointer; color: #666; }
-        .btn-logout { background: var(--primary); border: none; color: white; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-back { font-size: 1.2rem; cursor: pointer; color: #666; transition: 0.2s; }
+        .btn-back:hover { color: var(--primary); }
+        
+        .btn-logout { 
+            background: var(--primary); 
+            border: none; 
+            color: white; 
+            padding: 8px 20px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .btn-logout:hover { background: var(--primary-dark); }
         
         .titulo-sistema { color: var(--primary); font-weight: bold; font-size: 1.4rem; margin: 0; }
 
         /* CONTAINER PRINCIPAL */
         .main-container { padding: 20px; max-width: 100%; margin: auto; }
 
+        /* PAINEL DE CONTROLE REESTRUTURADO */
         .control-panel {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
             margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .export-group {
             background: white;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 12px;
             box-shadow: var(--shadow);
-            display: flex;
-            gap: 8px;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
-        .btn-export {
-            border: 1px solid #ddd;
-            padding: 8px 12px;
-            border-radius: 6px;
-            background: white;
-            cursor: pointer;
-            font-weight: bold;
+        .left-controls {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+        }
+
+        .control-group label {
             font-size: 11px;
+            font-weight: bold;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .control-input {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .control-input:focus { border-color: var(--primary); }
+
+        /* DROPDOWN COMPARTILHAR */
+        .dropdown { position: relative; }
+
+        .btn-share {
+            background: #1565c0;
+            color: white;
+            border: none;
+            padding: 11px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
+            transition: 0.3s;
+            font-size: 13px;
+        }
+
+        .btn-share:hover { background: #0d47a1; box-shadow: 0 4px 8px rgba(21, 101, 192, 0.3); }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.15);
+            z-index: 1001;
+            border-radius: 8px;
+            margin-top: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .dropdown-content a {
+            color: var(--text-main);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f0f0;
             transition: 0.2s;
         }
-        .btn-export:hover { border-color: var(--primary); color: var(--primary); }
 
-        /* TABELA E PAGINAÇÃO */
-        .table-container { background: white; border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+        .dropdown-content a:hover { background-color: #f8f9fa; color: var(--primary); }
+        .dropdown-content a:last-child { border-bottom: none; }
+
+        /* TABELA */
+        .table-container { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
         .scroll-area { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         
@@ -95,13 +168,9 @@
             padding: 15px 10px;
             font-size: 12px;
             text-transform: uppercase;
-            cursor: pointer;
-            position: relative;
+            text-align: center;
         }
         
-        th.sortable:hover { background: var(--primary-dark); }
-        th i { margin-left: 5px; opacity: 0.7; }
-
         tbody td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #eee; font-size: 13px; }
 
         /* PAGINAÇÃO */
@@ -110,11 +179,11 @@
             justify-content: space-between;
             align-items: center;
             padding: 15px;
-            background: #f9f9f9;
+            background: #fff;
             border-top: 1px solid #eee;
         }
         .page-buttons { display: flex; gap: 5px; }
-        .btn-page { padding: 5px 10px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; }
+        .btn-page { padding: 6px 12px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; font-size: 13px; }
         .btn-page.active { background: var(--primary); color: white; border-color: var(--primary); }
 
         /* MODAIS */
@@ -122,44 +191,24 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
             z-index: 2000;
             justify-content: center;
             align-items: center;
-            padding: 10px;
         }
 
         .modal-glass {
             background: white;
-            width: 100%;
+            width: 90%;
+            max-width: 800px;
             border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
         }
-
-        /* Tamanho Grande no PC */
-        @media (min-width: 1024px) { .modal-glass { max-width: 80%; } }
 
         .modal-header { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 20px; max-height: 75vh; overflow-y: auto; overflow-x: auto; }
-
-        .btn-filter-trigger {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            cursor: pointer;
-            display: block;
-            margin: 5px auto 0;
-            width: 100%;
-        }
-
-        /* Cores da Móveis Simonetti por tipo */
-        .row-eletro { border-left: 5px solid #2196F3; }
-        .row-moveis { border-left: 5px solid #4CAF50; }
+        .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -167,7 +216,7 @@
     <header class="header-portal">
         <div class="header-left">
             <i class="fas fa-arrow-left btn-back" onclick="window.history.back()"></i>
-            <span style="font-size: 14px; font-weight: bold;">Bem-vindo, <span id="txtUser">USUÁRIO</span></span>
+            <span style="font-size: 14px; font-weight: bold;">Olá, <span id="txtUser">USUÁRIO</span></span>
         </div>
         <div class="header-center">
             <h1 class="titulo-sistema">AGENDAMENTO - MÓVEIS SIMONETTI</h1>
@@ -180,28 +229,43 @@
     <div class="main-container">
         
         <div class="control-panel">
-            <div class="export-group">
-                <button class="btn-export" style="color:#e74c3c" onclick="exportar('pdf', 'basico')"><i class="fas fa-file-pdf"></i> PDF Básico</button>
-                <button class="btn-export" style="color:#e74c3c" onclick="exportar('pdf', 'completo')"><i class="fas fa-file-pdf"></i> PDF Detalhado</button>
-                <button class="btn-export" style="color:#27ae60" onclick="exportar('excel', 'basico')"><i class="fas fa-file-excel"></i> Excel Básico</button>
-                <button class="btn-export" style="color:#27ae60" onclick="exportar('excel', 'completo')"><i class="fas fa-file-excel"></i> Excel Detalhado</button>
-            </div>
-
-            <div style="display: flex; gap: 10px; align-items: flex-end;">
-                <div>
-                    <label style="font-size: 11px; font-weight: bold; color: #666;">EXIBIR</label><br>
-                    <select id="selectPageSize" onchange="mudarTamanhoPagina()" style="padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
+            <!-- ESQUERDA: Exibir e Pesquisar -->
+            <div class="left-controls">
+                <div class="control-group">
+                    <label>Exibir</label>
+                    <select id="selectPageSize" onchange="mudarTamanhoPagina()" class="control-input">
                         <option value="25">25</option>
                         <option value="50" selected>50</option>
                         <option value="75">75</option>
                         <option value="100">100</option>
                     </select>
                 </div>
-                <div style="width: 250px;">
-                    <label style="font-size: 11px; font-weight: bold; color: #666;">PESQUISAR</label>
-                    <input type="text" id="inputBusca" placeholder="Buscar registros..." 
-                           style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; outline: none;"
-                           oninput="atualizarFiltros()">
+                
+                <div class="control-group" style="width: 300px;">
+                    <label>Pesquisar</label>
+                    <input type="text" id="inputBusca" placeholder="Buscar por fornecedor, senha..." 
+                           class="control-input" style="width: 100%;" oninput="atualizarFiltros()">
+                </div>
+            </div>
+
+            <!-- DIREITA: Compartilhar -->
+            <div class="dropdown">
+                <button onclick="toggleDropdownExport()" class="btn-share" id="btnShare">
+                    <i class="fas fa-share-alt"></i> COMPARTILHAR <i class="fas fa-caret-down"></i>
+                </button>
+                <div id="menuExport" class="dropdown-content">
+                    <a href="#" onclick="exportar('excel', 'basico')">
+                        <i class="fas fa-file-excel" style="color: #2e7d32;"></i> Excel Básico
+                    </a>
+                    <a href="#" onclick="exportar('excel', 'completo')">
+                        <i class="fas fa-file-excel" style="color: #1b5e20;"></i> Excel Completo
+                    </a>
+                    <a href="#" onclick="exportar('pdf', 'basico')">
+                        <i class="fas fa-file-pdf" style="color: #1565c0;"></i> PDF Básico
+                    </a>
+                    <a href="#" onclick="exportar('pdf', 'completo')">
+                        <i class="fas fa-file-pdf" style="color: #d32f2f;"></i> PDF Completo
+                    </a>
                 </div>
             </div>
         </div>
@@ -212,12 +276,12 @@
                     <thead>
                         <tr>
                             <th width="40"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
-                            <th class="sortable" onclick="ordenar('senhaAgendamento')">Senha <i class="fas fa-sort"></i> <button class="btn-filter-trigger" onclick="event.stopPropagation(); abrirModalFiltro('senhaAgendamento')">FILTRAR</button></th>
-                            <th class="sortable" onclick="ordenar('data')">Data <i class="fas fa-sort"></i> <button class="btn-filter-trigger" onclick="event.stopPropagation(); abrirModalFiltro('data')">FILTRAR</button></th>
-                            <th class="sortable" onclick="ordenar('central')">Central <i class="fas fa-sort"></i> <button class="btn-filter-trigger" onclick="event.stopPropagation(); abrirModalFiltro('central')">FILTRAR</button></th>
-                            <th>Cargas <button class="btn-filter-trigger" onclick="abrirModalFiltro('cargas')">FILTRAR</button></th>
-                            <th class="sortable" onclick="ordenar('fornecedor')">Fornecedor <i class="fas fa-sort"></i> <button class="btn-filter-trigger" onclick="event.stopPropagation(); abrirModalFiltro('fornecedor')">FILTRAR</button></th>
-                            <th>Tipo <button class="btn-filter-trigger" onclick="abrirModalFiltro('tipoProduto')">FILTRAR</button></th>
+                            <th>Senha</th>
+                            <th>Data</th>
+                            <th>Central</th>
+                            <th>Cargas</th>
+                            <th>Fornecedor</th>
+                            <th>Tipo</th>
                             <th>Ver</th>
                         </tr>
                     </thead>
@@ -232,31 +296,21 @@
         </div>
     </div>
 
-    <div id="modalFiltro" class="modal-overlay">
-        <div class="modal-glass" style="max-width: 400px;">
-            <div class="modal-header">
-                <span id="tituloFiltro">FILTRAR COLUNA</span>
-                <i class="fas fa-times" onclick="fecharModais()" style="cursor:pointer"></i>
-            </div>
-            <div class="modal-body" id="opcoesFiltro"></div>
-            <div style="padding: 15px; display: flex; gap: 10px;">
-                <button onclick="aplicarFiltroColuna()" style="flex:1; background: var(--primary); color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer;">APLICAR</button>
-                <button onclick="fecharModais()" style="flex:1; background: #eee; border:none; padding:10px; border-radius:5px; cursor:pointer;">CANCELAR</button>
-            </div>
-        </div>
-    </div>
+    <!-- Scripts de Controle do Dropdown -->
+    <script>
+        function toggleDropdownExport() {
+            const menu = document.getElementById('menuExport');
+            const isVisible = menu.style.display === 'block';
+            menu.style.display = isVisible ? 'none' : 'block';
+        }
 
-    <div id="modalComposicao" class="modal-overlay">
-        <div class="modal-glass">
-            <div class="modal-header">
-                <span id="tituloComp">ITENS DA CARGA</span>
-                <i class="fas fa-times" onclick="fecharModais()" style="cursor:pointer"></i>
-            </div>
-            <div class="modal-body">
-                <div id="detalhesItens"></div>
-            </div>
-        </div>
-    </div>
+        // Fechar dropdown ao clicar fora
+        window.onclick = function(event) {
+            if (!event.target.closest('.dropdown')) {
+                document.getElementById('menuExport').style.display = 'none';
+            }
+        }
+    </script>
 
     <script type="module" src="js/monitoramento.js"></script>
 </body>
