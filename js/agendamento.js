@@ -190,10 +190,9 @@ window.exportarPDF = async (modo) => {
     const snap = await getDocs(collection(db, "agendamentos"));
     const agendasMap = {};
     snap.forEach(d => { agendasMap[d.id] = d.data(); });
-    
     const agendas = selecionados.map(id => agendasMap[id]).filter(a => a !== undefined);
 
-    // Cabeçalho Principal
+    // Cabeçalho Estático do Documento
     docPdf.setFillColor(192, 0, 0); 
     docPdf.rect(0, 0, 210, 25, 'F');
     docPdf.setFontSize(18);
@@ -206,58 +205,57 @@ window.exportarPDF = async (modo) => {
     docPdf.setTextColor(100);
     docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32);
 
-    let currentY = 38;
-
+    // PREPARAÇÃO DOS DADOS DA TABELA
+    const tableBody = [];
+    
     agendas.forEach((ag) => {
-        if (currentY > 250) { docPdf.addPage(); currentY = 20; }
+        // Linha Principal
+        tableBody.push([
+            ag.senhaAgendamento,
+            ag.data.split('-').reverse().join('/'),
+            ag.central,
+            ag.cargas || '-',
+            ag.fornecedor,
+            ag.tipoProduto,
+            ag.linhaSeparacao || 'N/A'
+        ]);
 
-        // Tabela Principal com grid (bordas em tudo)
-        docPdf.autoTable({
-            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
-            body: [[
-                ag.senhaAgendamento, 
-                ag.data.split('-').reverse().join('/'), 
-                ag.central, 
-                ag.cargas || '-', 
-                ag.fornecedor, 
-                ag.tipoProduto,
-                ag.linhaSeparacao || 'N/A'
-            ]],
-            startY: currentY,
-            theme: 'grid', // Alterado para 'grid' para ter bordas horizontais e verticais
-            headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
-            styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
+        // Se for modo completo, adicionamos a composição como linhas extras
+        if (modo === 'completo' && ag.composicao && ag.composicao.length > 0) {
+            // Linha de título da composição (opcional, para clareza)
+            tableBody.push([{ content: 'COMPOSIÇÃO DO AGENDAMENTO:', colSpan: 7, styles: { fillColor: [245, 245, 245], fontStyle: 'bold', halign: 'left' } }]);
             
-            didParseCell: function (data) {
-                if (data.section === 'body' && data.column.index === 5) {
-                    const estilo = getCoresPorTipo(data.cell.raw);
+            ag.composicao.forEach(item => {
+                tableBody.push([
+                    { content: `Cód: ${item.codigo}`, colSpan: 1, styles: { halign: 'left' } },
+                    { content: item.descricao, colSpan: 5, styles: { halign: 'left' } },
+                    { content: `Qtd: ${item.qtd}`, colSpan: 1, styles: { halign: 'center' } }
+                ]);
+            });
+        }
+    });
+
+    // GERAÇÃO DA TABELA ÚNICA
+    docPdf.autoTable({
+        head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
+        body: tableBody,
+        startY: 38,
+        theme: 'grid',
+        headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
+        styles: { fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1 },
+        columnStyles: {
+            0: { cellWidth: 'auto' },
+            5: { halign: 'center' }
+        },
+        didParseCell: function (data) {
+            // Aplicar cores apenas nas linhas principais (que não são as de composição/mescladas)
+            if (data.section === 'body' && data.column.index === 5 && data.cell.raw && typeof data.cell.raw === 'string') {
+                const estilo = getCoresPorTipo(data.cell.raw);
+                if (estilo.rgb[0] !== 255 || estilo.rgb[1] !== 255 || estilo.rgb[2] !== 255) {
                     data.cell.styles.fillColor = estilo.rgb;
                     data.cell.styles.textColor = estilo.text;
                 }
             }
-        });
-
-        currentY = docPdf.lastAutoTable.finalY;
-
-        if (modo === 'completo' && ag.composicao && ag.composicao.length > 0) {
-            docPdf.autoTable({
-                head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
-                body: ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]),
-                startY: currentY,
-                margin: { left: 14 }, // Alinhado com o início da tabela superior
-                tableWidth: 182,      // Ajustado para manter alinhamento proporcional
-                theme: 'grid',        // Bordas na composição também
-                headStyles: { fillColor: [230, 230, 230], textColor: 0, fontSize: 7, fontStyle: 'bold', halign: 'center' },
-                styles: { fontSize: 7, cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.1 },
-                columnStyles: {
-                    0: { cellWidth: 30 },
-                    1: { halign: 'left' },
-                    2: { cellWidth: 20, halign: 'center' }
-                }
-            });
-            currentY = docPdf.lastAutoTable.finalY + 8;
-        } else {
-            currentY += 6;
         }
     });
 
