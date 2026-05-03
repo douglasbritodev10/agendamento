@@ -380,13 +380,48 @@ async function atualizarCampo(id, campo, valor) {
 }
 
 function renderizarSelectSituacao(item) {
-    const status = ['AGUARDANDO', 'EM PROCESSO', 'FINALIZADO', 'PENDENTE'];
-    const cores = { 'AGUARDANDO': '#666', 'EM PROCESSO': '#1565c0', 'FINALIZADO': '#2e7d32', 'PENDENTE': '#d32f2f' };
+    // Lista de status atualizada com base no seu CSS
+    const status = [
+        'AGUARDANDO',
+        'OK', 
+        'SEM NOTA', 
+        'REAGENDADA', 
+        'SOBRE AJUSTE', 
+        'CANCELADA', 
+        'OC PENDENTE', 
+        'SEM TRIANGULACAO', 
+        'VENCIMENTO ERRADO', 
+        'FALTA CTE', 
+        'NOTA ERRADA', 
+        'CTE DIVERGENTE'
+    ];
+
+    // Mapeamento de Cores (Fundo e Texto)
+    // AGUARDANDO configurado para cinza escuro
+    const cores = {
+        'AGUARDANDO': { bg: '#424242', text: '#ffffff' },
+        'OK': { bg: '#066b3c', text: '#ffffff' },
+        'SEM NOTA': { bg: '#0d47a1', text: '#ffffff' },
+        'REAGENDADA': { bg: '#e1bee7', text: '#4a148c' },
+        'SOBRE AJUSTE': { bg: '#ffe082', text: '#5f4b00' },
+        'CANCELADA': { bg: '#b71c1c', text: '#ffffff' },
+        'OC PENDENTE': { bg: '#cfd8dc', text: '#37474f' },
+        'SEM TRIANGULACAO': { bg: '#ffcdd2', text: '#b71c1c' },
+        'VENCIMENTO ERRADO': { bg: '#b71c1c', text: '#ffffff' }, // Possui outline no CSS
+        'FALTA CTE': { bg: '#512da8', text: '#ffffff' },
+        'NOTA ERRADA': { bg: '#ffccbc', text: '#e64a19' },
+        'CTE DIVERGENTE': { bg: '#795548', text: '#ffffff' }
+    };
+
+    const estiloAtual = cores[item.situacao] || { bg: '#424242', text: '#ffffff' };
     
+    // Adicionei um contorno amarelo caso seja VENCIMENTO ERRADO para bater com seu CSS
+    const borderExtra = item.situacao === 'VENCIMENTO ERRADO' ? 'outline: 2px solid #ffd600;' : '';
+
     return `
         <select onchange="atualizarCampo('${item.id}', 'situacao', this.value)" 
-            style="background:${cores[item.situacao] || '#eee'}; color:white; border:none; border-radius:15px; padding:4px 8px; font-size:10px; font-weight:bold;">
-            ${status.map(s => `<option value="${s}" ${item.situacao === s ? 'selected' : ''}>${s}</option>`).join('')}
+            style="background:${estiloAtual.bg}; color:${estiloAtual.text}; border:none; border-radius:15px; padding:4px 8px; font-size:10px; font-weight:bold; cursor:pointer; ${borderExtra}">
+            ${status.map(s => `<option value="${s}" ${item.situacao === s ? 'selected' : ''} style="background: white; color: black;">${s}</option>`).join('')}
         </select>
     `;
 }
