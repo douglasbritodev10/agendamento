@@ -10,6 +10,7 @@ let filtrosAtivos = {
     senhaAgendamento: [], 
     data: [], 
     central: [], 
+    cargas: [],
     fornecedor: [], 
     tipoProduto: [],
     linhaSeparacao: [] // ADICIONE ESTA LINHA
@@ -104,6 +105,7 @@ function renderizarTabela() {
         const tipo = (item.tipoProduto || "").toLowerCase();
         
         const tr = document.createElement('tr');
+        const cores = getCoresPorTipo(item.tipoProduto);
         tr.innerHTML = `
             <td><input type="checkbox" class="row-check" value="${item.id}"></td>
             <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
@@ -111,8 +113,10 @@ function renderizarTabela() {
             <td>${item.central || '---'}</td>
             <td>${item.cargas || 1}</td>
             <td>${item.fornecedor || '---'}</td>
-            <td class="cell-tipo" data-tipo="${item.tipoProduto}">${item.tipoProduto || '---'}</td>
-            <td style="font-weight: bold;">${item.linhaSeparacao || '-'}</td> <!-- AJUSTADO AQUI -->
+            <td style="background-color: rgb(${cores.rgb.join(',')}); color: rgb(${cores.text.join(',')}); font-weight: bold;">
+                ${item.tipoProduto || '---'}
+            </td>
+            <td style="font-weight: bold;">${item.linhaSeparacao || '-'}</td>
             <td>
                 <button onclick="verDetalhes('${item.id}')" style="background:none; border:none; color:var(--primary); cursor:pointer;">
                     <i class="fas fa-eye fa-lg"></i>
@@ -246,7 +250,9 @@ window.fecharModais = () => {
     document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
 };
 window.marcarTodos = (el) => {
-    document.querySelectorAll('.row-check').forEach(chk => chk.checked = el.checked);
+    // Seleciona os checkboxes dentro do corpo da tabela
+    const checkboxes = document.querySelectorAll('#corpoTabela .row-check');
+    checkboxes.forEach(chk => chk.checked = el.checked);
 };
 
 // --- 7. EXPORTAÇÕES ---
@@ -273,7 +279,7 @@ window.exportarPDF = async (modo) => {
         return { rgb: [255, 255, 255], text: [0, 0, 0] };
     };
 
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+    const selecionados = Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const snap = await getDocs(collection(db, "agendamentos"));
@@ -376,7 +382,7 @@ window.exportarPDF = async (modo) => {
 };
 
 window.exportarExcel = async (modo) => {
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+    const selecionados = Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const workbook = new ExcelJS.Workbook();
