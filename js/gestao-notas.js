@@ -4,6 +4,9 @@ import {
     updateDoc, getDocs, limit, serverTimestamp, deleteDoc, getDoc, where 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
+// --- ADICIONE ESTA LINHA AQUI ---
+const db = getFirestore(app);
+
 // --- ESTADO GLOBAL ---
 let dadosOriginais = [];
 let dadosFiltrados = [];
