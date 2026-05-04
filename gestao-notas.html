@@ -80,7 +80,48 @@
         .btn-page.active { background: var(--primary); color: white; border-color: var(--primary); }
 
         /* MODAIS */
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000; justify-content: center; align-items: center; }
+        /* Container do Modal (o fundo escuro) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none; /* Alterado via JS para flex */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        /* O corpo do Modal */
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 15px;
+            overflow: hidden; /* Garante que o cabeçalho respeite o border-radius */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        /* Cabeçalho Vermelho */
+        .modal-header {
+            background: #c00000;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .close-button {
+            cursor: pointer;
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: white;
+        }
+        
         .modal-glass { background: white; width: 90%; max-width: 500px; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); overflow: hidden; }
         .modal-header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
     </style>
