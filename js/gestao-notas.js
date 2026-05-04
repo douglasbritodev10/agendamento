@@ -511,33 +511,44 @@ window.abrirComposicao = async function(id) {
         const container = document.getElementById('detalhesItens');
         const titulo = document.getElementById('tituloComp');
 
-        titulo.innerText = `Composição - Senha: ${dados.senhaAgendamento || 'N/A'}`;
+        titulo.innerText = `Detalhes: ${dados.senhaAgendamento || 'N/A'}`;
 
         if (dados.composicao && dados.composicao.length > 0) {
+            // Calcula o total das quantidades
+            const totalQtd = dados.composicao.reduce((acc, item) => acc + (Number(item.qtd) || 0), 0);
+
             container.innerHTML = `
-                <table style="width:100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background: #f4f4f4;">
-                            <th style="padding:10px; border:1px solid #ddd;">Código</th>
-                            <th style="padding:10px; border:1px solid #ddd;">Descrição</th>
-                            <th style="padding:10px; border:1px solid #ddd;">Qtd</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${dados.composicao.map(item => `
-                            <tr>
-                                <td style="padding:8px; border:1px solid #ddd; text-align:center;">${item.codigo}</td>
-                                <td style="padding:8px; border:1px solid #ddd;">${item.descricao}</td>
-                                <td style="padding:8px; border:1px solid #ddd; text-align:center;">${item.qtd}</td>
+                <div style="overflow-x: auto; overflow-y: auto; max-height: 400px;">
+                    <table style="width:100%; border-collapse: collapse; font-family: sans-serif; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #c00000; color: white;">
+                                <th style="padding:12px; border: 1px solid #ddd; width: 20%;">CÓDIGO</th>
+                                <th style="padding:12px; border: 1px solid #ddd; width: 65%;">DESCRIÇÃO</th>
+                                <th style="padding:12px; border: 1px solid #ddd; width: 15%;">QTD</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${dados.composicao.map(item => `
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding:10px; text-align:center; border: 1px solid #ddd;">${item.codigo}</td>
+                                    <td style="padding:10px; border: 1px solid #ddd; text-transform: uppercase;">${item.descricao}</td>
+                                    <td style="padding:10px; text-align:center; border: 1px solid #ddd; font-weight: bold; color: red;">${item.qtd}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f9f9f9; font-weight: bold;">
+                                <td colspan="2" style="padding:10px; text-align: right; border: 1px solid #ddd;">TOTAL:</td>
+                                <td style="padding:10px; text-align: center; border: 1px solid #ddd; color: red;">${totalQtd}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             `;
         } else {
-            container.innerHTML = '<p style="text-align:center; padding:20px;">Nenhum item encontrado nesta carga.</p>';
+            container.innerHTML = '<p style="text-align:center; padding:20px;">Nenhum item encontrado.</p>';
         }
 
-        modal.style.display = 'flex'; // Isso faz o modal aparecer
+        modal.style.display = 'flex';
     }
 };
