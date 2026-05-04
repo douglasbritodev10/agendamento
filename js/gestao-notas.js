@@ -81,20 +81,60 @@ function aplicarFiltrosEBusca() {
     const termoBusca = document.getElementById('inputBusca').value.toLowerCase();
     
     dadosFiltrados = dadosOriginais.filter(item => {
-        // Busca Geral
-        const matchBusca = Object.values(item).some(val => String(val).toLowerCase().includes(termoBusca));
+        // 1. Busca Geral (Campos normais + Composição)
+        const matchCamposNormais = Object.values(item).some(val => 
+            String(val).toLowerCase().includes(termoBusca)
+        );
+
+        // Verifica se o termo está no código ou descrição de algum item da composição
+        const matchComposicao = item.composicao?.some(prod => 
+            String(prod.codigo).toLowerCase().includes(termoBusca) || 
+            String(prod.descricao).toLowerCase().includes(termoBusca)
+        );
+
+        const matchBusca = matchCamposNormais || matchComposicao;
         
-        // Filtros por Coluna (Filtro Inteligente)
+        // 2. Filtros por Coluna (Filtro Inteligente)
         const matchFiltros = Object.keys(filtrosSelecionados).every(coluna => {
-            if (filtrosSelecionados[coluna].length === 0) return true;
+            if (!filtrosSelecionados[coluna] || filtrosSelecionados[coluna].length === 0) return true;
             return filtrosSelecionados[coluna].includes(String(item[coluna]));
         });
 
         return matchBusca && matchFiltros;
     });
 
+    // Chamada para atualizar os ícones/textos dos filtros
+    atualizarVisualFiltros(); 
+
     paginaAtual = 1;
     renderizarTabela();
+}
+
+function atualizarVisualFiltros() {
+    // Lista de colunas que possuem filtro (baseado no seu objeto de estado)
+    const colunasComFiltro = Object.keys(filtrosSelecionados).filter(col => filtrosSelecionados[col].length > 0);
+
+    // Resetar todos os botões primeiro (Remova ou ajuste os IDs conforme seu HTML)
+    document.querySelectorAll('.btn-abrir-filtro').forEach(btn => {
+        btn.style.background = 'none';
+        btn.style.color = 'inherit';
+        btn.innerHTML = '<i class="fas fa-filter"></i>'; // Ícone padrão
+    });
+
+    // Aplicar destaque nos ativos
+    colunasComFiltro.forEach(coluna => {
+        // Aqui buscamos o elemento que você clica para abrir o filtro
+        // Exemplo: um elemento com id="filter-central"
+        const btn = document.getElementById(`filter-${coluna}`);
+        if (btn) {
+            btn.style.background = '#ffeb3b'; // Amarelo
+            btn.style.color = '#000';
+            btn.style.padding = '2px 6px';
+            btn.style.borderRadius = '4px';
+            btn.style.fontSize = '10px';
+            btn.innerHTML = 'APLICADO';
+        }
+    });
 }
 
 // --- MODAL DE FILTRO INTELIGENTE ---
