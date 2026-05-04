@@ -46,6 +46,7 @@
         .control-input { padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; outline: none; }
 
         /* DROPDOWN COMPARTILHAR */
+        .export-actions { display: flex; gap: 10px; margin-left: auto; }
         .dropdown { position: relative; }
         .btn-share {
             background: #1565c0; color: white; border: none; padding: 11px 20px; border-radius: 6px; 
@@ -155,6 +156,11 @@
                 </div>
             </div>
 
+        <div class="export-actions" style="display: flex; gap: 10px; align-items: center;">
+            <button onclick="copiarAgendamentosSelecionados()" class="btn-exp" style="background:#fb8c00;" title="Copiar para o WhatsApp/Área de Transferência">
+                <i class="fas fa-copy"></i> COPIAR SELECIONADOS
+            </button>
+            
             <div class="dropdown">
                 <button onclick="toggleDropdown()" class="btn-share">
                     <i class="fas fa-share-alt"></i> COMPARTILHAR <i class="fas fa-caret-down"></i>
