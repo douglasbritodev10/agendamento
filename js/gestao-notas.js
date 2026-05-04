@@ -14,6 +14,8 @@ let paginaAtual = 1;
 let itensPorPagina = 50;
 let colunaFiltroAtual = '';
 let filtrosSelecionados = {}; // Armazena filtros de múltiplas colunas
+let ordemCrescente = true; // Controle de estado
+let ultimaColuna = '';
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -475,20 +477,67 @@ window.marcarTodosFiltro = function(valor) {
 };
 
 window.ordenarTabela = function(coluna) {
+    // Se clicar na mesma coluna, inverte a ordem. Se for outra, começa crescente.
+    if (ultimaColuna === coluna) {
+        ordemCrescente = !ordemCrescente;
+    } else {
+        ordemCrescente = true;
+        ultimaColuna = coluna;
+    }
+
     dadosFiltrados.sort((a, b) => {
-        const valA = String(a[coluna] || "").toLowerCase();
-        const valB = String(b[coluna] || "").toLowerCase();
-        return valA.localeCompare(valB);
+        let valA = String(a[coluna] || "").toLowerCase();
+        let valB = String(b[coluna] || "").toLowerCase();
+        
+        // Lógica para datas (se a coluna for 'data', inverte para comparar corretamente)
+        if (coluna === 'data') {
+            return ordemCrescente ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+
+        if (valA < valB) return ordemCrescente ? -1 : 1;
+        if (valA > valB) return ordemCrescente ? 1 : -1;
+        return 0;
     });
+
     renderizarTabela();
 };
 
 window.abrirComposicao = async function(id) {
     const docSnap = await getDoc(doc(db, "agendamentos", id));
+    
     if (docSnap.exists()) {
         const dados = docSnap.data();
-        console.log("Composição:", dados.composicao);
-        // Aqui você deve disparar o seu modal de composição original
-        // Exemplo: alert(JSON.stringify(dados.composicao));
+        const modal = document.getElementById('modalComposicao');
+        const container = document.getElementById('detalhesItens');
+        const titulo = document.getElementById('tituloComp');
+
+        titulo.innerText = `Composição - Senha: ${dados.senhaAgendamento || 'N/A'}`;
+
+        if (dados.composicao && dados.composicao.length > 0) {
+            container.innerHTML = `
+                <table style="width:100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f4f4f4;">
+                            <th style="padding:10px; border:1px solid #ddd;">Código</th>
+                            <th style="padding:10px; border:1px solid #ddd;">Descrição</th>
+                            <th style="padding:10px; border:1px solid #ddd;">Qtd</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dados.composicao.map(item => `
+                            <tr>
+                                <td style="padding:8px; border:1px solid #ddd; text-align:center;">${item.codigo}</td>
+                                <td style="padding:8px; border:1px solid #ddd;">${item.descricao}</td>
+                                <td style="padding:8px; border:1px solid #ddd; text-align:center;">${item.qtd}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            container.innerHTML = '<p style="text-align:center; padding:20px;">Nenhum item encontrado nesta carga.</p>';
+        }
+
+        modal.style.display = 'flex'; // Isso faz o modal aparecer
     }
 };
