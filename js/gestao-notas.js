@@ -35,7 +35,7 @@ function escutarDadosFirebase() {
     });
 }
 
-// --- RENDERIZAÇÃO DA TABELA ---
+// --- RENDERIZAÇÃO DA TABELA (Ajustada com a classe check-export) ---
 window.renderizarTabela = function() {
     const corpo = document.getElementById('corpoTabela');
     corpo.innerHTML = '';
@@ -47,7 +47,7 @@ window.renderizarTabela = function() {
     listaExibicao.forEach(item => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><input type="checkbox" value="${item.id}"></td>
+            <td><input type="checkbox" class="check-export" value="${item.id}"></td>
             <td style="font-weight:bold; color:var(--primary)">${item.senhaAgendamento || '-'}</td>
             <td>${formatarData(item.data)}</td>
             <td>${item.central || '-'}</td>
@@ -478,11 +478,23 @@ window.fecharModais = function() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
 };
 
-// --- PAGINAÇÃO ---
+// --- ATUALIZAÇÃO DA PAGINAÇÃO NO RODAPÉ ---
 window.atualizarControlesPaginacao = function() {
-    const totalPaginas = Math.ceil(dadosFiltrados.length / itensPorPagina);
-    const info = document.getElementById('infoPaginacao'); // Certifique-se que este ID existe no HTML
-    if (info) info.innerText = `Página ${paginaAtual} de ${totalPaginas}`;
+    const totalItens = dadosFiltrados.length;
+    const totalPaginas = Math.ceil(totalItens / itensPorPagina) || 1;
+    
+    const info = document.getElementById('infoPaginacao');
+    const numPagina = document.getElementById('numeroPaginaAtiva');
+    
+    if (info) info.innerText = `Mostrando ${dadosFiltrados.length} registros (Página ${paginaAtual} de ${totalPaginas})`;
+    if (numPagina) numPagina.innerText = paginaAtual;
+};
+
+// Função para mudar a quantidade de itens por página
+window.mudarTamanhoPagina = function(valor) {
+    itensPorPagina = parseInt(valor);
+    paginaAtual = 1;
+    renderizarTabela();
 };
 
 window.mudarPagina = function(direcao) {
@@ -593,40 +605,32 @@ window.abrirComposicao = async function(id) {
     }
 };
 
-// Nova função para copiar agendamentos salvos (Tabela Principal)
+// --- FUNÇÃO DE COPIAR (Ajustada para o seu layout de colunas) ---
 window.copiarAgendamentosSelecionados = () => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked'));
     if (selecionados.length === 0) return alert("Selecione os agendamentos na tabela!");
 
-    let html = `<div style="font-family: Arial, sans-serif; max-width: 400px;">`;
+    let textoCopia = "*AGENDAMENTOS MÓVEIS SIMONETTI*\n\n";
 
     selecionados.forEach(cb => {
         const tr = cb.closest('tr');
+        // Pegando os dados baseados na ordem das suas colunas <td>
         const senha = tr.cells[1].innerText;
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        const fornecedor = tr.cells[6].innerText;
-        const tipo = tr.cells[7].innerText;
-        
-        // Buscamos as cores originais baseadas no tipo para manter o padrão visual
-        const cores = getCoresPorTipo(tipo);
+        const fornecedor = tr.cells[7].innerText; // Coluna 7 é Fornecedor
+        const tipo = tr.cells[8].innerText;       // Coluna 8 é Tipo
 
-        html += `
-            <div style="background: ${cores.bg}; color: ${cores.text}; padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #ccc;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 4px; margin-bottom: 4px;">
-                    <b>SENHA: ${senha}</b> <span>DATA: ${data}</span>
-                </div>
-                <div style="font-size: 13px;">
-                    <b>FORNECEDOR:</b> ${fornecedor}<br>
-                    <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
-                    <b>REFERENTE:</b> ${cargas}
-                </div>
-            </div>`;
+        textoCopia += `📌 *SENHA: ${senha}* | DATA: ${data}\n`;
+        textoCopia += `🏢 *FORNECEDOR:* ${fornecedor}\n`;
+        textoCopia += `📍 *CENTRAL:* ${central} | *TIPO:* ${tipo}\n`;
+        textoCopia += `📦 *REF:* ${cargas}\n`;
+        textoCopia += `------------------------------\n`;
     });
-    html += `</div>`;
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const data = [new ClipboardItem({ 'text/html': blob })];
-    navigator.clipboard.write(data).then(() => alert("Agendamentos copiados!"));
+    // Copia como texto simples (melhor para WhatsApp)
+    navigator.clipboard.writeText(textoCopia).then(() => {
+        alert("Copiado com sucesso! Agora é só colar no WhatsApp.");
+    });
 };
