@@ -478,16 +478,29 @@ window.fecharModais = function() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
 };
 
-// --- ATUALIZAÇÃO DA PAGINAÇÃO NO RODAPÉ ---
 window.atualizarControlesPaginacao = function() {
     const totalItens = dadosFiltrados.length;
     const totalPaginas = Math.ceil(totalItens / itensPorPagina) || 1;
     
+    // 1. Atualiza o texto informativo
     const info = document.getElementById('infoPaginacao');
-    const numPagina = document.getElementById('numeroPaginaAtiva');
+    if (info) {
+        info.innerText = `Mostrando ${totalItens} registros (Página ${paginaAtual} de ${totalPaginas})`;
+    }
     
-    if (info) info.innerText = `Mostrando ${dadosFiltrados.length} registros (Página ${paginaAtual} de ${totalPaginas})`;
-    if (numPagina) numPagina.innerText = paginaAtual;
+    // 2. Atualiza o número no meio dos botões
+    const numPagina = document.getElementById('numeroPaginaAtiva');
+    if (numPagina) {
+        numPagina.innerText = paginaAtual;
+    }
+
+    // 3. Opcional: Desativar botões visualmente se não houver para onde ir
+    // Isso evita que o usuário clique em "Próximo" sem necessidade
+    const btnAnterior = document.querySelector("button[onclick*='anterior']");
+    const btnProximo = document.querySelector("button[onclick*='proximo']");
+    
+    if (btnAnterior) btnAnterior.disabled = (paginaAtual === 1);
+    if (btnProximo) btnProximo.disabled = (paginaAtual === totalPaginas);
 };
 
 // Função para mudar a quantidade de itens por página
