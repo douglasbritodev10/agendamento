@@ -663,3 +663,8 @@ window.copiarAgendamentosSelecionados = () => {
         alert("Erro ao copiar. Tente novamente.");
     });
 };
+
+window.selecionarTudoFiltro = (status) => {
+    const checkboxes = document.querySelectorAll('#opcoesFiltro input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = status);
+};
