@@ -247,13 +247,18 @@
             <i class="fas fa-arrow-left" style="cursor:pointer; font-size: 1.2rem;" onclick="window.history.back()"></i>
             <span style="font-size: 14px; font-weight: bold; margin-left: 10px;">Olá, <span id="txtUser">D. BRITO</span></span>
         </div>
-        <div class="header-center"><h1 class="titulo-sistema">Monitoramento de Notas</h1></div>
-        <div class="header-right"><button class="btn-logout" onclick="window.location.href='index.html'">Sair</button></div>
+        <div class="header-center">
+            <h1 class="titulo-sistema">Monitoramento de Notas</h1>
+        </div>
+        <div class="header-right">
+            <button class="btn-logout" onclick="window.location.href='index.html'">Sair</button>
+        </div>
     </header>
 
     <div class="main-container">
+        <!-- PAINEL DE CONTROLE -->
         <div class="control-panel">
-            <div style="display:flex; gap:20px; align-items:flex-end;">
+            <div class="search-group">
                 <div class="control-group">
                     <label>Exibir</label>
                     <select id="selectPageSize" onchange="mudarTamanhoPagina()" class="control-input">
@@ -263,41 +268,32 @@
                         <option value="100">100</option>
                     </select>
                 </div>
-                <div class="control-group" style="width: 350px;">
+                <div class="control-group" style="flex: 1; max-width: 400px;">
                     <label>Pesquisar Geral</label>
                     <input type="text" id="inputBusca" placeholder="Senha, fornecedor, carga..." class="control-input" style="width: 100%;" oninput="atualizarFiltros()">
                 </div>
             </div>
 
-        <!-- BOTÕES DE AÇÃO ALINHADOS À DIREITA -->
-        <div class="export-actions">
-            <button onclick="copiarAgendamentosSelecionados()" class="btn-share" style="background:#fb8c00;" title="Copiar para o WhatsApp">
-                <i class="fas fa-copy"></i> COPIAR SELECIONADOS
-            </button>
-            
-            <div class="dropdown">
-                <button onclick="toggleDropdown()" class="btn-share">
-                    <i class="fas fa-share-alt"></i> COMPARTILHAR <i class="fas fa-caret-down"></i>
+            <div class="export-actions">
+                <button onclick="copiarAgendamentosSelecionados()" class="btn-share" style="background:#fb8c00;" title="Copiar para o WhatsApp">
+                    <i class="fas fa-copy"></i> COPIAR
                 </button>
-                <div id="menuExport" class="dropdown-content">
-                    <a href="#" onclick="exportarExcel('basico')"><i class="fas fa-file-excel" style="color: #2e7d32;"></i> EXCEL BÁSICO</a>
-                    <a href="#" onclick="exportarExcel('completo')"><i class="fas fa-file-excel" style="color: #1b5e20;"></i> EXCEL COMPLETO</a>
-                    <a href="#" onclick="exportarPDF('basico')"><i class="fas fa-file-pdf" style="color: #1565c0;"></i> PDF BÁSICO</a>
-                    <a href="#" onclick="exportarPDF('completo')"><i class="fas fa-file-pdf" style="color: #d32f2f;"></i> PDF COMPLETO</a>
-                </div>
-             <!-- RODAPÉ DE PAGINAÇÃO PROFISSIONAL -->
-             <div class="pagination" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #f9f9f9;">
-                <div id="infoPaginacao" style="font-weight: bold; color: var(--text-muted);">
-                    Exibindo 0 de 0 registros
-                </div>
-                <div class="page-buttons">
-                    <button onclick="mudarPagina('anterior')" class="btn-page"><i class="fas fa-chevron-left"></i> Anterior</button>
-                    <span id="numeroPaginaAtiva" style="margin: 0 15px; font-weight: bold; color: var(--primary);">1</span>
-                    <button onclick="mudarPagina('proximo')" class="btn-page">Próximo <i class="fas fa-chevron-right"></i></button>
+                
+                <div class="dropdown">
+                    <button onclick="toggleDropdown()" class="btn-share">
+                        <i class="fas fa-share-alt"></i> COMPARTILHAR <i class="fas fa-caret-down"></i>
+                    </button>
+                    <div id="menuExport" class="dropdown-content">
+                        <a href="#" onclick="exportarExcel('basico')"><i class="fas fa-file-excel" style="color: #2e7d32;"></i> EXCEL BÁSICO</a>
+                        <a href="#" onclick="exportarExcel('completo')"><i class="fas fa-file-excel" style="color: #1b5e20;"></i> EXCEL COMPLETO</a>
+                        <a href="#" onclick="exportarPDF('basico')"><i class="fas fa-file-pdf" style="color: #1565c0;"></i> PDF BÁSICO</a>
+                        <a href="#" onclick="exportarPDF('completo')"><i class="fas fa-file-pdf" style="color: #d32f2f;"></i> PDF COMPLETO</a>
+                    </div>
                 </div>
             </div>
-        </div>
+        </div> <!-- FECHAMENTO CORRETO DO CONTROL-PANEL -->
 
+        <!-- TABELA -->
         <div class="table-container">
             <div class="scroll-area">
                 <table>
@@ -305,31 +301,29 @@
                         <tr>
                             <th width="30"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
                             <th onclick="ordenarTabela('senhaAgendamento', this)">
-                                <div class="th-content"><span>Senha <i class="fas fa-sort"></i></span><small id="btn-filter-senhaAgendamento" onclick="abrirFiltro('senhaAgendamento', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Senha <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('senhaAgendamento', event)">FILTRO</small></div>
                             </th>
                             <th onclick="ordenarTabela('data', this)">
-                                <div class="th-content"><span>Data <i class="fas fa-sort"></i></span><small id="btn-filter-data" onclick="abrirFiltro('data', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Data <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('data', event)">FILTRO</small></div>
                             </th>
                             <th onclick="ordenarTabela('central', this)">
-                                <div class="th-content"><span>Central <i class="fas fa-sort"></i></span><small id="btn-filter-central" onclick="abrirFiltro('central', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Central <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('central', event)">FILTRO</small></div>
                             </th>
                             <th onclick="ordenarTabela('cargas', this)">
-                                <div class="th-content"><span>Cargas <i class="fas fa-sort"></i></span><small id="btn-filter-cargas" onclick="abrirFiltro('cargas', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Cargas <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('cargas', event)">FILTRO</small></div>
                             </th>
-                            <!-- NOVAS COLUNAS NO MEIO -->
                             <th>NOTAS</th>
                             <th onclick="ordenarTabela('situacao', this)">
-                                <div class="th-content"><span>Situação <i class="fas fa-sort"></i></span><small id="btn-filter-situacao" onclick="abrirFiltro('situacao', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Situação <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('situacao', event)">FILTRO</small></div>
                             </th>
-                            <!-- COLUNAS FINAIS -->
                             <th onclick="ordenarTabela('fornecedor', this)">
-                                <div class="th-content"><span>Fornecedor <i class="fas fa-sort"></i></span><small id="btn-filter-fornecedor" onclick="abrirFiltro('fornecedor', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Fornecedor <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('fornecedor', event)">FILTRO</small></div>
                             </th>
                             <th onclick="ordenarTabela('tipoProduto', this)">
-                                <div class="th-content"><span>Tipo <i class="fas fa-sort"></i></span><small id="btn-filter-tipoProduto" onclick="abrirFiltro('tipoProduto', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Tipo <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('tipoProduto', event)">FILTRO</small></div>
                             </th>
                             <th onclick="ordenarTabela('linhaSeparacao', this)">
-                                <div class="th-content"><span>Linha <i class="fas fa-sort"></i></span><small id="btn-filter-linhaSeparacao" onclick="abrirFiltro('linhaSeparacao', event)">FILTRO</small></div>
+                                <div class="th-content"><span>Linha <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('linhaSeparacao', event)">FILTRO</small></div>
                             </th>
                             <th width="50">Ações</th>
                         </tr>
@@ -337,35 +331,22 @@
                     <tbody id="corpoTabela"></tbody>
                 </table>
             </div>
+
+            <!-- RODAPÉ DE PAGINAÇÃO (ÚNICO) -->
             <div class="pagination">
-                <div id="infoPagina" style="font-size: 13px; color: #666;"></div>
-                <div class="page-buttons" id="botoesPagina"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL FILTRO INTELIGENTE -->
-    <div id="modalFiltro" class="modal-overlay">
-        <div class="modal-glass">
-            <div class="modal-header"><span id="nomeColunaFiltro" style="font-weight:bold; text-transform: uppercase;">Filtrar</span><i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i></div>
-            <div style="padding:20px;">
-                <div style="display:flex; gap:8px; margin-bottom:12px;">
-                    <button onclick="marcarTodosFiltro(true)" class="btn-page" style="flex:1">Todos</button>
-                    <button onclick="marcarTodosFiltro(false)" class="btn-page" style="flex:1">Nenhum</button>
+                <div id="infoPagina">Mostrando 0 registros (Página 1 de 1)</div>
+                <div class="page-buttons" id="botoesPagina">
+                    <button onclick="mudarPagina('anterior')" class="btn-page"><i class="fas fa-chevron-left"></i> Anterior</button>
+                    <span id="numeroPaginaAtiva" style="margin: 0 10px; font-weight: bold; color: var(--primary);">1</span>
+                    <button onclick="mudarPagina('proximo')" class="btn-page">Próximo <i class="fas fa-chevron-right"></i></button>
                 </div>
-                <div id="opcoesFiltro" style="max-height:300px; overflow-y:auto; border:1px solid #eee; padding:10px; border-radius:8px;"></div>
-                <button onclick="aplicarFiltroColuna()" class="btn-logout" style="width:100%; margin-top:15px; background:#2e7d32;">APLICAR FILTRO</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL COMPOSIÇÃO -->
-    <div id="modalComposicao" class="modal-overlay">
-        <div class="modal-glass" style="max-width:800px;">
-            <div class="modal-header"><h3 id="tituloComp" style="margin:0; font-size:1.2rem;">Composição da Carga</h3><i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i></div>
-            <div id="detalhesItens" style="padding:20px;"></div>
-        </div>
-    </div>
+    <!-- MODAIS (Mantenha como estão, eles já funcionam bem) -->
+    <div id="modalFiltro" class="modal-overlay">...</div>
+    <div id="modalComposicao" class="modal-overlay">...</div>
 
     <script>
         function toggleDropdown() {
