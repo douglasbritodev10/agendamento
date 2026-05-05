@@ -43,32 +43,36 @@ window.renderizarTabela = function() {
     const fim = inicio + itensPorPagina;
     const listaExibicao = dadosFiltrados.slice(inicio, fim);
 
-    // Função interna rápida para definir a classe de cor do tipo
     const getClasseTipo = (tipo) => {
         const t = (tipo || "").toUpperCase();
-        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
-            return 'tipo-amarelo';
-        if (t.includes('MESA')) 
-            return 'tipo-verde';
-        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
-            return 'tipo-azul';
+        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) return 'tipo-amarelo';
+        if (t.includes('MESA')) return 'tipo-verde';
+        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) return 'tipo-azul';
         return 'tipo-padrao';
     };
 
     listaExibicao.forEach(item => {
         const tr = document.createElement('tr');
         
-        // Aplicamos a lógica de cores na coluna de tipoProduto usando um <span> com a classe CSS
         tr.innerHTML = `
             <td><input type="checkbox" class="check-export" value="${item.id}"></td>
             <td style="font-weight:bold; color:var(--primary)">${item.senhaAgendamento || '-'}</td>
             <td>${formatarData(item.data)}</td>
             <td>${item.central || '-'}</td>
             <td>${item.cargas || '-'}</td>
+            
+            <!-- COLUNA PEDIDO -->
             <td>
                 <input type="text" class="control-input" style="padding:4px; width:90%; text-align:center" 
-                value="${item.nf_cte || ''}" onchange="atualizarCampo('${item.id}', 'nf_cte', this.value)">
+                value="${item.pedido || ''}" onchange="atualizarCampo('${item.id}', 'pedido', this.value)">
             </td>
+
+            <!-- COLUNA NOTAS -->
+            <td>
+                <input type="text" class="control-input" style="padding:4px; width:90%; text-align:center" 
+                value="${item.notas || ''}" onchange="atualizarCampo('${item.id}', 'notas', this.value)">
+            </td>
+
             <td>${renderizarSelectSituacao(item)}</td>
             <td style="text-align:left">${item.fornecedor || '-'}</td>
             <td>
@@ -689,13 +693,13 @@ window.copiarAgendamentosSelecionados = () => {
         const tr = cb.closest('tr');
         
         // Ajuste dos índices conforme seu renderizarTabela:
-        // cells[1]=Senha, [2]=Data, [3]=Central, [4]=Cargas, [7]=Fornecedor, [8]=Tipo
+        // cells[1]=Senha, [2]=Data, [3]=Central, [4]=Cargas, [8]=Fornecedor, [9]=Tipo
         const senha = tr.cells[1].innerText;
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        const fornecedor = tr.cells[7].innerText; 
-        const tipo = tr.cells[8].innerText;       
+        const fornecedor = tr.cells[8].innerText; 
+        const tipo = tr.cells[9].innerText;       
         
         const cores = getCoresPorTipoCard(tipo);
 
