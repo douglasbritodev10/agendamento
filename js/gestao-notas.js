@@ -110,17 +110,16 @@ function aplicarFiltrosEBusca() {
 
         const matchBusca = matchCamposNormais || matchComposicao;
         
-        // 2. Filtros por Coluna (Ajustado para comparar datas formatadas)
+        // 2. Filtros por Coluna (CORRIGIDO AQUI)
         const matchFiltros = Object.keys(filtrosSelecionados).every(coluna => {
-            const selecionados na Coluna = filtrosSelecionados[coluna];
-            if (!selecionados na Coluna || selecionados na Coluna.length === 0) return true;
+            const selecionadosNaColuna = filtrosSelecionados[coluna]; // Nome corrigido
+            if (!selecionadosNaColuna || selecionadosNaColuna.length === 0) return true;
             
-            // Se a coluna for data, formatamos o valor do item para "DD/MM/AAAA" antes de checar
             const valorParaComparar = (coluna === 'data') 
                 ? formatarData(item[coluna]) 
                 : String(item[coluna] || '');
 
-            return selecionados na Coluna.includes(valorParaComparar);
+            return selecionadosNaColuna.includes(valorParaComparar); // Nome corrigido
         });
 
         return matchBusca && matchFiltros;
