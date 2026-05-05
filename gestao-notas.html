@@ -297,37 +297,71 @@
         <div class="table-container">
             <div class="scroll-area">
                 <table>
-                    <thead>
-                        <tr>
-                            <th width="30"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
-                            <th onclick="ordenarTabela('senhaAgendamento', this)">
-                                <div class="th-content"><span>Senha <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('senhaAgendamento', event)">FILTRO</small></div>
-                            </th>
-                            <th onclick="ordenarTabela('data', this)">
-                                <div class="th-content"><span>Data <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('data', event)">FILTRO</small></div>
-                            </th>
-                            <th onclick="ordenarTabela('central', this)">
-                                <div class="th-content"><span>Central <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('central', event)">FILTRO</small></div>
-                            </th>
-                            <th onclick="ordenarTabela('cargas', this)">
-                                <div class="th-content"><span>Cargas <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('cargas', event)">FILTRO</small></div>
-                            </th>
-                            <th>NOTAS</th>
-                            <th onclick="ordenarTabela('situacao', this)">
-                                <div class="th-content"><span>Situação <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('situacao', event)">FILTRO</small></div>
-                            </th>
-                            <th onclick="ordenarTabela('fornecedor', this)">
-                                <div class="th-content"><span>Fornecedor <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('fornecedor', event)">FILTRO</small></div>
-                            </th>
-                            <th onclick="ordenarTabela('tipoProduto', this)">
-                                <div class="th-content"><span>Tipo <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('tipoProduto', event)">FILTRO</small></div>
-                            </th>
-                            <th onclick="ordenarTabela('linhaSeparacao', this)">
-                                <div class="th-content"><span>Linha <i class="fas fa-sort"></i></span><small onclick="abrirFiltro('linhaSeparacao', event)">FILTRO</small></div>
-                            </th>
-                            <th width="50">Ações</th>
-                        </tr>
-                    </thead>
+<thead>
+    <tr>
+        <th width="30"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
+        
+        <th onclick="ordenarTabela('senhaAgendamento', this)">
+            <div class="th-content">
+                <span>Senha <i class="fas fa-sort"></i></span>
+                <small id="filter-senhaAgendamento" class="btn-abrir-filtro" onclick="abrirFiltro('senhaAgendamento', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th onclick="ordenarTabela('data', this)">
+            <div class="th-content">
+                <span>Data <i class="fas fa-sort"></i></span>
+                <small id="filter-data" class="btn-abrir-filtro" onclick="abrirFiltro('data', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th onclick="ordenarTabela('central', this)">
+            <div class="th-content">
+                <span>Central <i class="fas fa-sort"></i></span>
+                <small id="filter-central" class="btn-abrir-filtro" onclick="abrirFiltro('central', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th onclick="ordenarTabela('cargas', this)">
+            <div class="th-content">
+                <span>Cargas <i class="fas fa-sort"></i></span>
+                <small id="filter-cargas" class="btn-abrir-filtro" onclick="abrirFiltro('cargas', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th>NOTAS</th>
+
+        <th onclick="ordenarTabela('situacao', this)">
+            <div class="th-content">
+                <span>Situação <i class="fas fa-sort"></i></span>
+                <small id="filter-situacao" class="btn-abrir-filtro" onclick="abrirFiltro('situacao', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th onclick="ordenarTabela('fornecedor', this)">
+            <div class="th-content">
+                <span>Fornecedor <i class="fas fa-sort"></i></span>
+                <small id="filter-fornecedor" class="btn-abrir-filtro" onclick="abrirFiltro('fornecedor', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th onclick="ordenarTabela('tipoProduto', this)">
+            <div class="th-content">
+                <span>Tipo <i class="fas fa-sort"></i></span>
+                <small id="filter-tipoProduto" class="btn-abrir-filtro" onclick="abrirFiltro('tipoProduto', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th onclick="ordenarTabela('linhaSeparacao', this)">
+            <div class="th-content">
+                <span>Linha <i class="fas fa-sort"></i></span>
+                <small id="filter-linhaSeparacao" class="btn-abrir-filtro" onclick="abrirFiltro('linhaSeparacao', event)">FILTRO</small>
+            </div>
+        </th>
+
+        <th width="50">Ações</th>
+    </tr>
+</thead>
                     <tbody id="corpoTabela"></tbody>
                 </table>
             </div>
