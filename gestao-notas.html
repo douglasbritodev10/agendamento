@@ -156,8 +156,9 @@
                 </div>
             </div>
 
-        <div class="export-actions" style="display: flex; gap: 10px; align-items: center;">
-            <button onclick="copiarAgendamentosSelecionados()" class="btn-exp" style="background:#fb8c00;" title="Copiar para o WhatsApp/Área de Transferência">
+        <!-- BOTÕES DE AÇÃO ALINHADOS À DIREITA -->
+        <div class="export-actions">
+            <button onclick="copiarAgendamentosSelecionados()" class="btn-share" style="background:#fb8c00;" title="Copiar para o WhatsApp">
                 <i class="fas fa-copy"></i> COPIAR SELECIONADOS
             </button>
             
@@ -170,6 +171,16 @@
                     <a href="#" onclick="exportarExcel('completo')"><i class="fas fa-file-excel" style="color: #1b5e20;"></i> EXCEL COMPLETO</a>
                     <a href="#" onclick="exportarPDF('basico')"><i class="fas fa-file-pdf" style="color: #1565c0;"></i> PDF BÁSICO</a>
                     <a href="#" onclick="exportarPDF('completo')"><i class="fas fa-file-pdf" style="color: #d32f2f;"></i> PDF COMPLETO</a>
+                </div>
+             <!-- RODAPÉ DE PAGINAÇÃO PROFISSIONAL -->
+             <div class="pagination" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #f9f9f9;">
+                <div id="infoPaginacao" style="font-weight: bold; color: var(--text-muted);">
+                    Exibindo 0 de 0 registros
+                </div>
+                <div class="page-buttons">
+                    <button onclick="mudarPagina('anterior')" class="btn-page"><i class="fas fa-chevron-left"></i> Anterior</button>
+                    <span id="numeroPaginaAtiva" style="margin: 0 15px; font-weight: bold; color: var(--primary);">1</span>
+                    <button onclick="mudarPagina('proximo')" class="btn-page">Próximo <i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
