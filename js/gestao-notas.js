@@ -98,12 +98,11 @@ function aplicarFiltrosEBusca() {
     const termoBusca = document.getElementById('inputBusca').value.toLowerCase();
     
     dadosFiltrados = dadosOriginais.filter(item => {
-        // 1. Busca Geral (Campos normais + Composição)
+        // 1. Busca Geral
         const matchCamposNormais = Object.values(item).some(val => 
             String(val).toLowerCase().includes(termoBusca)
         );
 
-        // Verifica se o termo está no código ou descrição de algum item da composição
         const matchComposicao = item.composicao?.some(prod => 
             String(prod.codigo).toLowerCase().includes(termoBusca) || 
             String(prod.descricao).toLowerCase().includes(termoBusca)
@@ -111,18 +110,23 @@ function aplicarFiltrosEBusca() {
 
         const matchBusca = matchCamposNormais || matchComposicao;
         
-        // 2. Filtros por Coluna (Filtro Inteligente)
+        // 2. Filtros por Coluna (Ajustado para comparar datas formatadas)
         const matchFiltros = Object.keys(filtrosSelecionados).every(coluna => {
-            if (!filtrosSelecionados[coluna] || filtrosSelecionados[coluna].length === 0) return true;
-            return filtrosSelecionados[coluna].includes(String(item[coluna]));
+            const selecionados na Coluna = filtrosSelecionados[coluna];
+            if (!selecionados na Coluna || selecionados na Coluna.length === 0) return true;
+            
+            // Se a coluna for data, formatamos o valor do item para "DD/MM/AAAA" antes de checar
+            const valorParaComparar = (coluna === 'data') 
+                ? formatarData(item[coluna]) 
+                : String(item[coluna] || '');
+
+            return selecionados na Coluna.includes(valorParaComparar);
         });
 
         return matchBusca && matchFiltros;
     });
 
-    // Chamada para atualizar os ícones/textos dos filtros
     atualizarVisualFiltros(); 
-
     paginaAtual = 1;
     renderizarTabela();
 }
@@ -161,24 +165,52 @@ window.abrirFiltro = function(coluna, event) {
     const modal = document.getElementById('modalFiltro');
     const container = document.getElementById('opcoesFiltro');
     
-    // Pegar valores únicos da coluna
-    const valoresUnicos = [...new Set(dadosOriginais.map(item => String(item[coluna] || '')))].sort();
+    // 1. Pegar todos os valores únicos possíveis da base original (para mostrar todos)
+    const todosValoresUnicos = [...new Set(dadosOriginais.map(item => {
+        let val = item[coluna] || '';
+        // Se for coluna de data, formatamos para o padrão Brasil
+        return coluna === 'data' ? formatarData(val) : String(val);
+    }))].sort();
+
+    // 2. Pegar os valores que estão atualmente visíveis (vinculados aos filtros ativos)
+    const valoresVivos = [...new Set(dadosFiltrados.map(item => {
+        let val = item[coluna] || '';
+        return coluna === 'data' ? formatarData(val) : String(val);
+    }))];
     
-    container.innerHTML = valoresUnicos.map(valor => `
-        <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer">
-            <input type="checkbox" value="${valor}" ${filtrosSelecionados[coluna]?.includes(valor) ? 'checked' : ''} class="check-item-filtro"> 
-            ${valor === '' ? '(Vazio)' : valor}
-        </label>
-    `).join('');
+    container.innerHTML = todosValoresUnicos.map(valor => {
+        const estaVivo = valoresVivos.includes(valor);
+        const estaChecado = filtrosSelecionados[coluna]?.includes(valor);
+        
+        // Estilização dinâmica: se não estiver nos dados filtrados, fica cinza
+        const estiloLabel = estaVivo 
+            ? 'color: #333; font-weight: 500;' 
+            : 'color: #ccc; cursor: not-allowed;';
+
+        return `
+            <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer; ${estiloLabel}">
+                <input type="checkbox" 
+                       value="${valor}" 
+                       ${estaChecado ? 'checked' : ''} 
+                       class="check-item-filtro"> 
+                ${valor === '' || valor === '-/-/' ? '(Vazio)' : valor}
+            </label>
+        `;
+    }).join('');
 
     modal.style.display = 'flex';
 };
 
 window.aplicarFiltroColuna = function() {
-    const selecionados = Array.from(document.querySelectorAll('.check-item-filtro:checked')).map(cb => cb.value);
+    // Captura os valores que você marcou nos checkboxes do modal
+    const selecionados = Array.from(document.querySelectorAll('.check-item-filtro:checked'))
+        .map(cb => cb.value);
+    
+    // Salva no estado global de filtros
     filtrosSelecionados[colunaFiltroAtual] = selecionados;
+    
     fecharModais();
-    aplicarFiltrosEBusca();
+    aplicarFiltrosEBusca(); // Dispara a atualização da tabela e dos outros filtros
 };
 
 window.exportarPDF = async (modo) => {
