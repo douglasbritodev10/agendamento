@@ -605,32 +605,61 @@ window.abrirComposicao = async function(id) {
     }
 };
 
-// --- FUNÇÃO DE COPIAR (Ajustada para o seu layout de colunas) ---
+// --- FUNÇÃO AUXILIAR PARA DEFINIR CORES DOS CARDS NA CÓPIA ---
+const getCoresPorTipoCard = (tipo) => {
+    const t = (tipo || "").toUpperCase();
+    if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
+        return { bg: '#fff9c4', text: '#827717' }; // Amarelo suave
+    if (t.includes('MESA')) 
+        return { bg: '#c8e6c9', text: '#1b5e20' }; // Verde suave
+    if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
+        return { bg: '#e1f5fe', text: '#01579b' }; // Azul suave
+    return { bg: '#f5f5f5', text: '#424242' };     // Cinza padrão
+};
+
+// --- FUNÇÃO DE COPIAR AGENDAMENTOS (ESTILO CARD HTML) ---
 window.copiarAgendamentosSelecionados = () => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked'));
     if (selecionados.length === 0) return alert("Selecione os agendamentos na tabela!");
 
-    let textoCopia = "*AGENDAMENTOS MÓVEIS SIMONETTI*\n\n";
+    let html = `<div style="font-family: Arial, sans-serif; max-width: 450px;">`;
 
     selecionados.forEach(cb => {
         const tr = cb.closest('tr');
-        // Pegando os dados baseados na ordem das suas colunas <td>
+        
+        // Ajuste dos índices conforme seu renderizarTabela:
+        // cells[1]=Senha, [2]=Data, [3]=Central, [4]=Cargas, [7]=Fornecedor, [8]=Tipo
         const senha = tr.cells[1].innerText;
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        const fornecedor = tr.cells[7].innerText; // Coluna 7 é Fornecedor
-        const tipo = tr.cells[8].innerText;       // Coluna 8 é Tipo
+        const fornecedor = tr.cells[7].innerText; 
+        const tipo = tr.cells[8].innerText;       
+        
+        const cores = getCoresPorTipoCard(tipo);
 
-        textoCopia += `📌 *SENHA: ${senha}* | DATA: ${data}\n`;
-        textoCopia += `🏢 *FORNECEDOR:* ${fornecedor}\n`;
-        textoCopia += `📍 *CENTRAL:* ${central} | *TIPO:* ${tipo}\n`;
-        textoCopia += `📦 *REF:* ${cargas}\n`;
-        textoCopia += `------------------------------\n`;
+        html += `
+            <div style="background: ${cores.bg}; color: ${cores.text}; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.1); box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 5px; margin-bottom: 8px; font-size: 14px;">
+                    <b style="color:#c00000;">SENHA: ${senha}</b> <span style="font-size: 12px;">DATA: ${data}</span>
+                </div>
+                <div style="font-size: 13px; line-height: 1.5;">
+                    <b>FORNECEDOR:</b> ${fornecedor}<br>
+                    <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
+                    <b>REFERENTE:</b> ${cargas}
+                </div>
+            </div>`;
     });
+    
+    html += `</div>`;
 
-    // Copia como texto simples (melhor para WhatsApp)
-    navigator.clipboard.writeText(textoCopia).then(() => {
-        alert("Copiado com sucesso! Agora é só colar no WhatsApp.");
+    const blob = new Blob([html], { type: 'text/html' });
+    const clipboardItem = new ClipboardItem({ 'text/html': blob });
+    
+    navigator.clipboard.write([clipboardItem]).then(() => {
+        alert("Agendamentos copiados com sucesso!");
+    }).catch(err => {
+        console.error("Erro ao copiar:", err);
+        alert("Erro ao copiar. Tente novamente.");
     });
 };
