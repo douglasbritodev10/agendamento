@@ -7,6 +7,30 @@ import {
 // --- ADICIONE ESTA LINHA AQUI ---
 const db = getFirestore(app);
 
+// --- CONTROLE DE ACESSO ---
+const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado')); // Ou de onde vier seu login
+const nivelAcesso = usuarioLogado?.nivelAcesso;
+
+if (!usuarioLogado || !["ADM", "LOGISTICA", "LEITOR"].includes(nivelAcesso)) {
+    alert("Acesso negado!");
+    window.location.href = "index.html";
+}
+
+// Função para registrar logs no Firebase
+async function registrarHistorico(acao, detalhes) {
+    if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
+        try {
+            await addDoc(collection(db, "historico"), {
+                usuario: usuarioLogado.nome || "Sistema",
+                nivel: nivelAcesso,
+                acao: acao,
+                detalhes: detalhes,
+                data: serverTimestamp()
+            });
+        } catch (e) { console.error("Erro ao registrar log:", e); }
+    }
+}
+
 // --- ESTADO GLOBAL ---
 let dadosOriginais = [];
 let dadosFiltrados = [];
@@ -43,6 +67,10 @@ window.renderizarTabela = function() {
     const fim = inicio + itensPorPagina;
     const listaExibicao = dadosFiltrados.slice(inicio, fim);
 
+    // Recupera o nível de acesso para aplicar a trava
+    const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
+    const isLeitor = usuarioLogado?.nivelAcesso === "LEITOR";
+
     const getClasseTipo = (tipo) => {
         const t = (tipo || "").toUpperCase();
         if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) return 'tipo-amarelo';
@@ -61,16 +89,20 @@ window.renderizarTabela = function() {
             <td>${item.central || '-'}</td>
             <td>${item.cargas || '-'}</td>
             
-            <!-- COLUNA PEDIDO -->
+            <!-- COLUNA PEDIDO (Bloqueada se for LEITOR) -->
             <td>
                 <input type="text" class="control-input" style="padding:4px; width:90%; text-align:center" 
-                value="${item.pedido || ''}" onchange="atualizarCampo('${item.id}', 'pedido', this.value)">
+                value="${item.pedido || ''}" 
+                ${isLeitor ? 'disabled' : ''} 
+                onchange="atualizarCampo('${item.id}', 'pedido', this.value)">
             </td>
 
-            <!-- COLUNA NOTAS -->
+            <!-- COLUNA NOTAS (Bloqueada se for LEITOR) -->
             <td>
                 <input type="text" class="control-input" style="padding:4px; width:90%; text-align:center" 
-                value="${item.notas || ''}" onchange="atualizarCampo('${item.id}', 'notas', this.value)">
+                value="${item.notas || ''}" 
+                ${isLeitor ? 'disabled' : ''} 
+                onchange="atualizarCampo('${item.id}', 'notas', this.value)">
             </td>
 
             <td>${renderizarSelectSituacao(item)}</td>
@@ -477,7 +509,7 @@ function renderizarSelectSituacao(item) {
     // Lista de status atualizada com base no seu CSS
     const status = [
         'AGUARDANDO',
-        'OK', 
+        'OK NO AJUSTE', 
         'SEM NOTA', 
         'REAGENDADA', 
         'SOBRE AJUSTE', 
@@ -491,17 +523,16 @@ function renderizarSelectSituacao(item) {
     ];
 
     // Mapeamento de Cores (Fundo e Texto)
-    // AGUARDANDO configurado para cinza escuro
     const cores = {
         'AGUARDANDO': { bg: '#424242', text: '#ffffff' },
-        'OK': { bg: '#066b3c', text: '#ffffff' },
+        'OK NO AJUSTE': { bg: '#066b3c', text: '#ffffff' },
         'SEM NOTA': { bg: '#0d47a1', text: '#ffffff' },
         'REAGENDADA': { bg: '#e1bee7', text: '#4a148c' },
         'SOBRE AJUSTE': { bg: '#ffe082', text: '#5f4b00' },
         'CANCELADA': { bg: '#b71c1c', text: '#ffffff' },
         'OC PENDENTE': { bg: '#cfd8dc', text: '#37474f' },
         'SEM TRIANGULACAO': { bg: '#ffcdd2', text: '#b71c1c' },
-        'VENCIMENTO ERRADO': { bg: '#b71c1c', text: '#ffffff' }, // Possui outline no CSS
+        'VENCIMENTO ERRADO': { bg: '#b71c1c', text: '#ffffff' },
         'FALTA CTE': { bg: '#512da8', text: '#ffffff' },
         'NOTA ERRADA': { bg: '#ffccbc', text: '#e64a19' },
         'CTE DIVERGENTE': { bg: '#795548', text: '#ffffff' }
@@ -509,12 +540,17 @@ function renderizarSelectSituacao(item) {
 
     const estiloAtual = cores[item.situacao] || { bg: '#424242', text: '#ffffff' };
     
-    // Adicionei um contorno amarelo caso seja VENCIMENTO ERRADO para bater com seu CSS
+    // Adicionei um contorno amarelo caso seja VENCIMENTO ERRADO
     const borderExtra = item.situacao === 'VENCIMENTO ERRADO' ? 'outline: 2px solid #ffd600;' : '';
+
+    // --- NOVA REGRA DE ACESSO ---
+    const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
+    const isLeitor = usuarioLogado?.nivelAcesso === "LEITOR";
 
     return `
         <select onchange="atualizarCampo('${item.id}', 'situacao', this.value)" 
-            style="background:${estiloAtual.bg}; color:${estiloAtual.text}; border:none; border-radius:15px; padding:4px 8px; font-size:10px; font-weight:bold; cursor:pointer; ${borderExtra}">
+            ${isLeitor ? 'disabled' : ''} 
+            style="background:${estiloAtual.bg}; color:${estiloAtual.text}; border:none; border-radius:15px; padding:4px 8px; font-size:10px; font-weight:bold; cursor:pointer; ${borderExtra} opacity: ${isLeitor ? '0.8' : '1'};">
             ${status.map(s => `<option value="${s}" ${item.situacao === s ? 'selected' : ''} style="background: white; color: black;">${s}</option>`).join('')}
         </select>
     `;
@@ -574,9 +610,18 @@ window.mudarPagina = function(direcao) {
 
 // --- ATUALIZAÇÃO DE CAMPOS ---
 window.atualizarCampo = async function(id, campo, valor) {
+    if (nivelAcesso === "LEITOR") return;
+
     try {
         const docRef = doc(db, "agendamentos", id);
+        const docSnap = await getDoc(docRef);
+        const dadoAntigo = docSnap.exists() ? docSnap.data()[campo] : "";
+
         await updateDoc(docRef, { [campo]: valor });
+        
+        // REGISTRA NO HISTÓRICO
+        registrarHistorico("ALTERAÇÃO", `Campo ${campo} alterado de "${dadoAntigo}" para "${valor}" no ID: ${id}`);
+        
         console.log("Atualizado com sucesso!");
     } catch (e) {
         console.error("Erro ao atualizar campo:", e);
