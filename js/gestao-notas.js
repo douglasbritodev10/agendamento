@@ -179,7 +179,7 @@ window.exportarPDF = async (modo) => {
         return { rgb: [255, 255, 255], text: [0, 0, 0] };
     };
 
-    const selecionados = Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const snap = await getDocs(collection(db, "agendamentos"));
@@ -282,7 +282,7 @@ window.exportarPDF = async (modo) => {
 };
 
 window.exportarExcel = async (modo) => {
-    const selecionados = Array.from(document.querySelectorAll('.row-check:checked')).map(c => c.value);
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const workbook = new ExcelJS.Workbook();
