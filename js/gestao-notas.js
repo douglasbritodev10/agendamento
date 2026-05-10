@@ -8,49 +8,47 @@ import {
 const db = getFirestore(app);
 
 // --- CONTROLE DE ACESSO REFINADO ---
-const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
+const usuarioLogadoRaw = localStorage.getItem('usuarioLogado');
+const usuarioLogado = usuarioLogadoRaw ? JSON.parse(usuarioLogadoRaw) : null;
 
-// Douglas, aqui está o segredo: pegamos o nível e garantimos que ele seja comparado em MAIÚSCULO
+// Pegamos o nível e tratamos nulo/indefinido/espaços
 const nivelBruto = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel || "";
-const nivelAcesso = nivelBruto.trim().toUpperCase();
+const nivelAcesso = nivelBruto.toString().trim().toUpperCase();
 
-// 1. Verificação de Segurança (Ajustada para não te expulsar mais)
+// LOG DE DEPURAÇÃO (Aperte F12 no navegador para ver isso)
+console.log("DEBUG LOGIN - Usuário:", usuarioLogado);
+console.log("DEBUG LOGIN - Nível Detectado:", nivelAcesso);
+
+// 1. Verificação de Segurança
 const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
 
+// Se não houver usuário OU o nível não estiver na lista, expulsa
 if (!usuarioLogado || !niveisPermitidos.includes(nivelAcesso)) {
-    console.error("Acesso negado: Perfil inválido ou ausente. Nível encontrado:", nivelAcesso);
-    // Removemos o alert para evitar loops infinitos e mandamos direto pro login
-    window.location.href = "index.html";
+    console.error("BLOQUEIO: Perfil inválido ou ausente. Nível lido:", nivelAcesso);
+    
+    // AQUI ESTÁ O TRUQUE: Só redireciona se não for um erro de carregamento inicial
+    if (window.location.pathname.indexOf("index.html") === -1) {
+        window.location.replace("index.html"); 
+    }
 }
 
 // 2. Exibição do Nome e Trava de Níveis
 document.addEventListener('DOMContentLoaded', () => {
-    // Buscamos o ID 'txtUser' que está no seu HTML atual
-    const display = document.getElementById('txtUser');
-    if (display && usuarioLogado.nome) {
+    const display = document.getElementById('txtUser') || document.getElementById('user-display');
+    if (display && usuarioLogado && usuarioLogado.nome) {
         display.innerText = usuarioLogado.nome.toUpperCase();
     }
 
-    // Se for LEITOR, bloqueamos as edições visualmente
     if (nivelAcesso === "LEITOR") {
         const style = document.createElement('style');
         style.innerHTML = `
-            .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"] { 
+            .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"], .btn-acoes { 
                 display: none !important; 
             }
         `;
         document.head.appendChild(style);
     }
 });
-
-// 3. Função de Proteção para ações de salvar/excluir
-function temPermissao() {
-    if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
-        return true;
-    }
-    alert("Seu perfil (LEITOR) permite apenas a visualização.");
-    return false;
-}
 
 // Função para registrar logs no Firebase
 async function registrarHistorico(acao, detalhes) {
