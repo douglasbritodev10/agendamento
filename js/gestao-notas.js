@@ -10,30 +10,29 @@ const db = getFirestore(app);
 // --- CONTROLE DE ACESSO REFINADO ---
 const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
 
-// aqui verificamos as duas possibilidades de nome da chave: nivelAcesso ou nivel
-const nivelAcesso = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel;
+// Douglas, aqui está o segredo: pegamos o nível e garantimos que ele seja comparado em MAIÚSCULO
+const nivelBruto = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel || "";
+const nivelAcesso = nivelBruto.trim().toUpperCase();
 
-// 1. Verificação de Segurança Robusta
-if (!usuarioLogado || !nivelAcesso) {
-    console.error("Usuário não encontrado no localStorage");
-    window.location.href = "index.html"; 
-} else {
-    const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
-    if (!niveisPermitidos.includes(nivelAcesso.toUpperCase())) {
-        alert("Seu nível de acesso (" + nivelAcesso + ") não permite entrar aqui.");
-        window.location.href = "index.html";
-    }
+// 1. Verificação de Segurança (Ajustada para não te expulsar mais)
+const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
+
+if (!usuarioLogado || !niveisPermitidos.includes(nivelAcesso)) {
+    console.error("Acesso negado: Perfil inválido ou ausente. Nível encontrado:", nivelAcesso);
+    // Removemos o alert para evitar loops infinitos e mandamos direto pro login
+    window.location.href = "index.html";
 }
 
-// 2. Exibição do nome e bloqueio visual para LEITOR
+// 2. Exibição do Nome e Trava de Níveis
 document.addEventListener('DOMContentLoaded', () => {
-    const display = document.getElementById('user-display');
+    // Buscamos o ID 'txtUser' que está no seu HTML atual
+    const display = document.getElementById('txtUser');
     if (display && usuarioLogado.nome) {
         display.innerText = usuarioLogado.nome.toUpperCase();
     }
 
-    // Se for LEITOR, removemos os botões de ação do DOM para não dar nem a opção de clicar
-    if (nivelAcesso?.toUpperCase() === "LEITOR") {
+    // Se for LEITOR, bloqueamos as edições visualmente
+    if (nivelAcesso === "LEITOR") {
         const style = document.createElement('style');
         style.innerHTML = `
             .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"] { 
@@ -44,13 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 3. Função de Trava de Segurança para as funções do sistema
+// 3. Função de Proteção para ações de salvar/excluir
 function temPermissao() {
-    const nivel = (usuarioLogado?.nivelAcesso || usuarioLogado?.nivel)?.toUpperCase();
-    if (nivel === "ADM" || nivel === "LOGISTICA") {
+    if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
         return true;
     }
-    alert("Acesso Negado: Usuários com nível LEITOR não podem realizar alterações.");
+    alert("Seu perfil (LEITOR) permite apenas a visualização.");
     return false;
 }
 
