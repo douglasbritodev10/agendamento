@@ -7,13 +7,31 @@ import {
 // --- ADICIONE ESTA LINHA AQUI ---
 const db = getFirestore(app);
 
-// --- CONTROLE DE ACESSO ---
-const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado')); // Ou de onde vier seu login
+// --- CONTROLE DE ACESSO REFINADO ---
+const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
 const nivelAcesso = usuarioLogado?.nivelAcesso;
 
+// 1. Bloqueio de intrusos (Mantém você na página se for ADM, LOGISTICA ou LEITOR)
 if (!usuarioLogado || !["ADM", "LOGISTICA", "LEITOR"].includes(nivelAcesso)) {
     alert("Acesso negado!");
     window.location.href = "index.html";
+}
+
+// 2. Exibição do nome no canto superior
+document.addEventListener('DOMContentLoaded', () => {
+    const display = document.getElementById('user-display');
+    if (display && usuarioLogado.nome) {
+        display.innerText = usuarioLogado.nome.toUpperCase();
+    }
+});
+
+// 3. Função auxiliar para proteger ações de escrita
+function temPermissao() {
+    if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
+        return true;
+    }
+    alert("Seu perfil (LEITOR) permite apenas a visualização dos dados.");
+    return false;
 }
 
 // Função para registrar logs no Firebase
