@@ -8,24 +8,35 @@ import {
 const db = getFirestore(app);
 
 // --- CONTROLE DE ACESSO REFINADO ---
+// O seu sistema salva como 'usuarioLogado', garantimos a leitura correta
 const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
-const nivelAcesso = usuarioLogado?.nivelAcesso;
+const nivelAcesso = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel; // Aceita as duas nomenclaturas
 
-// 1. Bloqueio de intrusos (Mantém você na página se for ADM, LOGISTICA ou LEITOR)
-if (!usuarioLogado || !["ADM", "LOGISTICA", "LEITOR"].includes(nivelAcesso)) {
-    alert("Acesso negado!");
+// 1. Validação de Segurança (Douglas, isso evita o deslogue indevido)
+const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
+
+if (!usuarioLogado || !niveisPermitidos.includes(nivelAcesso)) {
+    console.error("Acesso negado: Perfil inválido ou ausente.");
+    alert("Acesso negado! Por favor, realize o login novamente.");
     window.location.href = "index.html";
 }
 
-// 2. Exibição do nome no canto superior
+// 2. Exibição do Nome e Trava de Níveis
 document.addEventListener('DOMContentLoaded', () => {
     const display = document.getElementById('user-display');
     if (display && usuarioLogado.nome) {
         display.innerText = usuarioLogado.nome.toUpperCase();
     }
+
+    // Se for LEITOR, escondemos botões de ação para segurança visual
+    if (nivelAcesso === "LEITOR") {
+        const style = document.createElement('style');
+        style.innerHTML = `.btn-edit, .btn-delete, .btn-save { display: none !important; }`;
+        document.head.appendChild(style);
+    }
 });
 
-// 3. Função auxiliar para proteger ações de escrita
+// 3. Função de Proteção de Ações (Use isso em funções de Salvar/Excluir)
 function temPermissao() {
     if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
         return true;
