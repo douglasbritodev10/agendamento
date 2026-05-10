@@ -286,18 +286,17 @@
 <body>
 
 <header class="header-portal">
-    <div class="header-left" style="display: flex; align-items: center; gap: 10px;">
-        <a href="inicial.html" style="color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-arrow-left btn-back"></i>
-            <span id="user-display" style="font-size: 14px; font-weight: bold; text-transform: uppercase;">CARREGANDO...</span>
-        </a>
+    <div class="header-left" style="display: flex; align-items: center; gap: 12px;">
+        <i class="fas fa-arrow-left btn-back" onclick="window.location.href='inicial.html'" style="cursor:pointer;"></i>
+        <span style="font-size: 14px; font-weight: bold;">Olá, <span id="user-display">CARREGANDO...</span></span>
     </div>
     <div class="header-center">
         <h1 class="titulo-sistema">Gestão de Ajuste de Notas</h1>
     </div>
     <div class="header-right">
-        <button class="btn-logout" onclick="localStorage.clear(); window.location.href='index.html'">Sair</button>
+        <button class="btn-logout" onclick="localStorage.removeItem('usuarioLogado'); window.location.href='index.html'">Sair</button>
     </div>
+</header>
 </header>
 
     <div class="main-container">
