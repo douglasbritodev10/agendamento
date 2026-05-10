@@ -4,76 +4,59 @@ import {
     updateDoc, getDocs, limit, serverTimestamp, deleteDoc, getDoc, where 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// --- ADICIONE ESTA LINHA AQUI ---
+// --- INICIALIZAÇÃO DO BANCO ---
 const db = getFirestore(app);
 
-// --- CONTROLE DE ACESSO VIA FIREBASE (O JEITO CERTO) ---
-async function validarAcessoReal() {
-    const usuarioLocal = JSON.parse(localStorage.getItem('usuarioLogado'));
-    
-    // Se não tem nem o rastro do login no storage, manda pro index
-    if (!usuarioLocal || (!usuarioLocal.id && !usuarioLocal.uid)) {
-        window.location.replace("index.html");
-        return;
-    }
+// --- CONTROLE DE ACESSO AJUSTADO (Lendo as caixinhas do seu login) ---
+// Douglas, aqui eu mudei para ler exatamente como o seu auth.js salva
+const nivelAcessoRaw = localStorage.getItem('nivelAcesso') || ""; 
+const usuarioNome = localStorage.getItem('usuarioNome') || "Usuário";
+const nivelAcesso = nivelAcessoRaw.toUpperCase().trim();
 
-    try {
-        // Douglas, aqui buscamos o ID que foi salvo no login
-        const userId = usuarioLocal.id || usuarioLocal.uid;
-        const userRef = doc(db, "usuarios", userId);
-        const userSnap = await getDoc(userRef);
+// 1. Verificação de Segurança
+const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
 
-        if (userSnap.exists()) {
-            const dadosUsuario = userSnap.data();
-            const nivelAcesso = (dadosUsuario.nivelAcesso || dadosUsuario.nivel || "").toUpperCase();
-            
-            console.log("Acesso validado direto no banco:", nivelAcesso);
-
-            // Verifica se o nível é permitido
-            if (!["ADM", "LOGISTICA", "LEITOR"].includes(nivelAcesso)) {
-                alert("Seu nível de acesso não permite entrar aqui.");
-                window.location.replace("index.html");
-                return;
-            }
-
-            // Atualiza o nome na tela direto do banco
-            const display = document.getElementById('txtUser');
-            if (display) display.innerText = dadosUsuario.nome.toUpperCase();
-
-            // Se for LEITOR, aplica as travas visuais
-            if (nivelAcesso === "LEITOR") {
-                bloquearEdicaoParaLeitor();
-            }
-
-        } else {
-            console.error("Usuário não encontrado no banco de dados.");
-            window.location.replace("index.html");
-        }
-    } catch (error) {
-        console.error("Erro ao validar acesso no banco:", error);
-        // Se o Firebase falhar (internet ruim), aqui você decide se expulsa ou se espera
-    }
+if (!nivelAcesso || !niveisPermitidos.includes(nivelAcesso)) {
+    console.error("Acesso negado! Nível lido:", nivelAcesso);
+    // Se não encontrar o nível, ele volta pro login
+    window.location.replace("index.html");
 }
 
-function bloquearEdicaoParaLeitor() {
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"], .btn-acoes { 
-            display: none !important; 
-        }
-    `;
-    document.head.appendChild(style);
+// 2. Exibição do Nome e Trava de Níveis
+document.addEventListener('DOMContentLoaded', () => {
+    // Tenta encontrar o ID do campo de nome (testa os dois nomes que usamos)
+    const display = document.getElementById('txtUser') || document.getElementById('user-display');
+    if (display) {
+        display.innerText = usuarioNome.toUpperCase();
+    }
+
+    // Se for LEITOR, bloqueia as edições visualmente na hora
+    if (nivelAcesso === "LEITOR") {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"], .btn-acoes { 
+                display: none !important; 
+            }
+        `;
+        document.head.appendChild(style);
+    }
+});
+
+// 3. Função de Proteção para as funções de salvar/excluir
+function temPermissao() {
+    if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
+        return true;
+    }
+    alert("Acesso Negado: Seu perfil (LEITOR) permite apenas a visualização.");
+    return false;
 }
 
-// Inicia a validação assim que o script carrega
-validarAcessoReal();
-
-// Função para registrar logs no Firebase
+// Função para registrar logs no Firebase (usando as variáveis novas)
 async function registrarHistorico(acao, detalhes) {
     if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
         try {
             await addDoc(collection(db, "historico"), {
-                usuario: usuarioLogado.nome || "Sistema",
+                usuario: usuarioNome,
                 nivel: nivelAcesso,
                 acao: acao,
                 detalhes: detalhes,
