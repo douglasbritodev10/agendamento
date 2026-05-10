@@ -8,40 +8,49 @@ import {
 const db = getFirestore(app);
 
 // --- CONTROLE DE ACESSO REFINADO ---
-// O seu sistema salva como 'usuarioLogado', garantimos a leitura correta
 const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
-const nivelAcesso = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel; // Aceita as duas nomenclaturas
 
-// 1. Validação de Segurança (Douglas, isso evita o deslogue indevido)
-const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
+// aqui verificamos as duas possibilidades de nome da chave: nivelAcesso ou nivel
+const nivelAcesso = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel;
 
-if (!usuarioLogado || !niveisPermitidos.includes(nivelAcesso)) {
-    console.error("Acesso negado: Perfil inválido ou ausente.");
-    alert("Acesso negado! Por favor, realize o login novamente.");
-    window.location.href = "index.html";
+// 1. Verificação de Segurança Robusta
+if (!usuarioLogado || !nivelAcesso) {
+    console.error("Usuário não encontrado no localStorage");
+    window.location.href = "index.html"; 
+} else {
+    const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
+    if (!niveisPermitidos.includes(nivelAcesso.toUpperCase())) {
+        alert("Seu nível de acesso (" + nivelAcesso + ") não permite entrar aqui.");
+        window.location.href = "index.html";
+    }
 }
 
-// 2. Exibição do Nome e Trava de Níveis
+// 2. Exibição do nome e bloqueio visual para LEITOR
 document.addEventListener('DOMContentLoaded', () => {
     const display = document.getElementById('user-display');
     if (display && usuarioLogado.nome) {
         display.innerText = usuarioLogado.nome.toUpperCase();
     }
 
-    // Se for LEITOR, escondemos botões de ação para segurança visual
-    if (nivelAcesso === "LEITOR") {
+    // Se for LEITOR, removemos os botões de ação do DOM para não dar nem a opção de clicar
+    if (nivelAcesso?.toUpperCase() === "LEITOR") {
         const style = document.createElement('style');
-        style.innerHTML = `.btn-edit, .btn-delete, .btn-save { display: none !important; }`;
+        style.innerHTML = `
+            .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"] { 
+                display: none !important; 
+            }
+        `;
         document.head.appendChild(style);
     }
 });
 
-// 3. Função de Proteção de Ações (Use isso em funções de Salvar/Excluir)
+// 3. Função de Trava de Segurança para as funções do sistema
 function temPermissao() {
-    if (nivelAcesso === "ADM" || nivelAcesso === "LOGISTICA") {
+    const nivel = (usuarioLogado?.nivelAcesso || usuarioLogado?.nivel)?.toUpperCase();
+    if (nivel === "ADM" || nivel === "LOGISTICA") {
         return true;
     }
-    alert("Seu perfil (LEITOR) permite apenas a visualização dos dados.");
+    alert("Acesso Negado: Usuários com nível LEITOR não podem realizar alterações.");
     return false;
 }
 
