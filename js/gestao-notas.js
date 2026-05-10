@@ -7,31 +7,29 @@ import {
 // --- ADICIONE ESTA LINHA AQUI ---
 const db = getFirestore(app);
 
-// --- CONTROLE DE ACESSO REFINADO ---
+// --- CONTROLE DE ACESSO COM DEPURAÇÃO FORÇADA ---
 const usuarioLogadoRaw = localStorage.getItem('usuarioLogado');
 const usuarioLogado = usuarioLogadoRaw ? JSON.parse(usuarioLogadoRaw) : null;
 
-// Pegamos o nível e tratamos nulo/indefinido/espaços
-const nivelBruto = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel || "";
+// Normalização radical do nível
+const nivelBruto = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel || "NULO";
 const nivelAcesso = nivelBruto.toString().trim().toUpperCase();
 
-// LOG DE DEPURAÇÃO (Aperte F12 no navegador para ver isso)
-console.log("DEBUG LOGIN - Usuário:", usuarioLogado);
-console.log("DEBUG LOGIN - Nível Detectado:", nivelAcesso);
+// MOSTRAR O ERRO ANTES DE EXPULSAR
+console.log("--- DIAGNÓSTICO DE LOGIN ---");
+console.log("1. Objeto Completo:", usuarioLogado);
+console.log("2. Nível Identificado:", nivelAcesso);
 
-// 1. Verificação de Segurança
 const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
 
-// Se não houver usuário OU o nível não estiver na lista, expulsa
 if (!usuarioLogado || !niveisPermitidos.includes(nivelAcesso)) {
-    console.error("BLOQUEIO: Perfil inválido ou ausente. Nível lido:", nivelAcesso);
+    console.error("ERRO CRÍTICO: Nível de acesso '" + nivelAcesso + "' não permitido.");
     
-    // AQUI ESTÁ O TRUQUE: Só redireciona se não for um erro de carregamento inicial
-    if (window.location.pathname.indexOf("index.html") === -1) {
-        window.location.replace("index.html"); 
-    }
+    // Douglas, se você for expulso, este alerta vai travar a tela e te deixar ler o console
+    alert("ERRO DE SEGURANÇA!\nNível encontrado: " + nivelAcesso + "\nVerifique o console (F12) antes de clicar em OK.");
+    
+    window.location.replace("index.html");
 }
-
 // 2. Exibição do Nome e Trava de Níveis
 document.addEventListener('DOMContentLoaded', () => {
     const display = document.getElementById('txtUser') || document.getElementById('user-display');
