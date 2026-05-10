@@ -285,18 +285,20 @@
 </head>
 <body>
 
-    <header class="header-portal">
-        <div class="header-left">
-            <i class="fas fa-arrow-left" style="cursor:pointer; font-size: 1.2rem;" onclick="window.history.back()"></i>
-            <span style="font-size: 14px; font-weight: bold; margin-left: 10px;">Olá, <span id="txtUser">Seja Bem-vindo</span></span>
-        </div>
-        <div class="header-center">
-            <h1 class="titulo-sistema">Gestão de Ajuste de Notas</h1>
-        </div>
-        <div class="header-right">
-            <button class="btn-logout" onclick="window.location.href='index.html'">Sair</button>
-        </div>
-    </header>
+<header class="header-portal">
+<div class="header-left">
+    <a href="inicial.html" style="color:var(--text-main); text-decoration:none; display:flex; align-items:center;">
+        <i class="fas fa-chevron-left"></i> 
+        <span id="user-display" style="font-weight: bold; margin-left: 10px;">Douglas Brito</span>
+    </a>
+</div>
+      <div class="header-center">
+           <h1 class="titulo-sistema">Gestão de Ajuste de Notas</h1>
+     </div>
+    <div class="header-right">
+          <button class="btn-logout" onclick="window.location.href='index.html'">Sair</button>
+     </div>
+</header>
 
     <div class="main-container">
         <!-- PAINEL DE CONTROLE -->
