@@ -7,46 +7,66 @@ import {
 // --- ADICIONE ESTA LINHA AQUI ---
 const db = getFirestore(app);
 
-// --- CONTROLE DE ACESSO COM DEPURAÇÃO FORÇADA ---
-const usuarioLogadoRaw = localStorage.getItem('usuarioLogado');
-const usuarioLogado = usuarioLogadoRaw ? JSON.parse(usuarioLogadoRaw) : null;
-
-// Normalização radical do nível
-const nivelBruto = usuarioLogado?.nivelAcesso || usuarioLogado?.nivel || "NULO";
-const nivelAcesso = nivelBruto.toString().trim().toUpperCase();
-
-// MOSTRAR O ERRO ANTES DE EXPULSAR
-console.log("--- DIAGNÓSTICO DE LOGIN ---");
-console.log("1. Objeto Completo:", usuarioLogado);
-console.log("2. Nível Identificado:", nivelAcesso);
-
-const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
-
-if (!usuarioLogado || !niveisPermitidos.includes(nivelAcesso)) {
-    console.error("ERRO CRÍTICO: Nível de acesso '" + nivelAcesso + "' não permitido.");
+// --- CONTROLE DE ACESSO VIA FIREBASE (O JEITO CERTO) ---
+async function validarAcessoReal() {
+    const usuarioLocal = JSON.parse(localStorage.getItem('usuarioLogado'));
     
-    // Douglas, se você for expulso, este alerta vai travar a tela e te deixar ler o console
-    alert("ERRO DE SEGURANÇA!\nNível encontrado: " + nivelAcesso + "\nVerifique o console (F12) antes de clicar em OK.");
-    
-    window.location.replace("index.html");
-}
-// 2. Exibição do Nome e Trava de Níveis
-document.addEventListener('DOMContentLoaded', () => {
-    const display = document.getElementById('txtUser') || document.getElementById('user-display');
-    if (display && usuarioLogado && usuarioLogado.nome) {
-        display.innerText = usuarioLogado.nome.toUpperCase();
+    // Se não tem nem o rastro do login no storage, manda pro index
+    if (!usuarioLocal || (!usuarioLocal.id && !usuarioLocal.uid)) {
+        window.location.replace("index.html");
+        return;
     }
 
-    if (nivelAcesso === "LEITOR") {
-        const style = document.createElement('style');
-        style.innerHTML = `
-            .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"], .btn-acoes { 
-                display: none !important; 
+    try {
+        // Douglas, aqui buscamos o ID que foi salvo no login
+        const userId = usuarioLocal.id || usuarioLocal.uid;
+        const userRef = doc(db, "usuarios", userId);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            const dadosUsuario = userSnap.data();
+            const nivelAcesso = (dadosUsuario.nivelAcesso || dadosUsuario.nivel || "").toUpperCase();
+            
+            console.log("Acesso validado direto no banco:", nivelAcesso);
+
+            // Verifica se o nível é permitido
+            if (!["ADM", "LOGISTICA", "LEITOR"].includes(nivelAcesso)) {
+                alert("Seu nível de acesso não permite entrar aqui.");
+                window.location.replace("index.html");
+                return;
             }
-        `;
-        document.head.appendChild(style);
+
+            // Atualiza o nome na tela direto do banco
+            const display = document.getElementById('txtUser');
+            if (display) display.innerText = dadosUsuario.nome.toUpperCase();
+
+            // Se for LEITOR, aplica as travas visuais
+            if (nivelAcesso === "LEITOR") {
+                bloquearEdicaoParaLeitor();
+            }
+
+        } else {
+            console.error("Usuário não encontrado no banco de dados.");
+            window.location.replace("index.html");
+        }
+    } catch (error) {
+        console.error("Erro ao validar acesso no banco:", error);
+        // Se o Firebase falhar (internet ruim), aqui você decide se expulsa ou se espera
     }
-});
+}
+
+function bloquearEdicaoParaLeitor() {
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .btn-edit, .btn-delete, .btn-save, [onclick*="excluir"], [onclick*="editar"], .btn-acoes { 
+            display: none !important; 
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Inicia a validação assim que o script carrega
+validarAcessoReal();
 
 // Função para registrar logs no Firebase
 async function registrarHistorico(acao, detalhes) {
