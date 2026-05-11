@@ -1,9 +1,7 @@
-// Importando as configurações do Firebase (ajuste o caminho se necessário)
 import { db } from './firebase-config.js'; 
 import { 
     collection, 
     addDoc, 
-    getDocs, 
     doc, 
     updateDoc, 
     deleteDoc, 
@@ -12,36 +10,31 @@ import {
     onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Referências das coleções
 const colRef = collection(db, "cooperados");
 const histRef = collection(db, "historico");
 
 let cooperadosAtuais = [];
+let idEdicao = null; // Controle para saber se estamos editando
 
 document.addEventListener('DOMContentLoaded', () => {
     verificarAcesso();
     configurarMascaraCpf();
     ouvirDadosEmTempoReal();
     
-    // Nome do usuário logado para o cabeçalho
     const userLogado = localStorage.getItem('usuarioNome') || "USUÁRIO";
     document.getElementById('userNameDisplay').innerText = userLogado;
 });
 
-// 1. VERIFICAR SE É ADM (Seguindo sua lógica de segurança)
 function verificarAcesso() {
     const nivel = localStorage.getItem('usuarioNivel');
     if (nivel !== 'ADM') {
-        alert("Acesso negado! Apenas administradores podem acessar esta página.");
+        alert("Acesso negado!");
         window.location.href = 'inicial.html';
     }
 }
 
-// 2. ESCUTAR DADOS DO FIRESTORE (Tempo Real + Ordenação A-Z)
 function ouvirDadosEmTempoReal() {
-    // Já traz do Firebase ordenado por nome em ordem alfabética
     const q = query(colRef, orderBy("nome", "asc"));
-
     onSnapshot(q, (snapshot) => {
         cooperadosAtuais = [];
         snapshot.forEach((doc) => {
@@ -51,7 +44,31 @@ function ouvirDadosEmTempoReal() {
     });
 }
 
-// 3. SALVAR NO FIREBASE E HISTÓRICO
+// --- MELHORIA NA MÁSCARA DE CPF ---
+function configurarMascaraCpf() {
+    const inputCpf = document.getElementById('cpfCooperado');
+    
+    inputCpf.addEventListener('input', (e) => {
+        // Remove tudo o que não é dígito
+        let v = e.target.value.replace(/\D/g, "");
+        
+        // Limita a 11 caracteres
+        if (v.length > 11) v = v.slice(0, 11);
+        
+        // Aplica a formatação progressivamente
+        if (v.length >= 10) {
+            v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2}).*/, "$1.$2.$3-$4");
+        } else if (v.length >= 7) {
+            v = v.replace(/^(\d{3})(\d{3})(\d{1,3}).*/, "$1.$2.$3");
+        } else if (v.length >= 4) {
+            v = v.replace(/^(\d{3})(\d{1,3}).*/, "$1.$2");
+        }
+        
+        e.target.value = v;
+    });
+}
+
+// --- FUNÇÃO SALVAR (CRIAR OU EDITAR) ---
 window.salvarCooperado = async function() {
     const nome = document.getElementById('nomeCooperado').value.trim().toUpperCase();
     const cpf = document.getElementById('cpfCooperado').value;
@@ -64,63 +81,67 @@ window.salvarCooperado = async function() {
 
     try {
         btn.disabled = true;
-        btn.innerText = "SALVANDO...";
+        btn.innerText = "PROCESSANDO...";
 
-        // Dados do cooperado
-        const dadosCooperado = {
+        const dados = {
             nome: nome,
             cpf: cpf,
-            dataCadastro: new Date().toISOString(),
-            cadastradoPor: localStorage.getItem('usuarioNome')
+            ultimaAlteracao: new Date().toISOString(),
+            usuarioAcao: localStorage.getItem('usuarioNome')
         };
 
-        // Salva na coleção 'cooperados'
-        await addDoc(colRef, dadosCooperado);
-
-        // Salva na coleção 'historico' (como você pediu)
-        await addDoc(histRef, {
-            acao: "CADASTRO DE COOPERADO",
-            detalhe: `Cooperado ${nome} (CPF: ${cpf}) foi cadastrado.`,
-            usuario: localStorage.getItem('usuarioNome'),
-            data: new Date().toISOString()
-        });
-
-        limparCampos();
-        alert("Cooperado cadastrado com sucesso!");
-
-    } catch (error) {
-        console.error("Erro ao salvar:", error);
-        alert("Erro ao salvar no banco de dados.");
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> CADASTRAR COOPERADO';
-    }
-};
-
-// 4. EXCLUIR DO FIREBASE
-window.excluir = async function(id, nome) {
-    if (confirm(`Deseja realmente excluir o cooperado ${nome}?`)) {
-        try {
-            await deleteDoc(doc(db, "cooperados", id));
-
-            // Log no histórico
+        if (idEdicao) {
+            // MODO EDIÇÃO
+            await updateDoc(doc(db, "cooperados", idEdicao), dados);
+            
             await addDoc(histRef, {
-                acao: "EXCLUSÃO DE COOPERADO",
-                detalhe: `Cooperado ${nome} foi removido do sistema.`,
+                acao: "EDIÇÃO DE COOPERADO",
+                detalhe: `Cooperado ${nome} foi atualizado.`,
                 usuario: localStorage.getItem('usuarioNome'),
                 data: new Date().toISOString()
             });
+            
+            idEdicao = null;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> CADASTRAR COOPERADO';
+            btn.style.background = ""; // Volta para a cor original
+        } else {
+            // MODO NOVO CADASTRO
+            dados.dataCadastro = new Date().toISOString();
+            await addDoc(colRef, dados);
 
-        } catch (error) {
-            alert("Erro ao excluir.");
+            await addDoc(histRef, {
+                acao: "CADASTRO DE COOPERADO",
+                detalhe: `Cooperado ${nome} (CPF: ${cpf}) cadastrado.`,
+                usuario: localStorage.getItem('usuarioNome'),
+                data: new Date().toISOString()
+            });
         }
+
+        limparCampos();
+        alert("Operação realizada com sucesso!");
+
+    } catch (error) {
+        console.error(error);
+        alert("Erro ao salvar.");
+    } finally {
+        btn.disabled = false;
     }
 };
 
-// 5. RENDERIZAR TABELA (Responsiva)
+window.excluir = async function(id, nome) {
+    if (confirm(`Excluir ${nome}?`)) {
+        await deleteDoc(doc(db, "cooperados", id));
+        await addDoc(histRef, {
+            acao: "EXCLUSÃO",
+            detalhe: `Excluiu cooperado: ${nome}`,
+            usuario: localStorage.getItem('usuarioNome'),
+            data: new Date().toISOString()
+        });
+    }
+};
+
 function renderizarTabela(dados) {
     const tbody = document.getElementById('tabelaCooperados');
-    
     tbody.innerHTML = dados.map(c => `
         <tr>
             <td data-label="Nome"><b>${c.nome}</b></td>
@@ -137,7 +158,6 @@ function renderizarTabela(dados) {
     `).join('');
 }
 
-// 6. BUSCA LOCAL (Filtra o que já está carregado)
 window.filtrarTabela = function() {
     const termo = document.getElementById('inputBusca').value.toUpperCase();
     const filtrados = cooperadosAtuais.filter(c => 
@@ -146,27 +166,24 @@ window.filtrarTabela = function() {
     renderizarTabela(filtrados);
 };
 
-// MÁSCARA E AUXILIARES
-function configurarMascaraCpf() {
-    const inputCpf = document.getElementById('cpfCooperado');
-    inputCpf.addEventListener('input', (e) => {
-        let v = e.target.value.replace(/\D/g, "");
-        if (v.length > 11) v = v.slice(0, 11);
-        v = v.replace(/(\d{3})(\d)/, "$1.$2");
-        v = v.replace(/(\d{3})(\d)/, "$1.$2");
-        v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-        e.target.value = v;
-    });
-}
+// --- PREPARAR EDIÇÃO ---
+window.prepararEdicao = function(id, nome, cpf) {
+    idEdicao = id;
+    document.getElementById('nomeCooperado').value = nome;
+    document.getElementById('cpfCooperado').value = cpf;
+    
+    const btn = document.getElementById('btnSalvar');
+    btn.innerHTML = '<i class="fas fa-save"></i> SALVAR ALTERAÇÕES';
+    btn.style.background = "#1976D2"; // Cor azul para indicar edição
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('nomeCooperado').focus();
+};
 
 function limparCampos() {
     document.getElementById('nomeCooperado').value = "";
     document.getElementById('cpfCooperado').value = "";
+    idEdicao = null;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-user-plus"></i> CADASTRAR COOPERADO';
+    document.getElementById('btnSalvar').style.background = "";
 }
-
-window.prepararEdicao = function(id, nome, cpf) {
-    document.getElementById('nomeCooperado').value = nome;
-    document.getElementById('cpfCooperado').value = cpf;
-    document.getElementById('nomeCooperado').focus();
-    alert("Altere os dados e clique em cadastrar (Lógica de update pode ser adicionada aqui)");
-};
