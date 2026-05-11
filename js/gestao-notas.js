@@ -10,7 +10,7 @@ const db = getFirestore(app);
 // --- CONTROLE DE ACESSO AJUSTADO (Lendo as caixinhas do seu login) ---
 // Douglas, aqui eu mudei para ler exatamente como o seu auth.js salva
 const nivelAcessoRaw = localStorage.getItem('nivelAcesso') || ""; 
-const usuarioNome = localStorage.getItem('usuarioNome') || "Usuário";
+const usuarioNome = localStorage.getItem('username') || "Usuário";
 const nivelAcesso = nivelAcessoRaw.toUpperCase().trim();
 
 // 1. Verificação de Segurança
