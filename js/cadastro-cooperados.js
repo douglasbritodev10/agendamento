@@ -10,7 +10,7 @@ import {
     query, 
     orderBy, 
     onSnapshot 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // Inicializa o banco de dados localmente neste arquivo
 const db = getFirestore(app);
