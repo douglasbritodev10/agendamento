@@ -1,6 +1,7 @@
-// IMPORTANTE: Importar o db do seu arquivo de config
-import { app, db } from './firebase-config.js'; 
+// Importa apenas o app, conforme sua config atual
+import { app } from './firebase-config.js'; 
 import { 
+    getFirestore, // Adicionado para inicializar o db aqui dentro
     collection, 
     addDoc, 
     doc, 
@@ -10,6 +11,9 @@ import {
     orderBy, 
     onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// Inicializa o banco de dados localmente neste arquivo
+const db = getFirestore(app);
 
 const colRef = collection(db, "cooperados");
 const histRef = collection(db, "historico");
@@ -22,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     configurarMascaraCpf();
     ouvirDadosEmTempoReal();
     
-    // Recupera o nome do usuário para exibir no topo
     const userLogado = localStorage.getItem('usuarioNome') || "USUÁRIO";
     const display = document.getElementById('userNameDisplay');
     if(display) display.innerText = userLogado.toUpperCase();
@@ -63,7 +66,6 @@ function configurarMascaraCpf() {
     });
 }
 
-// Tornando as funções globais para o HTML enxergar
 window.salvarCooperado = async function() {
     const nome = document.getElementById('nomeCooperado').value.trim().toUpperCase();
     const cpf = document.getElementById('cpfCooperado').value;
@@ -143,6 +145,7 @@ window.filtrarTabela = function() {
 
 function renderizarTabela(dados) {
     const tbody = document.getElementById('tabelaCooperados');
+    if(!tbody) return;
     tbody.innerHTML = dados.map(c => `
         <tr>
             <td data-label="Nome"><b>${c.nome}</b></td>
