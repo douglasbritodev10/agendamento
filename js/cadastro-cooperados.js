@@ -1,4 +1,5 @@
-import { app } from './firebase-config.js';
+// IMPORTANTE: Importar o db do seu arquivo de config
+import { app, db } from './firebase-config.js'; 
 import { 
     collection, 
     addDoc, 
@@ -14,15 +15,17 @@ const colRef = collection(db, "cooperados");
 const histRef = collection(db, "historico");
 
 let cooperadosAtuais = [];
-let idEdicao = null; // Controle para saber se estamos editando
+let idEdicao = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     verificarAcesso();
     configurarMascaraCpf();
     ouvirDadosEmTempoReal();
     
+    // Recupera o nome do usuário para exibir no topo
     const userLogado = localStorage.getItem('usuarioNome') || "USUÁRIO";
-    document.getElementById('userNameDisplay').innerText = userLogado;
+    const display = document.getElementById('userNameDisplay');
+    if(display) display.innerText = userLogado.toUpperCase();
 });
 
 function verificarAcesso() {
@@ -44,18 +47,11 @@ function ouvirDadosEmTempoReal() {
     });
 }
 
-// --- MELHORIA NA MÁSCARA DE CPF ---
 function configurarMascaraCpf() {
     const inputCpf = document.getElementById('cpfCooperado');
-    
     inputCpf.addEventListener('input', (e) => {
-        // Remove tudo o que não é dígito
         let v = e.target.value.replace(/\D/g, "");
-        
-        // Limita a 11 caracteres
         if (v.length > 11) v = v.slice(0, 11);
-        
-        // Aplica a formatação progressivamente
         if (v.length >= 10) {
             v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2}).*/, "$1.$2.$3-$4");
         } else if (v.length >= 7) {
@@ -63,12 +59,11 @@ function configurarMascaraCpf() {
         } else if (v.length >= 4) {
             v = v.replace(/^(\d{3})(\d{1,3}).*/, "$1.$2");
         }
-        
         e.target.value = v;
     });
 }
 
-// --- FUNÇÃO SALVAR (CRIAR OU EDITAR) ---
+// Tornando as funções globais para o HTML enxergar
 window.salvarCooperado = async function() {
     const nome = document.getElementById('nomeCooperado').value.trim().toUpperCase();
     const cpf = document.getElementById('cpfCooperado').value;
@@ -91,53 +86,59 @@ window.salvarCooperado = async function() {
         };
 
         if (idEdicao) {
-            // MODO EDIÇÃO
             await updateDoc(doc(db, "cooperados", idEdicao), dados);
-            
             await addDoc(histRef, {
-                acao: "EDIÇÃO DE COOPERADO",
-                detalhe: `Cooperado ${nome} foi atualizado.`,
+                acao: "EDIÇÃO",
+                detalhe: `Cooperado ${nome} atualizado.`,
                 usuario: localStorage.getItem('usuarioNome'),
                 data: new Date().toISOString()
             });
-            
             idEdicao = null;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> CADASTRAR COOPERADO';
-            btn.style.background = ""; // Volta para a cor original
         } else {
-            // MODO NOVO CADASTRO
             dados.dataCadastro = new Date().toISOString();
             await addDoc(colRef, dados);
-
             await addDoc(histRef, {
-                acao: "CADASTRO DE COOPERADO",
-                detalhe: `Cooperado ${nome} (CPF: ${cpf}) cadastrado.`,
+                acao: "CADASTRO",
+                detalhe: `Novo cooperado: ${nome}`,
                 usuario: localStorage.getItem('usuarioNome'),
                 data: new Date().toISOString()
             });
         }
 
         limparCampos();
-        alert("Operação realizada com sucesso!");
-
+        alert("Sucesso!");
     } catch (error) {
         console.error(error);
         alert("Erro ao salvar.");
     } finally {
         btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> CADASTRAR COOPERADO';
+        btn.style.background = "";
     }
 };
 
 window.excluir = async function(id, nome) {
     if (confirm(`Excluir ${nome}?`)) {
         await deleteDoc(doc(db, "cooperados", id));
-        await addDoc(histRef, {
-            acao: "EXCLUSÃO",
-            detalhe: `Excluiu cooperado: ${nome}`,
-            usuario: localStorage.getItem('usuarioNome'),
-            data: new Date().toISOString()
-        });
     }
+};
+
+window.prepararEdicao = function(id, nome, cpf) {
+    idEdicao = id;
+    document.getElementById('nomeCooperado').value = nome;
+    document.getElementById('cpfCooperado').value = cpf;
+    const btn = document.getElementById('btnSalvar');
+    btn.innerHTML = '<i class="fas fa-save"></i> SALVAR ALTERAÇÕES';
+    btn.style.background = "#1976D2";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.filtrarTabela = function() {
+    const termo = document.getElementById('inputBusca').value.toUpperCase();
+    const filtrados = cooperadosAtuais.filter(c => 
+        c.nome.includes(termo) || c.cpf.includes(termo)
+    );
+    renderizarTabela(filtrados);
 };
 
 function renderizarTabela(dados) {
@@ -158,32 +159,8 @@ function renderizarTabela(dados) {
     `).join('');
 }
 
-window.filtrarTabela = function() {
-    const termo = document.getElementById('inputBusca').value.toUpperCase();
-    const filtrados = cooperadosAtuais.filter(c => 
-        c.nome.includes(termo) || c.cpf.includes(termo)
-    );
-    renderizarTabela(filtrados);
-};
-
-// --- PREPARAR EDIÇÃO ---
-window.prepararEdicao = function(id, nome, cpf) {
-    idEdicao = id;
-    document.getElementById('nomeCooperado').value = nome;
-    document.getElementById('cpfCooperado').value = cpf;
-    
-    const btn = document.getElementById('btnSalvar');
-    btn.innerHTML = '<i class="fas fa-save"></i> SALVAR ALTERAÇÕES';
-    btn.style.background = "#1976D2"; // Cor azul para indicar edição
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    document.getElementById('nomeCooperado').focus();
-};
-
 function limparCampos() {
     document.getElementById('nomeCooperado').value = "";
     document.getElementById('cpfCooperado').value = "";
     idEdicao = null;
-    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-user-plus"></i> CADASTRAR COOPERADO';
-    document.getElementById('btnSalvar').style.background = "";
 }
