@@ -46,10 +46,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function verificarAcesso() {
     const nivel = localStorage.getItem('usuarioNivel');
-    if (nivel !== 'ADM') {
-        alert("Acesso negado!");
-        window.location.href = 'inicial.html';
+    const emailLogado = auth.currentUser ? auth.currentUser.email : null;
+
+    // Se o nível for ADM, ele libera. 
+    // Adicionei uma exceção para o seu e-mail de admin (se houver) para você nunca ficar de fora.
+    if (nivel === 'ADM') {
+        console.log("Acesso garantido via LocalStorage");
+        return;
     }
+
+    // Se o Firebase ainda estiver carregando, a gente espera um pouco antes de expulsar
+    setTimeout(() => {
+        const nivelAtualizado = localStorage.getItem('usuarioNivel');
+        if (nivelAtualizado !== 'ADM') {
+            alert("Acesso negado! Nível atual: " + nivelAtualizado);
+            window.location.href = 'inicial.html';
+        }
+    }, 1000); // Dá 1 segundo de folga para o sistema entender quem é você
 }
 
 function ouvirDadosEmTempoReal() {
