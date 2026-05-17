@@ -1,31 +1,33 @@
 import { db, auth } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-// Inicializa o banco de dados localmente neste arquivo
-const db = getFirestore(app);
+import { 
+    collection, 
+    addDoc, 
+    getDocs, 
+    query, 
+    orderBy, 
+    onSnapshot, 
+    doc, 
+    updateDoc, 
+    deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- VERIFICAÇÃO DE USUÁRIO SEM BLOQUEIO ---
 onAuthStateChanged(auth, (user) => {
     const display = document.getElementById('userNameDisplay');
     
     if (user) {
-        // Se houver usuário, exibe o nome no canto superior
-        // Usando o e-mail como fallback caso o displayName não esteja preenchido
         const nomeUsuario = user.displayName || user.email.split('@')[0];
         display.textContent = nomeUsuario.toUpperCase();
         
-        // Aqui você chama sua função de carregar dados que já existe
-        if (typeof carregarCooperados === "function") {
-            carregarCooperados();
-        }
+        // Se precisar rodar algo assim que logar, coloque aqui
     } else {
-        // APENAS redireciona se tiver certeza absoluta que não há ninguém logado
-        // Se você estiver testando localmente e ainda não fez login na index, ele vai voltar
-        console.log("Nenhum usuário detectado. Verifique o login na página inicial.");
-        // window.location.href = 'index.html'; // Comente esta linha se quiser testar sem ser expulso
+        console.log("Nenhum usuário detectado.");
+        // window.location.href = 'index.html'; 
     }
 });
 
+// Referências usando o 'db' que veio do import lá do topo
 const colRef = collection(db, "cooperados");
 const histRef = collection(db, "historico");
 
