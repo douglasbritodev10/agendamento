@@ -56,30 +56,58 @@
             <div class="stat-card"><h3>Veículos no CD</h3><span id="totalVeiculos">0</span></div>
         </div>
 
-        <div class="card-tabela">
-            <div style="padding:15px; border-bottom:1px solid #eee; display: flex; justify-content: space-between;">
-                <button onclick="abrirModalSelecao()" class="btn-puxar">
-                    <i class="fas fa-calendar-plus"></i> SELECIONAR AGENDAMENTOS
-                </button>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>SENHA</th>
-                            <th>SITUAÇÃO</th>
-                            <th>CENTRAL</th>
-                            <th>FORNECEDOR</th>
-                            <th>TIPO</th>
-                            <th>BOX</th>
-                            <th>AÇÕES</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaCargas"></tbody>
-                </table>
-            </div>
+<div class="card-tabela">
+    <div style="padding:15px; border-bottom:1px solid #eee; display: flex; justify-content: space-between; align-items:center;">
+        <button onclick="abrirModalSelecao()" class="btn-puxar">
+            <i class="fas fa-calendar-plus"></i> SELECIONAR AGENDAMENTOS
+        </button>
+        
+        <button onclick="agruparComoMesmoVeiculo()" class="btn-puxar" style="background:#673AB7">
+            <i class="fas fa-layer-group"></i> MESMO VEÍCULO (SELECIONADOS)
+        </button>
+    </div>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th><i class="fas fa-check-double"></i></th>
+                    <th>SENHA</th>
+                    <th>DATA</th>
+                    <th>CENTRAL</th>
+                    <th>CARGAS</th>
+                    <th style="width:150px">SITUAÇÃO</th>
+                    <th>FORNECEDOR</th>
+                    <th>TIPO</th>
+                    <th>BOX</th>
+                    <th>AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaCargas"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalDescarga" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>Vincular Descarga</h3>
+            <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
         </div>
-    </main>
+        <div class="modal-body">
+            <label style="font-weight:bold; font-size:0.8rem;">EQUIPE DE DESCARGA:</label>
+            <div id="listaCooperados" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; margin:10px 0; padding:10px; border-radius:8px;">
+                </div>
+            
+            <label style="font-weight:bold; font-size:0.8rem;">VALOR DA DESCARGA (R$):</label>
+            <input type="number" id="valorDescarga" placeholder="0,00" style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #ccc;">
+            
+            <button onclick="salvarDescarga()" class="btn-puxar" style="background:#2e7d32; width:100%; margin-top:20px; justify-content:center;">
+                SALVAR DADOS DA DESCARGA
+            </button>
+        </div>
+    </div>
+</div>
+</main>
 
     <div id="modalSelecao" class="modal">
         <div class="modal-content">
