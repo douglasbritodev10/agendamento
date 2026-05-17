@@ -1,5 +1,5 @@
 import { db, auth } from "./firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { 
     collection, 
     addDoc, 
@@ -10,7 +10,7 @@ import {
     doc, 
     updateDoc, 
     deleteDoc 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 // --- VERIFICAÇÃO DE USUÁRIO SEM BLOQUEIO ---
 onAuthStateChanged(auth, (user) => {
