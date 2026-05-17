@@ -1,69 +1,72 @@
 import { db, auth } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { 
+    doc, 
+    getDoc, 
     collection, 
     addDoc, 
-    getDocs, 
     query, 
     orderBy, 
     onSnapshot, 
-    doc, 
     updateDoc, 
     deleteDoc 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-// --- VERIFICAÇÃO DE USUÁRIO SEM BLOQUEIO ---
-onAuthStateChanged(auth, (user) => {
-    const display = document.getElementById('userNameDisplay');
-    
-    if (user) {
-        const nomeUsuario = user.displayName || user.email.split('@')[0];
-        display.textContent = nomeUsuario.toUpperCase();
-        
-        // Se precisar rodar algo assim que logar, coloque aqui
-    } else {
-        console.log("Nenhum usuário detectado.");
-        // window.location.href = 'index.html'; 
-    }
-});
-
-// Referências usando o 'db' que veio do import lá do topo
+// --- REFERÊNCIAS GLOBAIS ---
 const colRef = collection(db, "cooperados");
 const histRef = collection(db, "historico");
 
 let cooperadosAtuais = [];
 let idEdicao = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    verificarAcesso();
-    configurarMascaraCpf();
-    ouvirDadosEmTempoReal();
-    
-    const userLogado = localStorage.getItem('usuarioNome') || "USUÁRIO";
+// --- VERIFICAÇÃO DE USUÁRIO REAL E NÍVEL DE ACESSO ---
+onAuthStateChanged(auth, async (user) => {
     const display = document.getElementById('userNameDisplay');
-    if(display) display.innerText = userLogado.toUpperCase();
-});
+    
+    if (user) {
+        try {
+            // Busca os dados direto na coleção 'users' usando o UID do login
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            
+            if (userDoc.exists()) {
+                const dadosUser = userDoc.data();
+                
+                // 1. Exibe o nome que está no campo 'username' do documento (conforme solicitado)
+                if (display) {
+                    display.textContent = (dadosUser.username || "USUÁRIO").toUpperCase();
+                }
 
-function verificarAcesso() {
-    const nivel = localStorage.getItem('usuarioNivel');
-    const emailLogado = auth.currentUser ? auth.currentUser.email : null;
-
-    // Se o nível for ADM, ele libera. 
-    // Adicionei uma exceção para o seu e-mail de admin (se houver) para você nunca ficar de fora.
-    if (nivel === 'ADM') {
-        console.log("Acesso garantido via LocalStorage");
-        return;
-    }
-
-    // Se o Firebase ainda estiver carregando, a gente espera um pouco antes de expulsar
-    setTimeout(() => {
-        const nivelAtualizado = localStorage.getItem('usuarioNivel');
-        if (nivelAtualizado !== 'ADM') {
-            alert("Acesso negado! Nível atual: " + nivelAtualizado);
+                // 2. Verifica se o campo 'nivelAcesso' é ADM
+                if (dadosUser.nivelAcesso !== 'ADM') {
+                    alert("Acesso negado: Nível insuficiente.");
+                    window.location.href = 'inicial.html';
+                } else {
+                    console.log("Acesso ADM confirmado via Firestore.");
+                    // Inicia a escuta dos dados apenas se for ADM confirmado
+                    ouvirDadosEmTempoReal();
+                }
+            } else {
+                console.error("Usuário não encontrado na coleção 'users'.");
+                window.location.href = 'index.html';
+            }
+        } catch (error) {
+            console.error("Erro ao verificar nível:", error);
+            // Em caso de erro técnico, por segurança, volta para a inicial
             window.location.href = 'inicial.html';
         }
-    }, 1000); // Dá 1 segundo de folga para o sistema entender quem é você
-}
+    } else {
+        console.log("Nenhum usuário logado.");
+        window.location.href = 'index.html';
+    }
+});
+
+// --- INICIALIZAÇÃO DO DOM ---
+document.addEventListener('DOMContentLoaded', () => {
+    configurarMascaraCpf();
+    // A função ouvirDadosEmTempoReal() agora é chamada dentro do onAuthStateChanged por segurança
+});
+
+// --- FUNÇÕES DE DADOS ---
 
 function ouvirDadosEmTempoReal() {
     const q = query(colRef, orderBy("nome", "asc"));
@@ -78,6 +81,8 @@ function ouvirDadosEmTempoReal() {
 
 function configurarMascaraCpf() {
     const inputCpf = document.getElementById('cpfCooperado');
+    if (!inputCpf) return;
+    
     inputCpf.addEventListener('input', (e) => {
         let v = e.target.value.replace(/\D/g, "");
         if (v.length > 11) v = v.slice(0, 11);
@@ -106,11 +111,14 @@ window.salvarCooperado = async function() {
         btn.disabled = true;
         btn.innerText = "PROCESSANDO...";
 
+        // Pega o nome do usuário que está no display para o histórico
+        const usuarioAcao = document.getElementById('userNameDisplay').textContent;
+
         const dados = {
             nome: nome,
             cpf: cpf,
             ultimaAlteracao: new Date().toISOString(),
-            usuarioAcao: localStorage.getItem('usuarioNome')
+            usuarioAcao: usuarioAcao
         };
 
         if (idEdicao) {
@@ -118,7 +126,7 @@ window.salvarCooperado = async function() {
             await addDoc(histRef, {
                 acao: "EDIÇÃO",
                 detalhe: `Cooperado ${nome} atualizado.`,
-                usuario: localStorage.getItem('usuarioNome'),
+                usuario: usuarioAcao,
                 data: new Date().toISOString()
             });
             idEdicao = null;
@@ -128,7 +136,7 @@ window.salvarCooperado = async function() {
             await addDoc(histRef, {
                 acao: "CADASTRO",
                 detalhe: `Novo cooperado: ${nome}`,
-                usuario: localStorage.getItem('usuarioNome'),
+                usuario: usuarioAcao,
                 data: new Date().toISOString()
             });
         }
@@ -147,7 +155,18 @@ window.salvarCooperado = async function() {
 
 window.excluir = async function(id, nome) {
     if (confirm(`Excluir ${nome}?`)) {
-        await deleteDoc(doc(db, "cooperados", id));
+        try {
+            const usuarioAcao = document.getElementById('userNameDisplay').textContent;
+            await deleteDoc(doc(db, "cooperados", id));
+            await addDoc(histRef, {
+                acao: "EXCLUSÃO",
+                detalhe: `Excluiu o cooperado: ${nome}`,
+                usuario: usuarioAcao,
+                data: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error("Erro ao excluir:", error);
+        }
     }
 };
 
@@ -177,10 +196,10 @@ function renderizarTabela(dados) {
             <td data-label="Nome"><b>${c.nome}</b></td>
             <td data-label="CPF">${c.cpf}</td>
             <td class="actions">
-                <button class="btn-action btn-edit" onclick="prepararEdicao('${c.id}', '${c.nome}', '${c.cpf}')">
+                <button class="btn-action btn-edit" onclick="prepararEdicao('${c.id}', '${c.nome}', '${c.cpf}')" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-action btn-delete" onclick="excluir('${c.id}', '${c.nome}')">
+                <button class="btn-action btn-delete" onclick="excluir('${c.id}', '${c.nome}')" title="Excluir">
                     <i class="fas fa-trash-alt"></i>
                 </button>
             </td>
