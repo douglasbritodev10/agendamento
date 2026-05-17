@@ -1,11 +1,13 @@
 import { app } from './firebase-config.js';
 import { 
-    getFirestore, collection, query, onSnapshot, doc, updateDoc, orderBy, getDocs 
+    getFirestore, collection, query, onSnapshot, doc, updateDoc, orderBy, addDoc, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
+const usuarioLogin = localStorage.getItem('username') || "SISTEMA";
+let todasAgendasDoBanco = [];
 
-const situacoesMap = {
+const situacoesCores = {
     "CARGA RECEBIDA": '#4CAF50',
     "NO PATIO - FICOU P/ AMANHÃ": '#3ACFB9',
     "CANCELADA": '#7a002b',
@@ -18,35 +20,66 @@ const situacoesMap = {
     "REAGENDA": '#9B591B'
 };
 
-const usuarioLogin = localStorage.getItem('username') || "USUÁRIO";
-const nivelAcesso = (localStorage.getItem('nivelAcesso') || "LEITOR").toUpperCase();
-
-let todasCargas = [];
-let cooperados = [];
-let idAgendaAtual = null;
-let chartInstance = null;
-
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('userNameDisplay').textContent = usuarioLogin;
-    if(nivelAcesso !== 'LEITOR') document.getElementById('btnVincular').style.display = 'block';
-    
-    await carregarCooperados();
-    ouvirCargas();
+    ouvirDados();
 });
 
-async function carregarCooperados() {
-    const snap = await getDocs(collection(db, "cooperados"));
-    cooperados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-function ouvirCargas() {
-    const q = query(collection(db, "agendamentos"), orderBy("data", "asc"));
+// 1. Ouvir dados do Firebase
+function ouvirDados() {
+    const q = query(collection(db, "agendamentos"), orderBy("data", "desc"));
     onSnapshot(q, (snapshot) => {
-        todasCargas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderizarTabela();
-        atualizarDashboard();
+        todasAgendasDoBanco = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderizarPainelPrincipal();
     });
 }
+
+// 2. Renderizar Painel (Cargas que já estão 'No Painel')
+function renderizarPainelPrincipal() {
+    const tbody = document.getElementById('tabelaCargas');
+    const noPainel = todasAgendasDoBanco.filter(a => a.noPainel === true);
+    
+    tbody.innerHTML = noPainel.map(c => `
+        <tr>
+            <td><b>${c.senha}</b><br><small>${c.data}</small></td>
+            <td>
+                <span class="status-badge" style="background:${situacoesCores[c.agendasituacao] || '#999'}">
+                    ${c.agendasituacao || 'PENDENTE'}
+                </span>
+            </td>
+            <td>${c.central}</td>
+            <td>${c.fornecedor}</td>
+            <td>${c.tipo}</td>
+            <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:50px; text-align:center;"></td>
+            <td>
+                <button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-eye-slash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('totalAgendas').textContent = noPainel.length;
+    document.getElementById('totalVeiculos').textContent = new Set(noPainel.map(p => p.senha)).size;
+}
+
+// 3. Lógica do Modal (Ordenação Inteligente)
+window.abrirModalSelecao = () => {
+    const hoje = new Date();
+    const amanha = new Date(hoje);
+    amanha.setDate(hoje.getDate() + 1);
+    
+    // Formata amanhã para DD/MM/YYYY
+    const amanhaFormatado = `${String(amanha.getDate()).padStart(2, '0')}/${String(amanha.getMonth() + 1).padStart(2, '0')}/${amanha.getFullYear()}`;
+
+    // Ordenar: Amanhã primeiro, depois o resto
+    const listaParaModal = todasAgendasDoBanco.filter(a => !a.noPainel).sort((a, b) => {
+        if (a.data === amanhaFormatado) return -1;
+        if (b.data === amanhaFormatado) return 1;
+        return 0;
+    });
+
+    renderizarTabelaModal(listaParaModal);
+    document.getElementById('modalSelecao').style.display = 'flex';
+};
 
 function getCorTipo(tp) {
     const t = tp.toUpperCase();
@@ -56,105 +89,79 @@ function getCorTipo(tp) {
     return '#E0E0E0';
 }
 
-function renderizarTabela() {
-    const tbody = document.getElementById('tabelaCargas');
-    const disabled = nivelAcesso === 'LEITOR' ? 'disabled' : '';
-
-    tbody.innerHTML = todasCargas.map(c => {
-        const corStatus = situacoesMap[c.agendasituacao] || '#ccc';
-        const corTipo = getCorTipo(c.tipo || '');
-        
-        return `
-            <tr>
-                <td><input type="checkbox" class="row-check" data-id="${c.id}" ${disabled}></td>
-                <td><b>${c.senha}</b></td>
-                <td>${c.data}</td>
-                <td style="font-size:10px; max-width:150px;">${c.cargas}</td>
-                <td>
-                    <select onchange="atualizarSituacao('${c.id}', this.value)" class="status-select" style="background:${corStatus}" ${disabled}>
-                        <option value="">SELECIONE</option>
-                        ${Object.keys(situacoesMap).map(s => `<option value="${s}" ${c.agendasituacao === s ? 'selected' : ''}>${s}</option>`).join('')}
-                    </select>
-                </td>
-                <td><span class="badge-tipo" style="background:${corTipo}">${c.tipo}</span></td>
-                <td>${c.fornecedor}</td>
-                <td><input type="text" value="${c.box || ''}" onchange="salvarBox('${c.id}', this.value)" style="width:50px; text-align:center;" ${disabled}></td>
-                <td>
-                    <button onclick="abrirModalDescarga('${c.id}')" title="Vincular Descarga" style="border:none; background:none; cursor:pointer; color:#2e7d32; font-size:1.1rem;" ${disabled}>
-                        <i class="fas fa-truck-loading"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-window.atualizarSituacao = async (id, novaSituacao) => {
-    await updateDoc(doc(db, "agendamentos", id), { agendasituacao: novaSituacao });
-};
-
-window.salvarBox = async (id, valor) => {
-    await updateDoc(doc(db, "agendamentos", id), { box: valor.toUpperCase() });
-};
-
-window.abrirModalDescarga = (id) => {
-    idAgendaAtual = id;
-    const lista = document.getElementById('listaCooperados');
-    lista.innerHTML = cooperados.map(coop => `
-        <label style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer;">
-            <input type="checkbox" class="coop-sel" value="${coop.nome}"> ${coop.nome}
-        </label>
+function renderizarTabelaModal(lista) {
+    const tbody = document.getElementById('corpoBuscaModal');
+    tbody.innerHTML = lista.map(a => `
+        <tr class="linha-modal" data-data="${a.data}" data-txt="${a.fornecedor} ${a.senha}">
+            <td><input type="checkbox" class="check-item" value="${a.id}" data-senha="${a.senha}"></td>
+            <td><b>${a.senha}</b></td>
+            <td>${a.data}</td>
+            <td style="font-size:0.7rem">${a.cargas || '-'}</td>
+            <td>${a.agendasituacao || 'PENDENTE'}</td>
+            <td>${a.fornecedor}</td>
+            <td>${a.tipo}</td>
+            <td>${a.box || ''}</td>
+        </tr>
     `).join('');
-    document.getElementById('modalDescarga').style.display = 'flex';
-};
+}
 
-window.salvarDescarga = async () => {
-    const selecionados = Array.from(document.querySelectorAll('.coop-sel:checked')).map(i => i.value);
-    const valor = document.getElementById('valorDescarga').value;
+// 4. Filtros do Modal
+window.filtrarModal = () => {
+    const dataFiltro = document.getElementById('filtroDataModal').value; // YYYY-MM-DD
+    const busca = document.getElementById('buscaTextoModal').value.toUpperCase();
     
-    if(!valor || selecionados.length === 0) return alert("Preencha o valor e selecione os cooperados!");
+    let dataFormatada = "";
+    if(dataFiltro) {
+        const [ano, mes, dia] = dataFiltro.split('-');
+        dataFormatada = `${dia}/${mes}/${ano}`;
+    }
 
-    await updateDoc(doc(db, "agendamentos", idAgendaAtual), {
-        cooperadosDescarga: selecionados,
-        valorDescarga: valor
+    document.querySelectorAll('.linha-modal').forEach(tr => {
+        const dataTr = tr.getAttribute('data-data');
+        const txtTr = tr.getAttribute('data-txt').toUpperCase();
+        
+        const bateData = dataFormatada === "" || dataTr === dataFormatada;
+        const bateTexto = busca === "" || txtTr.includes(busca);
+
+        tr.style.display = (bateData && bateTexto) ? '' : 'none';
     });
-    fecharModal();
 };
 
-window.fecharModal = () => document.getElementById('modalDescarga').style.display = 'none';
+// 5. Ações de Puxar Dados
+window.puxarSelecionados = async () => {
+    const checks = document.querySelectorAll('.check-item:checked');
+    if(checks.length === 0) return alert("Selecione ao menos uma agenda!");
 
-// --- DASHBOARD E LOGOUT ---
-function atualizarDashboard() {
-    document.getElementById('totalAgendas').textContent = todasCargas.length;
-    const veiculos = new Set(todasCargas.map(c => c.veiculoAgrupado || c.id));
-    document.getElementById('totalVeiculos').textContent = veiculos.size;
-}
+    for(let cb of checks) {
+        const id = cb.value;
+        const senha = cb.getAttribute('data-senha');
+        
+        await updateDoc(doc(db, "agendamentos", id), { noPainel: true });
+        
+        // Log de Histórico
+        await addDoc(collection(db, "historico"), {
+            usuario: usuarioLogin,
+            acao: "ADICIONADO AO PAINEL",
+            senha: senha,
+            dataHora: serverTimestamp()
+        });
+    }
+    fecharModais();
+};
 
-function renderizarGrafico() {
-    const ctx = document.getElementById('statusChart').getContext('2d');
-    const resumo = {};
-    todasCargas.forEach(c => {
-        const s = c.agendasituacao || "PENDENTE";
-        resumo[s] = (resumo[s] || 0) + 1;
-    });
+window.atualizarCampo = async (id, campo, valor) => {
+    await updateDoc(doc(db, "agendamentos", id), { [campo]: valor.toUpperCase() });
+};
 
-    if(chartInstance) chartInstance.destroy();
-    chartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(resumo),
-            datasets: [{
-                data: Object.values(resumo),
-                backgroundColor: Object.keys(resumo).map(s => situacoesMap[s] || '#eee'),
-                borderWidth: 0
-            }]
-        },
-        options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-}
+window.removerDoPainel = async (id) => {
+    if(confirm("Deseja ocultar esta agenda do painel?")) {
+        await updateDoc(doc(db, "agendamentos", id), { noPainel: false });
+    }
+};
 
+window.fecharModais = () => document.getElementById('modalSelecao').style.display = 'none';
+window.toggleAllModal = () => {
+    const status = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.check-item').forEach(c => c.checked = status);
+};
 window.logout = () => { localStorage.clear(); window.location.href = "index.html"; };
-window.toggleAll = () => {
-    const m = document.getElementById('selectAll').checked;
-    document.querySelectorAll('.row-check').forEach(i => i.checked = m);
-};
