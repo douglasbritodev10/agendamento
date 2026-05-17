@@ -5,38 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cargas do Dia | Móveis Simonetti</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #D32F2F; --bg-light: #f4f7f6; --card-bg: #ffffff; --border-color: #e0e0e0; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        :root { --primary: #D32F2F; --bg-light: #f4f7f6; --border-color: #e0e0e0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: var(--bg-light); min-height: 100vh; }
 
         .navbar { background: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 1000; }
-        .user-info { font-weight: bold; color: #555; font-size: 0.85rem; text-transform: uppercase; }
-
         .container { padding: 20px; max-width: 1600px; margin: auto; }
+        
         .dashboard-header { display: flex; gap: 20px; margin-bottom: 20px; }
         .stat-card { background: white; padding: 15px; border-radius: 12px; flex: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
         .stat-card span { font-size: 1.8rem; font-weight: bold; color: var(--primary); display: block; }
 
         .card-tabela { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .table-responsive { overflow-x: auto; max-height: 70vh; }
-        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 0.75rem; color: #666; text-transform: uppercase; border-bottom: 2px solid #eee; position: sticky; top: 0; z-index: 5; }
+        table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 0.75rem; color: #666; text-transform: uppercase; border-bottom: 2px solid #eee; position: sticky; top: 0; }
         td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
 
         .btn-puxar { background: #1976D2; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; }
         
-        /* Modal Estilizado */
+        /* Modal */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-        .modal-content { background: white; border-radius: 15px; width: 95%; max-width: 1300px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+        .modal-content { background: white; border-radius: 15px; width: 95%; max-width: 1300px; max-height: 90vh; display: flex; flex-direction: column; }
         .modal-header { padding: 15px 20px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 20px; overflow-y: auto; }
-        
         .filter-bar { display: flex; gap: 15px; margin-bottom: 15px; background: #f9f9f9; padding: 12px; border-radius: 8px; align-items: center; }
-        .filter-bar input { padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
-
-        .status-badge { padding: 5px 10px; border-radius: 20px; color: white; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -52,86 +46,49 @@
 
     <main class="container">
         <div class="dashboard-header">
-            <div class="stat-card"><h3>Agendas Ativas</h3><span id="totalAgendas">0</span></div>
-            <div class="stat-card"><h3>Veículos no CD</h3><span id="totalVeiculos">0</span></div>
+            <div class="stat-card"><h3>Agendas</h3><span id="totalAgendas">0</span></div>
+            <div class="stat-card"><h3>Veículos</h3><span id="totalVeiculos">0</span></div>
         </div>
 
-<div class="card-tabela">
-    <div style="padding:15px; border-bottom:1px solid #eee; display: flex; justify-content: space-between; align-items:center;">
-        <button onclick="abrirModalSelecao()" class="btn-puxar">
-            <i class="fas fa-calendar-plus"></i> SELECIONAR AGENDAMENTOS
-        </button>
-        
-        <button onclick="agruparComoMesmoVeiculo()" class="btn-puxar" style="background:#673AB7">
-            <i class="fas fa-layer-group"></i> MESMO VEÍCULO (SELECIONADOS)
-        </button>
-    </div>
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th><i class="fas fa-check-double"></i></th>
-                    <th>SENHA</th>
-                    <th>DATA</th>
-                    <th>CENTRAL</th>
-                    <th>CARGAS</th>
-                    <th style="width:150px">SITUAÇÃO</th>
-                    <th>FORNECEDOR</th>
-                    <th>TIPO</th>
-                    <th>BOX</th>
-                    <th>AÇÕES</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaCargas"></tbody>
-        </table>
-    </div>
-</div>
-
-<div id="modalDescarga" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div class="modal-header">
-            <h3>Vincular Descarga</h3>
-            <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
+        <div class="card-tabela">
+            <div style="padding:15px; border-bottom:1px solid #eee;">
+                <button onclick="abrirModalSelecao()" class="btn-puxar"><i class="fas fa-calendar-plus"></i> SELECIONAR AGENDAMENTOS</button>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SENHA</th>
+                            <th>DATA</th>
+                            <th>CENTRAL</th>
+                            <th>CARGAS</th>
+                            <th style="width:160px">SITUAÇÃO</th>
+                            <th>FORNECEDOR</th>
+                            <th>TIPO</th>
+                            <th>BOX</th>
+                            <th>AÇÕES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCargas"></tbody>
+                </table>
+            </div>
         </div>
-        <div class="modal-body">
-            <label style="font-weight:bold; font-size:0.8rem;">EQUIPE DE DESCARGA:</label>
-            <div id="listaCooperados" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; margin:10px 0; padding:10px; border-radius:8px;">
-                </div>
-            
-            <label style="font-weight:bold; font-size:0.8rem;">VALOR DA DESCARGA (R$):</label>
-            <input type="number" id="valorDescarga" placeholder="0,00" style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #ccc;">
-            
-            <button onclick="salvarDescarga()" class="btn-puxar" style="background:#2e7d32; width:100%; margin-top:20px; justify-content:center;">
-                SALVAR DADOS DA DESCARGA
-            </button>
-        </div>
-    </div>
-</div>
-</main>
+    </main>
 
     <div id="modalSelecao" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-search"></i> Buscar Agendamentos para o Painel</h3>
-                <i class="fas fa-times" style="cursor:pointer; font-size: 1.5rem;" onclick="fecharModais()"></i>
+                <h3><i class="fas fa-search"></i> Buscar Agendamentos</h3>
+                <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
             </div>
             <div class="modal-body">
                 <div class="filter-bar">
-                    <div>
-                        <label style="display:block; font-size:0.7rem; font-weight:bold;">DATA DA AGENDA:</label>
-                        <input type="date" id="filtroDataModal" onchange="filtrarModal()">
-                    </div>
-                    <div style="flex:1">
-                        <label style="display:block; font-size:0.7rem; font-weight:bold;">BUSCAR FORNECEDOR / SENHA:</label>
-                        <input type="text" id="buscaTextoModal" onkeyup="filtrarModal()" placeholder="Pesquisar..." style="width:100%">
-                    </div>
-                    <button onclick="puxarSelecionados()" class="btn-puxar" style="background:#2e7d32; align-self: flex-end; padding: 12px 25px;">
-                        ADICIONAR SELECIONADOS
-                    </button>
+                    <input type="date" id="filtroDataModal" onchange="filtrarModal()">
+                    <input type="text" id="buscaTextoModal" onkeyup="filtrarModal()" placeholder="Senha ou Fornecedor..." style="flex:1; padding:8px;">
+                    <button onclick="puxarSelecionados()" class="btn-puxar" style="background:#2e7d32;">ADICIONAR</button>
                 </div>
-
-                <div class="table-responsive" style="max-height: 450px;">
-                    <table id="tabelaBusca">
+                <div class="table-responsive">
+                    <table>
                         <thead>
                             <tr>
                                 <th><input type="checkbox" id="selectAll" onclick="toggleAllModal()"></th>
@@ -141,7 +98,6 @@
                                 <th>SITUAÇÃO</th>
                                 <th>FORNECEDOR</th>
                                 <th>TIPO</th>
-                                <th>BOX</th>
                             </tr>
                         </thead>
                         <tbody id="corpoBuscaModal"></tbody>
