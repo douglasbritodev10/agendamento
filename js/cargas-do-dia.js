@@ -1,11 +1,12 @@
 import { app } from './firebase-config.js';
 import { 
-    getFirestore, collection, query, onSnapshot, doc, updateDoc, orderBy, addDoc, serverTimestamp 
+    getFirestore, collection, query, onSnapshot, doc, updateDoc, orderBy, addDoc, serverTimestamp, getDocs 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
 const usuarioLogin = localStorage.getItem('username') || "SISTEMA";
 let todasAgendasDoBanco = [];
+let listaCooperados = [];
 
 const situacoesCores = {
     "CARGA RECEBIDA": '#4CAF50', "NO PATIO - FICOU P/ AMANHÃ": '#3ACFB9', "CANCELADA": '#7a002b',
@@ -16,7 +17,17 @@ const situacoesCores = {
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('userNameDisplay').textContent = usuarioLogin;
     ouvirDados();
+    carregarCooperados(); // Carrega os nomes para o modal
 });
+
+async function carregarCooperados() {
+    const querySnapshot = await getDocs(collection(db, "cooperados"));
+    listaCooperados = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    const select = document.getElementById('selectCooperado');
+    select.innerHTML = '<option value="">Selecione quem descarregou...</option>' + 
+        listaCooperados.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+}
 
 function ouvirDados() {
     const q = query(collection(db, "agendamentos"), orderBy("data", "desc"));
@@ -57,24 +68,64 @@ function renderizarPainelPrincipal() {
                 <td>${c.fornecedor || ''}</td>
                 <td style="background-color:${getCorTipo(c.tipoProduto)}; font-weight:bold;">${c.tipo || ''}</td>
                 <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:50px; text-align:center;"></td>
-<td>
-    <div style="display: flex; gap: 10px; align-items: center;">
-        <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}', '${c.equipe || ''}', '${c.valorDescarga || ''}')" 
-            style="color:#1976D2; border:none; background:none; cursor:pointer; font-size: 1.2rem;" title="Acerto de Equipe">
-            <i class="fas fa-users-cog"></i>
-        </button>
-
-        <button onclick="removerDoPainel('${c.id}')" 
-            style="color:red; border:none; background:none; cursor:pointer; font-size: 1.2rem;" title="Remover do Painel">
-            <i class="fas fa-eye-slash"></i>
-        </button>
-    </div>
-</td>
+                <td>
+                    <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}', '${c.equipe || ''}', '${c.valorDescarga || ''}')" style="color:#1976D2; border:none; background:none; cursor:pointer; margin-right:8px;" title="Acerto de Descarga">
+                        <i class="fas fa-users-cog"></i>
+                    </button>
+                    <button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;" title="Remover do Painel">
+                        <i class="fas fa-eye-slash"></i>
+                    </button>
+                </td>
+            </tr>`;
     }).join('');
 
     document.getElementById('totalAgendas').textContent = noPainel.length;
     document.getElementById('totalVeiculos').textContent = new Set(noPainel.map(p => p.senha)).size;
 }
+
+// NOVAS FUNÇÕES DO MODAL DE ACERTO
+window.abrirModalAcerto = (id, senha, equipeExistente, valorExistente) => {
+    document.getElementById('idAgendamentoAcerto').value = id;
+    document.getElementById('senhaAgendamentoAcerto').value = senha;
+    document.getElementById('selectCooperado').value = equipeExistente;
+    document.getElementById('valorDescarga').value = valorExistente;
+    document.getElementById('modalAcerto').style.display = 'flex';
+};
+
+window.salvarAcerto = async () => {
+    const id = document.getElementById('idAgendamentoAcerto').value;
+    const senha = document.getElementById('senhaAgendamentoAcerto').value;
+    const equipe = document.getElementById('selectCooperado').value;
+    const valor = document.getElementById('valorDescarga').value;
+
+    if (!equipe || !valor) {
+        alert("Preencha a equipe e o valor!");
+        return;
+    }
+
+    try {
+        // Atualiza a agenda com equipe e valor
+        await updateDoc(doc(db, "agendamentos", id), {
+            equipe: equipe,
+            valorDescarga: valor
+        });
+
+        // Grava no histórico (IDEIA: Manter rastreio)
+        await addDoc(collection(db, "historico"), {
+            usuario: usuarioLogin,
+            acao: "REALIZOU ACERTO DE DESCARGA",
+            detalhe: `Equipe: ${equipe} | Valor: R$ ${valor}`,
+            senha: senha,
+            dataHora: serverTimestamp()
+        });
+
+        fecharModais();
+        alert("Acerto salvo com sucesso!");
+    } catch (e) {
+        console.error(e);
+        alert("Erro ao salvar acerto.");
+    }
+};
 
 window.filtrarModal = () => {
     const dataFiltro = document.getElementById('filtroDataModal').value;
@@ -116,51 +167,12 @@ window.puxarSelecionados = async () => {
     fecharModais();
 };
 
-window.abrirModalAcerto = (id, senha, equipe, valor) => {
-    document.getElementById('acertoId').value = id;
-    document.getElementById('acertoSenha').value = senha;
-    document.getElementById('campoEquipe').value = equipe;
-    document.getElementById('campoValor').value = valor;
-    document.getElementById('modalAcerto').style.display = 'flex';
-};
+window.removerDoPainel = async (id) => { if(confirm("Remover do painel?")) await updateDoc(doc(db, "agendamentos", id), { noPainel: false }); };
 
-window.salvarAcerto = async () => {
-    const id = document.getElementById('acertoId').value;
-    const senha = document.getElementById('acertoSenha').value;
-    const equipe = document.getElementById('campoEquipe').value.toUpperCase();
-    const valor = document.getElementById('campoValor').value;
-
-    try {
-        // 1. Atualiza o agendamento
-        await updateDoc(doc(db, "agendamentos", id), {
-            equipe: equipe,
-            valorDescarga: valor
-        });
-
-        // 2. Registra no histórico (conforme solicitado)
-        await addDoc(collection(db, "historico"), {
-            usuario: usuarioLogin,
-            acao: "VINCULOU EQUIPE/VALOR",
-            detalhe: `Equipe: ${equipe} | Valor: R$ ${valor}`,
-            senha: senha,
-            dataHora: serverTimestamp()
-        });
-
-        fecharModais();
-        alert("Acerto salvo com sucesso!");
-    } catch (error) {
-        console.error("Erro ao salvar acerto:", error);
-        alert("Erro ao salvar.");
-    }
-};
-
-// Ajuste na sua função de fechar modais para incluir o novo
 window.fecharModais = () => {
     document.getElementById('modalSelecao').style.display = 'none';
     document.getElementById('modalAcerto').style.display = 'none';
 };
 
-window.removerDoPainel = async (id) => { if(confirm("Remover do painel?")) await updateDoc(doc(db, "agendamentos", id), { noPainel: false }); };
-window.fecharModais = () => document.getElementById('modalSelecao').style.display = 'none';
 window.toggleAllModal = () => { const s = document.getElementById('selectAll').checked; document.querySelectorAll('.check-item').forEach(c => c.checked = s); };
 window.logout = () => { localStorage.clear(); window.location.href = "index.html"; };
