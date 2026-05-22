@@ -63,28 +63,34 @@ function renderizarPainelPrincipal() {
         const options = Object.keys(situacoesCores).map(s => 
             `<option value="${s}" ${c.agendasituacao === s ? 'selected' : ''}>${s}</option>`).join('');
 
+        // Corrigido: usando c.tipoProduto caso c.tipo esteja vazio
+        const tipoExibicao = c.tipo || c.tipoProduto || '';
+
         return `
             <tr>
                 <td><b>${c.senhaAgendamento || ''}</b></td>
                 <td>${c.data || ''}</td>
                 <td>${c.central || ''}</td>
-                <td style="font-size:10px; max-width:150px;">${c.cargas || ''}</td>
-                <td>
-                    <select onchange="atualizarCampo('${c.id}', 'agendasituacao', this.value)" 
-                        style="background:${situacoesCores[c.agendasituacao] || '#999'}; color:white; border:none; padding:5px; border-radius:4px; font-weight:bold; width:100%;">
+                <td style="font-size:10px; max-width:200px;">${c.cargas || ''}</td>
+                <td style="width:180px;"> <select class="select-situacao" onchange="atualizarCampo('${c.id}', 'agendasituacao', this.value)" 
+                        style="background:${situacoesCores[c.agendasituacao] || '#999'};">
                         <option value="">PENDENTE</option>${options}
                     </select>
                 </td>
                 <td>${c.fornecedor || ''}</td>
-                <td style="background-color:${getCorTipo(c.tipoProduto)}; font-weight:bold;">${c.tipo || ''}</td>
-                <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:50px; text-align:center;"></td>
+                <td style="background-color:${getCorTipo(tipoExibicao)}; font-weight:bold; text-align:center; border: 1px solid #ccc;">
+                    ${tipoExibicao}
+                </td>
+                <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:60px; text-align:center; padding:5px; border:1px solid #ccc;"></td>
                 <td>
-                    <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}', '${c.equipe || ''}', '${c.valorDescarga || ''}')" style="color:#1976D2; border:none; background:none; cursor:pointer; margin-right:8px;" title="Acerto de Descarga">
-                        <i class="fas fa-users-cog"></i>
-                    </button>
-                    <button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;" title="Remover do Painel">
-                        <i class="fas fa-eye-slash"></i>
-                    </button>
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}', '${c.equipe || ''}', '${c.valorDescarga || ''}')" style="color:#1976D2; border:none; background:none; cursor:pointer;" title="Acerto de Descarga">
+                            <i class="fas fa-users-cog fa-lg"></i>
+                        </button>
+                        <button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;" title="Remover do Painel">
+                            <i class="fas fa-eye-slash fa-lg"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>`;
     }).join('');
