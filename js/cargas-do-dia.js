@@ -57,8 +57,19 @@ function renderizarPainelPrincipal() {
                 <td>${c.fornecedor || ''}</td>
                 <td style="background-color:${getCorTipo(c.tipoProduto)}; font-weight:bold;">${c.tipo || ''}</td>
                 <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:50px; text-align:center;"></td>
-                <td><button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-eye-slash"></i></button></td>
-            </tr>`;
+<td>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}', '${c.equipe || ''}', '${c.valorDescarga || ''}')" 
+            style="color:#1976D2; border:none; background:none; cursor:pointer; font-size: 1.2rem;" title="Acerto de Equipe">
+            <i class="fas fa-users-cog"></i>
+        </button>
+
+        <button onclick="removerDoPainel('${c.id}')" 
+            style="color:red; border:none; background:none; cursor:pointer; font-size: 1.2rem;" title="Remover do Painel">
+            <i class="fas fa-eye-slash"></i>
+        </button>
+    </div>
+</td>
     }).join('');
 
     document.getElementById('totalAgendas').textContent = noPainel.length;
@@ -103,6 +114,50 @@ window.puxarSelecionados = async () => {
         await addDoc(collection(db, "historico"), { usuario: usuarioLogin, acao: "ADICIONADO AO PAINEL", senha: cb.dataset.senha, dataHora: serverTimestamp() });
     }
     fecharModais();
+};
+
+window.abrirModalAcerto = (id, senha, equipe, valor) => {
+    document.getElementById('acertoId').value = id;
+    document.getElementById('acertoSenha').value = senha;
+    document.getElementById('campoEquipe').value = equipe;
+    document.getElementById('campoValor').value = valor;
+    document.getElementById('modalAcerto').style.display = 'flex';
+};
+
+window.salvarAcerto = async () => {
+    const id = document.getElementById('acertoId').value;
+    const senha = document.getElementById('acertoSenha').value;
+    const equipe = document.getElementById('campoEquipe').value.toUpperCase();
+    const valor = document.getElementById('campoValor').value;
+
+    try {
+        // 1. Atualiza o agendamento
+        await updateDoc(doc(db, "agendamentos", id), {
+            equipe: equipe,
+            valorDescarga: valor
+        });
+
+        // 2. Registra no histórico (conforme solicitado)
+        await addDoc(collection(db, "historico"), {
+            usuario: usuarioLogin,
+            acao: "VINCULOU EQUIPE/VALOR",
+            detalhe: `Equipe: ${equipe} | Valor: R$ ${valor}`,
+            senha: senha,
+            dataHora: serverTimestamp()
+        });
+
+        fecharModais();
+        alert("Acerto salvo com sucesso!");
+    } catch (error) {
+        console.error("Erro ao salvar acerto:", error);
+        alert("Erro ao salvar.");
+    }
+};
+
+// Ajuste na sua função de fechar modais para incluir o novo
+window.fecharModais = () => {
+    document.getElementById('modalSelecao').style.display = 'none';
+    document.getElementById('modalAcerto').style.display = 'none';
 };
 
 window.removerDoPainel = async (id) => { if(confirm("Remover do painel?")) await updateDoc(doc(db, "agendamentos", id), { noPainel: false }); };
