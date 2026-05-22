@@ -85,16 +85,11 @@ function renderizarPainelPrincipal() {
                 </td>
                 <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:50px; text-align:center;"></td>
                 <td>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}')" 
-                                style="color:#2e7d32; border:none; background:none; cursor:pointer;" 
-                                title="Acerto de Descarga">
-                            <i class="fas fa-hand-holding-usd fa-lg"></i>
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}', '${c.equipe || ''}', '${c.valorDescarga || ''}')" style="color:#1976D2; border:none; background:none; cursor:pointer;" title="Acerto de Descarga">
+                            <i class="fas fa-users-cog fa-lg"></i>
                         </button>
-
-                        <button onclick="removerDoPainel('${c.id}')" 
-                                style="color:red; border:none; background:none; cursor:pointer;" 
-                                title="Remover do Painel">
+                        <button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;" title="Remover do Painel">
                             <i class="fas fa-eye-slash fa-lg"></i>
                         </button>
                     </div>
@@ -428,24 +423,40 @@ window.exportarExcel = async (modo) => {
     a.click();
 };
 
-// Ajuste para abrir o modal limpando ou marcando os existentes
-window.abrirModalAcerto = (id, senha, equipeExistente, valorExistente) => {
+window.abrirModalAcerto = (id, senha, equipeSalva, valorSalvo) => {
+    // 1. Preenche os campos ocultos de ID e Senha
     document.getElementById('idAgendamentoAcerto').value = id;
     document.getElementById('senhaAgendamentoAcerto').value = senha;
-    document.getElementById('valorDescarga').value = valorExistente;
-    document.getElementById('checkTodosCooperados').checked = false;
 
-    // Converte a string de equipe em array para marcar os checks
-    const equipesArray = equipeExistente ? equipeExistente.split(', ') : [];
-    document.querySelectorAll('.check-cooperado').forEach(ck => {
-        ck.checked = equipesArray.includes(ck.value);
-    });
+    // 2. Preenche o valor da descarga (se não tiver valor, fica vazio)
+    document.getElementById('valorDescarga').value = valorSalvo || '';
 
+    // 3. Lida com os checkboxes da equipe
+    const container = document.getElementById('listaCheckCooperados');
+    
+    // Transformamos a string da equipe salva em um Array para facilitar a comparação
+    // Ex: "DOUGLAS, JOÃO" vira ["DOUGLAS", "JOÃO"]
+    const arrayEquipe = equipeSalva ? equipeSalva.split(', ') : [];
+
+    // Renderiza a lista de cooperados marcando os que já estão no array
+    container.innerHTML = listaCooperados.map(c => {
+        const estaMarcado = arrayEquipe.includes(c.nome) ? 'checked' : '';
+        return `
+            <div style="padding: 5px 0;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" class="check-cooperado" value="${c.nome}" ${estaMarcado}> ${c.nome}
+                </label>
+            </div>
+        `;
+    }).join('');
+
+    // 4. Mostra o modal
     document.getElementById('modalAcerto').style.display = 'flex';
 };
 
 // Ajuste para salvar unindo os nomes selecionados
 window.salvarAcerto = async () => {
+    const btnSalvar = document.querySelector('#modalAcerto .btn-puxar'); // Pega o botão de salvar
     const id = document.getElementById('idAgendamentoAcerto').value;
     const senha = document.getElementById('senhaAgendamentoAcerto').value;
     const valor = document.getElementById('valorDescarga').value;
@@ -462,9 +473,13 @@ window.salvarAcerto = async () => {
     }
 
     try {
+        // Desativa o botão para evitar cliques duplos
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SALVANDO...';
+
         await updateDoc(doc(db, "agendamentos", id), {
             equipe: equipeString,
-            valorDescarga: valor
+            valorDescarga: parseFloat(valor) // Salva como número para facilitar relatórios
         });
 
         await addDoc(collection(db, "historico"), {
@@ -478,8 +493,12 @@ window.salvarAcerto = async () => {
         fecharModais();
         alert("Acerto salvo com sucesso!");
     } catch (e) {
-        console.error(e);
-        alert("Erro ao salvar.");
+        console.error("Erro ao salvar acerto:", e);
+        alert("Erro ao salvar. Verifique o console.");
+    } finally {
+        // Restaura o botão
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = '<i class="fas fa-save"></i> SALVAR ACERTO';
     }
 };
 
