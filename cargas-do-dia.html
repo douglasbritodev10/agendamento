@@ -27,10 +27,12 @@
         
         /* Modal */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-        .modal-content { background: white; border-radius: 15px; width: 95%; max-width: 1300px; max-height: 90vh; display: flex; flex-direction: column; }
-        .modal-header { padding: 15px 20px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .modal-content { background: white; border-radius: 15px; width: 95%; max-width: 500px; max-height: 90vh; display: flex; flex-direction: column; }
+        .modal-header { padding: 15px 20px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; border-radius: 15px 15px 0 0; }
         .modal-body { padding: 20px; overflow-y: auto; }
-        .filter-bar { display: flex; gap: 15px; margin-bottom: 15px; background: #f9f9f9; padding: 12px; border-radius: 8px; align-items: center; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #444; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -76,13 +78,13 @@
     </main>
 
     <div id="modalSelecao" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 1300px;">
             <div class="modal-header">
                 <h3><i class="fas fa-search"></i> Buscar Agendamentos</h3>
                 <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
             </div>
             <div class="modal-body">
-                <div class="filter-bar">
+                <div class="filter-bar" style="display: flex; gap: 15px; margin-bottom: 15px; background: #f9f9f9; padding: 12px; border-radius: 8px; align-items: center;">
                     <input type="date" id="filtroDataModal" onchange="filtrarModal()">
                     <input type="text" id="buscaTextoModal" onkeyup="filtrarModal()" placeholder="Senha ou Fornecedor..." style="flex:1; padding:8px;">
                     <button onclick="puxarSelecionados()" class="btn-puxar" style="background:#2e7d32;">ADICIONAR</button>
@@ -108,33 +110,33 @@
     </div>
 
     <div id="modalAcerto" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div class="modal-header">
-            <h3><i class="fas fa-hand-holding-usd"></i> Acerto de Descarga</h3>
-            <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
-        </div>
-        <div class="modal-body">
-            <input type="hidden" id="acertoId">
-            <input type="hidden" id="acertoSenha">
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">Equipe de Descarga:</label>
-                <input type="text" id="campoEquipe" placeholder="Ex: Equipe do João" 
-                    style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-truck-loading"></i> Acerto de Descarga</h3>
+                <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
             </div>
+            <div class="modal-body">
+                <input type="hidden" id="idAgendamentoAcerto">
+                <input type="hidden" id="senhaAgendamentoAcerto">
+                
+                <div class="form-group">
+                    <label>Equipe / Cooperado:</label>
+                    <select id="selectCooperado">
+                        <option value="">Selecione quem descarregou...</option>
+                    </select>
+                </div>
 
-            <div style="margin-bottom: 20px;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">Valor da Descarga (R$):</label>
-                <input type="number" id="campoValor" placeholder="0.00" step="0.01" 
-                    style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                <div class="form-group">
+                    <label>Valor da Descarga (R$):</label>
+                    <input type="number" id="valorDescarga" placeholder="0.00" step="0.01">
+                </div>
+
+                <button onclick="salvarAcerto()" class="btn-puxar" style="width:100%; justify-content:center; background:#2e7d32; margin-top:10px;">
+                    <i class="fas fa-save"></i> SALVAR ACERTO
+                </button>
             </div>
-
-            <button onclick="salvarAcerto()" class="btn-puxar" style="width:100%; justify-content:center; background:#2e7d32;">
-                <i class="fas fa-check-circle"></i> CONFIRMAR E SALVAR
-            </button>
         </div>
     </div>
-</div>
 
     <script type="module" src="js/cargas-do-dia.js"></script>
 </body>
