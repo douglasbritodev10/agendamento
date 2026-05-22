@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cargas do Dia | Móveis Simonetti</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    
     <style>
         :root { --primary: #D32F2F; --bg-light: #f4f7f6; --border-color: #e0e0e0; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
@@ -93,29 +98,41 @@ td {
             <div class="stat-card"><h3>Veículos</h3><span id="totalVeiculos">0</span></div>
         </div>
 
-        <div class="card-tabela">
-            <div style="padding:15px; border-bottom:1px solid #eee;">
-                <button onclick="abrirModalSelecao()" class="btn-puxar"><i class="fas fa-calendar-plus"></i> SELECIONAR AGENDAMENTOS</button>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>SENHA</th>
-                            <th>DATA</th>
-                            <th>CENTRAL</th>
-                            <th>CARGAS</th>
-                            <th style="width:160px">SITUAÇÃO</th>
-                            <th>FORNECEDOR</th>
-                            <th>TIPO</th>
-                            <th>BOX</th>
-                            <th>AÇÕES</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaCargas"></tbody>
-                </table>
-            </div>
+<div class="card-tabela">
+    <div style="padding:15px; border-bottom:1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; gap: 10px;">
+            <button onclick="abrirModalSelecao()" class="btn-puxar"><i class="fas fa-calendar-plus"></i> SELECIONAR AGENDAMENTOS</button>
+            <button onclick="removerSelecionados()" class="btn-puxar" style="background: #7a002b;"><i class="fas fa-trash-alt"></i> REMOVER SELECIONADOS</button>
+            <button onclick="agruparEmCarga()" class="btn-puxar" style="background: #ff7625;"><i class="fas fa-truck-moving"></i> UNIR EM CARGA</button>
         </div>
+        
+        <div class="export-tools" style="display: flex; gap: 8px;">
+            <button onclick="copiarSelecionados()" class="btn-puxar" style="background:#555;" title="Copiar para WhatsApp/Rascunho"><i class="fas fa-copy"></i> COPIAR</button>
+            <button onclick="exportarPDF('simples')" class="btn-puxar" style="background:#d32f2f;" title="Exportar PDF"><i class="fas fa-file-pdf"></i> PDF</button>
+            <button onclick="exportarExcel('simples')" class="btn-puxar" style="background:#2e7d32;" title="Exportar Excel"><i class="fas fa-file-excel"></i> EXCEL</button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table id="tabelaDados">
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllPainel" onclick="toggleAllPainel(this.checked)"></th>
+                    <th>SENHA</th>
+                    <th>DATA</th>
+                    <th>CENTRAL</th>
+                    <th>CARGAS</th>
+                    <th style="width:160px">SITUAÇÃO</th>
+                    <th>FORNECEDOR</th>
+                    <th>TIPO</th>
+                    <th>BOX</th>
+                    <th>AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaCargas"></tbody>
+        </table>
+    </div>
+</div>
     </main>
 
     <div id="modalSelecao" class="modal">
