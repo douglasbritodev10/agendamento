@@ -20,14 +20,24 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarCooperados(); // Carrega os nomes para o modal
 });
 
+// Ajuste para carregar como Checkboxes
 async function carregarCooperados() {
     const querySnapshot = await getDocs(collection(db, "cooperados"));
     listaCooperados = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    const select = document.getElementById('selectCooperado');
-    select.innerHTML = '<option value="">Selecione quem descarregou...</option>' + 
-        listaCooperados.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    const container = document.getElementById('listaCheckCooperados');
+    container.innerHTML = listaCooperados.map(c => `
+        <div style="margin-bottom:5px;">
+            <label style="cursor:pointer; display:block;">
+                <input type="checkbox" class="check-cooperado" value="${c.nome}"> ${c.nome}
+            </label>
+        </div>`).join('');
 }
+
+// Função auxiliar para marcar/desmarcar todos
+window.toggleTodosCooperados = (status) => {
+    document.querySelectorAll('.check-cooperado').forEach(ck => ck.checked = status);
+};
 
 function ouvirDados() {
     const q = query(collection(db, "agendamentos"), orderBy("data", "desc"));
@@ -83,38 +93,49 @@ function renderizarPainelPrincipal() {
     document.getElementById('totalVeiculos').textContent = new Set(noPainel.map(p => p.senha)).size;
 }
 
-// NOVAS FUNÇÕES DO MODAL DE ACERTO
+// Ajuste para abrir o modal limpando ou marcando os existentes
 window.abrirModalAcerto = (id, senha, equipeExistente, valorExistente) => {
     document.getElementById('idAgendamentoAcerto').value = id;
     document.getElementById('senhaAgendamentoAcerto').value = senha;
-    document.getElementById('selectCooperado').value = equipeExistente;
     document.getElementById('valorDescarga').value = valorExistente;
+    document.getElementById('checkTodosCooperados').checked = false;
+
+    // Converte a string de equipe em array para marcar os checks
+    const equipesArray = equipeExistente ? equipeExistente.split(', ') : [];
+    document.querySelectorAll('.check-cooperado').forEach(ck => {
+        ck.checked = equipesArray.includes(ck.value);
+    });
+
     document.getElementById('modalAcerto').style.display = 'flex';
 };
 
+// Ajuste para salvar unindo os nomes selecionados
 window.salvarAcerto = async () => {
     const id = document.getElementById('idAgendamentoAcerto').value;
     const senha = document.getElementById('senhaAgendamentoAcerto').value;
-    const equipe = document.getElementById('selectCooperado').value;
     const valor = document.getElementById('valorDescarga').value;
 
-    if (!equipe || !valor) {
-        alert("Preencha a equipe e o valor!");
+    // Coleta todos os nomes marcados
+    const selecionados = Array.from(document.querySelectorAll('.check-cooperado:checked'))
+                              .map(ck => ck.value);
+    
+    const equipeString = selecionados.join(', ');
+
+    if (selecionados.length === 0 || !valor) {
+        alert("Selecione ao menos um colaborador e informe o valor!");
         return;
     }
 
     try {
-        // Atualiza a agenda com equipe e valor
         await updateDoc(doc(db, "agendamentos", id), {
-            equipe: equipe,
+            equipe: equipeString,
             valorDescarga: valor
         });
 
-        // Grava no histórico (IDEIA: Manter rastreio)
         await addDoc(collection(db, "historico"), {
             usuario: usuarioLogin,
-            acao: "REALIZOU ACERTO DE DESCARGA",
-            detalhe: `Equipe: ${equipe} | Valor: R$ ${valor}`,
+            acao: "ACERTO MULTIPLO DESCARGA",
+            detalhe: `Equipe: ${equipeString} | Valor: R$ ${valor}`,
             senha: senha,
             dataHora: serverTimestamp()
         });
@@ -123,7 +144,7 @@ window.salvarAcerto = async () => {
         alert("Acerto salvo com sucesso!");
     } catch (e) {
         console.error(e);
-        alert("Erro ao salvar acerto.");
+        alert("Erro ao salvar.");
     }
 };
 
