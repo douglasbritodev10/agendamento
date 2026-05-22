@@ -120,10 +120,16 @@
                 <input type="hidden" id="senhaAgendamentoAcerto">
                 
                 <div class="form-group">
-                    <label>Equipe / Cooperado:</label>
-                    <select id="selectCooperado">
-                        <option value="">Selecione quem descarregou...</option>
-                    </select>
+                    <label>Equipe / Cooperados:</label>
+                    <div style="background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #ccc; max-height: 200px; overflow-y: auto;">
+                        <div style="border-bottom: 1px solid #ddd; margin-bottom: 8px; padding-bottom: 5px;">
+                            <label style="cursor:pointer; font-weight:bold; color: var(--primary);">
+                                <input type="checkbox" id="checkTodosCooperados" onclick="toggleTodosCooperados(this.checked)"> SELECIONAR TODOS
+                            </label>
+                        </div>
+                        <div id="listaCheckCooperados">
+                            </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
