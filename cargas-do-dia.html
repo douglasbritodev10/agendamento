@@ -107,6 +107,35 @@
         </div>
     </div>
 
+    <div id="modalAcerto" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-hand-holding-usd"></i> Acerto de Descarga</h3>
+            <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="acertoId">
+            <input type="hidden" id="acertoSenha">
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Equipe de Descarga:</label>
+                <input type="text" id="campoEquipe" placeholder="Ex: Equipe do João" 
+                    style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Valor da Descarga (R$):</label>
+                <input type="number" id="campoValor" placeholder="0.00" step="0.01" 
+                    style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc;">
+            </div>
+
+            <button onclick="salvarAcerto()" class="btn-puxar" style="width:100%; justify-content:center; background:#2e7d32;">
+                <i class="fas fa-check-circle"></i> CONFIRMAR E SALVAR
+            </button>
+        </div>
+    </div>
+</div>
+
     <script type="module" src="js/cargas-do-dia.js"></script>
 </body>
 </html>
