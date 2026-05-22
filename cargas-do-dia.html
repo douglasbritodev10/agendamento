@@ -19,9 +19,50 @@
 
         .card-tabela { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .table-responsive { overflow-x: auto; max-height: 70vh; }
-        table { width: 100%; border-collapse: collapse; min-width: 1200px; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 0.75rem; color: #666; text-transform: uppercase; border-bottom: 2px solid #eee; position: sticky; top: 0; }
-        td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+/* Ajuste na Tabela para visualização em grade */
+table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    min-width: 1200px; 
+    border: 1px solid var(--border-color); /* Linha externa */
+}
+
+th { 
+    background: #f8f9fa; 
+    padding: 12px; 
+    text-align: left; 
+    font-size: 0.75rem; 
+    color: #333; 
+    text-transform: uppercase; 
+    border-bottom: 2px solid #ccc; 
+    border-right: 1px solid #ddd; /* Linha entre colunas no cabeçalho */
+    position: sticky; 
+    top: 0; 
+}
+
+td { 
+    padding: 10px 12px; 
+    border-bottom: 1px solid #ddd; /* Linha entre linhas */
+    border-right: 1px solid #eee;  /* Linha entre colunas */
+    font-size: 0.85rem; 
+    color: #333;
+    white-space: normal; /* Garante que o texto quebre linha se necessário */
+    word-wrap: break-word;
+}
+
+/* Garante que o select da situação ocupe o espaço e mostre o texto */
+.select-situacao {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: none;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    appearance: none; /* Remove a seta padrão para ganhar espaço */
+    -webkit-appearance: none;
+    text-align: center;
+}
 
         .btn-puxar { background: #1976D2; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; }
         
