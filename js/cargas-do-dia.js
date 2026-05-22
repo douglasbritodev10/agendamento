@@ -44,7 +44,7 @@ function renderizarPainelPrincipal() {
 
         return `
             <tr>
-                <td><b>${c.senha || ''}</b></td>
+                <td><b>${c.senhaAgendamento || ''}</b></td>
                 <td>${c.data || ''}</td>
                 <td>${c.central || ''}</td>
                 <td style="font-size:10px; max-width:150px;">${c.cargas || ''}</td>
@@ -55,7 +55,7 @@ function renderizarPainelPrincipal() {
                     </select>
                 </td>
                 <td>${c.fornecedor || ''}</td>
-                <td style="background-color:${getCorTipo(c.tipo)}; font-weight:bold;">${c.tipo || ''}</td>
+                <td style="background-color:${getCorTipo(c.tipoProduto)}; font-weight:bold;">${c.tipo || ''}</td>
                 <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:50px; text-align:center;"></td>
                 <td><button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-eye-slash"></i></button></td>
             </tr>`;
@@ -82,12 +82,12 @@ window.abrirModalSelecao = () => {
     document.getElementById('corpoBuscaModal').innerHTML = lista.map(a => `
         <tr class="linha-modal" data-data="${a.data}" data-txt="${a.senha} ${a.fornecedor}">
             <td><input type="checkbox" class="check-item" value="${a.id}" data-senha="${a.senha}"></td>
-            <td><b>${a.senha}</b></td>
+            <td><b>${a.senhaAgendamento}</b></td>
             <td>${a.data}</td>
             <td style="font-size:10px;">${a.cargas || ''}</td>
             <td>${a.agendasituacao || 'PENDENTE'}</td>
             <td>${a.fornecedor}</td>
-            <td>${a.tipo}</td>
+            <td>${a.tipoProduto}</td>
         </tr>`).join('');
     document.getElementById('modalSelecao').style.display = 'flex';
 };
