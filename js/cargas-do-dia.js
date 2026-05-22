@@ -85,7 +85,19 @@ function renderizarPainelPrincipal() {
                 </td>
                 <td><input type="text" value="${c.box || ''}" onchange="atualizarCampo('${c.id}', 'box', this.value)" style="width:50px; text-align:center;"></td>
                 <td>
-                    <button onclick="removerDoPainel('${c.id}')" style="color:red; border:none; background:none; cursor:pointer;"><i class="fas fa-eye-slash fa-lg"></i></button>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button onclick="abrirModalAcerto('${c.id}', '${c.senhaAgendamento}')" 
+                                style="color:#2e7d32; border:none; background:none; cursor:pointer;" 
+                                title="Acerto de Descarga">
+                            <i class="fas fa-hand-holding-usd fa-lg"></i>
+                        </button>
+
+                        <button onclick="removerDoPainel('${c.id}')" 
+                                style="color:red; border:none; background:none; cursor:pointer;" 
+                                title="Remover do Painel">
+                            <i class="fas fa-eye-slash fa-lg"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>`;
     }).join('');
