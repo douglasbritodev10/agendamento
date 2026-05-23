@@ -8,6 +8,8 @@ const usuarioLogin = localStorage.getItem('username') || "SISTEMA";
 let todasAgendasDoBanco = [];
 let listaCooperados = [];
 
+let ordemAtual = { coluna: null, direcao: 'asc' };
+
 const situacoesCores = {
     "CARGA RECEBIDA": '#4CAF50', "NO PATIO - FICOU P/ AMANHÃ": '#3ACFB9', "CANCELADA": '#7a002b',
     "SOB AJUSTE": '#8B27F5', "NO PATIO - SOB ENCAIXE": '#ff7625', "NO PATIO - FICOU DE ONTEM": '#B249BF',
@@ -105,6 +107,37 @@ function renderizarPainelPrincipal() {
     const veiculosUnicos = new Set(noPainel.map(p => p.veiculoAgrupado || p.senhaAgendamento));
     document.getElementById('totalVeiculos').textContent = veiculosUnicos.size;
 }
+
+window.ordenarPainel = (coluna) => {
+    // Se clicar na mesma coluna, inverte a direção. Se for outra, começa com ASC.
+    if (ordemAtual.coluna === coluna) {
+        ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
+    } else {
+        ordemAtual.coluna = coluna;
+        ordemAtual.direcao = 'asc';
+    }
+
+    // Ordena a array global baseada na coluna clicada
+    todasAgendasDoBanco.sort((a, b) => {
+        let valA = a[coluna] ? a[coluna].toString().toUpperCase() : "";
+        let valB = b[coluna] ? b[coluna].toString().toUpperCase() : "";
+
+        // Lógica específica para Datas (YYYY-MM-DD para comparação correta)
+        if (coluna === 'data') {
+            return ordemAtual.direcao === 'asc' 
+                ? new Date(a.data) - new Date(b.data)
+                : new Date(b.data) - new Date(a.data);
+        }
+
+        // Ordenação de Texto/Geral
+        if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
+        if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // Re-renderiza a tabela com a nova ordem
+    renderizarPainelPrincipal();
+};
 
 // --- LÓGICA DE SELEÇÃO E AÇÕES EM MASSA ---
 
