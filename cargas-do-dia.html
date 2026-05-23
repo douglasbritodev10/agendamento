@@ -100,6 +100,16 @@
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #444; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+
+        th:hover {
+            background-color: #f0f0f0;
+            color: var(--primary);
+        }
+        th i {
+            margin-left: 5px;
+            font-size: 0.65rem;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -134,25 +144,43 @@
         </div>
     </div>
 
-    <div class="table-responsive">
-        <table id="tabelaDados">
-            <thead>
-                <tr>
-                    <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllPainel" onclick="toggleAllPainel(this.checked)"></th>
-                    <th>SENHA</th>
-                    <th>DATA</th>
-                    <th>CENTRAL</th>
-                    <th>CARGAS</th>
-                    <th style="width:160px">SITUAÇÃO</th>
-                    <th>FORNECEDOR</th>
-                    <th>TIPO</th>
-                    <th>BOX</th>
-                    <th>AÇÕES</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaCargas"></tbody>
-        </table>
-    </div>
+<div class="table-responsive">
+<table id="tabelaDados">
+<thead>
+    <tr>
+        <th style="width: 40px; text-align: center;">
+            <input type="checkbox" id="selectAllPainel" onclick="toggleAllPainel(this.checked)">
+        </th>
+        <th onclick="ordenarPainel('senhaAgendamento')" style="cursor:pointer">
+            SENHA <i class="fas fa-sort"></i>
+        </th>
+        <th onclick="ordenarPainel('data')" style="cursor:pointer">
+            DATA <i class="fas fa-sort"></i>
+        </th>
+        <th onclick="ordenarPainel('central')" style="cursor:pointer">
+            CENTRAL <i class="fas fa-sort"></i>
+        </th>
+        <th onclick="ordenarPainel('cargas')" style="cursor:pointer">
+            CARGAS <i class="fas fa-sort"></i>
+        </th>
+        <th onclick="ordenarPainel('agendasituacao')" style="cursor:pointer; width:160px">
+            SITUAÇÃO <i class="fas fa-sort"></i>
+        </th>
+        <th onclick="ordenarPainel('fornecedor')" style="cursor:pointer">
+            FORNECEDOR <i class="fas fa-sort"></i>
+        </th>
+        <th onclick="ordenarPainel('tipoProduto')" style="cursor:pointer">
+            TIPO <i class="fas fa-sort"></i>
+        </th>
+        <th onclick="ordenarPainel('box')" style="cursor:pointer">
+            BOX <i class="fas fa-sort"></i>
+        </th>
+        <th>AÇÕES</th>
+    </tr>
+</thead>
+<tbody id="tabelaCargas"></tbody>
+</table>
+</div>
 </div>
     </main>
 
