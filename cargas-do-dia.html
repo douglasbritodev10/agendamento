@@ -24,50 +24,71 @@
 
         .card-tabela { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .table-responsive { overflow-x: auto; max-height: 70vh; }
-/* Ajuste na Tabela para visualização em grade */
-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    min-width: 1200px; 
-    border: 1px solid var(--border-color); /* Linha externa */
-}
 
-th { 
-    background: #f8f9fa; 
-    padding: 12px; 
-    text-align: left; 
-    font-size: 0.75rem; 
-    color: #333; 
-    text-transform: uppercase; 
-    border-bottom: 2px solid #ccc; 
-    border-right: 1px solid #ddd; /* Linha entre colunas no cabeçalho */
-    position: sticky; 
-    top: 0; 
-}
+        /* Ajuste na Tabela para visualização em grade */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            min-width: 1200px; 
+            border: 1px solid var(--border-color); 
+        }
 
-td { 
-    padding: 10px 12px; 
-    border-bottom: 1px solid #ddd; /* Linha entre linhas */
-    border-right: 1px solid #eee;  /* Linha entre colunas */
-    font-size: 0.85rem; 
-    color: #333;
-    white-space: normal; /* Garante que o texto quebre linha se necessário */
-    word-wrap: break-word;
-}
+        th { 
+            background: #f8f9fa; 
+            padding: 12px; 
+            text-align: left; 
+            font-size: 0.75rem; 
+            color: #333; 
+            text-transform: uppercase; 
+            border-bottom: 2px solid #ccc; 
+            border-right: 1px solid #ddd; 
+            position: sticky; 
+            top: 0; 
+        }
 
-/* Garante que o select da situação ocupe o espaço e mostre o texto */
-.select-situacao {
-    width: 100%;
-    padding: 8px;
-    border-radius: 4px;
-    border: none;
-    font-weight: bold;
-    color: white;
-    cursor: pointer;
-    appearance: none; /* Remove a seta padrão para ganhar espaço */
-    -webkit-appearance: none;
-    text-align: center;
-}
+        td { 
+            padding: 10px 12px; 
+            border-bottom: 1px solid #ddd; 
+            border-right: 1px solid #eee;  
+            font-size: 0.85rem; 
+            color: #333;
+            white-space: normal; 
+            word-wrap: break-word;
+            vertical-align: middle; /* Alinha o conteúdo no meio da célula */
+        }
+
+        /* AJUSTE NA SITUAÇÃO PARA NÃO CORTAR TEXTO */
+        .select-situacao {
+            width: 100%;
+            padding: 8px 4px;
+            border-radius: 4px;
+            border: none;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.75rem; /* Diminuído levemente para caber textos longos */
+            
+            /* Permite que o texto quebre ou seja visualizado melhor */
+            white-space: normal; 
+            overflow: visible;
+            text-overflow: inherit;
+            word-wrap: break-word;
+            
+            /* Ajuste para telas menores/textos longos */
+            line-height: 1.2;
+            min-height: 35px;
+            
+            /* Remove a seta padrão para ganhar espaço interno */
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+        }
+
+        /* Coluna de situação um pouco mais larga se necessário */
+        th:nth-child(6), td:nth-child(6) {
+            min-width: 180px; 
+        }
 
         .btn-puxar { background: #1976D2; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; }
         
