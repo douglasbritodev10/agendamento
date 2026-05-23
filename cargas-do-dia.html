@@ -179,13 +179,16 @@ td {
                 
                 <div class="form-group">
                     <label>Equipe / Cooperados:</label>
-                    <div style="background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #ccc; max-height: 200px; overflow-y: auto;">
-                        <div style="border-bottom: 1px solid #ddd; margin-bottom: 8px; padding-bottom: 5px;">
-                            <label style="cursor:pointer; font-weight:bold; color: var(--primary);">
-                                <input type="checkbox" id="checkTodosCooperados" onclick="toggleTodosCooperados(this.checked)"> SELECIONAR TODOS
+                    <div style="background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #ccc; max-height: 250px; overflow-y: auto;">
+        
+                        <div style="border-bottom: 2px solid #ddd; margin-bottom: 10px; padding-bottom: 8px; text-align: left;">
+                            <label style="cursor:pointer; font-weight:bold; color: #1976D2; display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="checkTodosCooperados" onclick="toggleTodosCooperados(this.checked)" style="width: 18px; height: 18px;"> 
+                                SELECIONAR TODOS
                             </label>
                         </div>
-                        <div id="listaCheckCooperados">
+
+                        <div id="listaCheckCooperados" style="display: flex; flex-direction: column; gap: 5px;">
                             </div>
                     </div>
                 </div>
