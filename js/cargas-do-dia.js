@@ -23,7 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // Ajuste para carregar como Checkboxes
 async function carregarCooperados() {
     const querySnapshot = await getDocs(collection(db, "cooperados"));
-    listaCooperados = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Mapeia e ordena de A-Z pelo nome
+    listaCooperados = querySnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => a.nome.localeCompare(b.nome));
     
     const container = document.getElementById('listaCheckCooperados');
     container.innerHTML = listaCooperados.map(c => `
@@ -170,7 +173,7 @@ window.copiarSelecionados = () => {
 
     const blob = new Blob([html], { type: 'text/html' });
     const data = [new ClipboardItem({ 'text/html': blob })];
-    navigator.clipboard.write(data).then(() => alert("Dados copiados para o rascunho!"));
+    navigator.clipboard.write(data).then(() => alert("Dados Selecionados Copiados!"));
 };
 
 window.exportarPDF = async (modo) => {
@@ -424,33 +427,28 @@ window.exportarExcel = async (modo) => {
 };
 
 window.abrirModalAcerto = (id, senha, equipeSalva, valorSalvo) => {
-    // 1. Preenche os campos ocultos de ID e Senha
     document.getElementById('idAgendamentoAcerto').value = id;
     document.getElementById('senhaAgendamentoAcerto').value = senha;
-
-    // 2. Preenche o valor da descarga (se não tiver valor, fica vazio)
     document.getElementById('valorDescarga').value = valorSalvo || '';
 
-    // 3. Lida com os checkboxes da equipe
     const container = document.getElementById('listaCheckCooperados');
-    
-    // Transformamos a string da equipe salva em um Array para facilitar a comparação
-    // Ex: "DOUGLAS, JOÃO" vira ["DOUGLAS", "JOÃO"]
     const arrayEquipe = equipeSalva ? equipeSalva.split(', ') : [];
 
-    // Renderiza a lista de cooperados marcando os que já estão no array
-    container.innerHTML = listaCooperados.map(c => {
+    // Garantir que a listaCooperados está carregada e ordenada
+    const listaOrdenada = [...listaCooperados].sort((a, b) => a.nome.localeCompare(b.nome));
+
+    container.innerHTML = listaOrdenada.map(c => {
         const estaMarcado = arrayEquipe.includes(c.nome) ? 'checked' : '';
         return `
-            <div style="padding: 5px 0;">
-                <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" class="check-cooperado" value="${c.nome}" ${estaMarcado}> ${c.nome}
+            <div style="padding: 6px 0; border-bottom: 1px solid #eee; text-align: left;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:10px; width:100%; font-size: 14px;">
+                    <input type="checkbox" class="check-cooperado" value="${c.nome}" ${estaMarcado} style="width:18px; height:18px;"> 
+                    <span style="white-space: nowrap;">${c.nome.toUpperCase()}</span>
                 </label>
             </div>
         `;
     }).join('');
 
-    // 4. Mostra o modal
     document.getElementById('modalAcerto').style.display = 'flex';
 };
 
