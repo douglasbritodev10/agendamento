@@ -7,6 +7,8 @@ const db = getFirestore(app);
 const usuarioLogin = localStorage.getItem('username') || "SISTEMA";
 let todasAgendasDoBanco = [];
 let listaCooperados = [];
+let ocultosVisiveis = false; // Controla se estamos vendo os ocultos ou os normais
+let idsOcultadosNoFront = []; // Armazena temporariamente os IDs que o usuário ocultou
 
 let ordemAtual = { coluna: null, direcao: 'asc' };
 
@@ -52,6 +54,31 @@ function ouvirDados() {
     });
 }
 
+window.toggleOcultarAgendas = () => {
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(cb => cb.value);
+
+    if (!ocultosVisiveis) {
+        // Modo Normal -> Ocultando o que foi selecionado
+        if (selecionados.length === 0) return alert("Selecione quais agendas deseja ocultar!");
+        
+        idsOcultadosNoFront = [...new Set([...idsOcultadosNoFront, ...selecionados])];
+        alert(`${selecionados.length} agendas ocultadas temporariamente.`);
+    } else {
+        // Modo "Visualizar Ocultos" -> Ao clicar, volta para o painel normal
+        ocultosVisiveis = false;
+        idsOcultadosNoFront = []; // Limpa a lista de ocultos para voltar ao padrão
+    }
+
+    // Resetar o checkbox principal e atualizar tela
+    document.getElementById('selectAllPainel').checked = false;
+    renderizarPainelPrincipal();
+};
+
+window.alternarModoVisualizacao = () => {
+    ocultosVisiveis = !ocultosVisiveis;
+    renderizarPainelPrincipal();
+};
+
 function getCorTipo(tp) {
     const t = (tp || "").toUpperCase();
     if (['ROUPEIRO', 'ARMARIO', 'COZINHA', 'PAINEL', 'MODULO', 'MULTIUSO', 'BALCAO', 'COMODA'].some(x => t.includes(x))) return '#FFFF00';
@@ -62,7 +89,19 @@ function getCorTipo(tp) {
 
 function renderizarPainelPrincipal() {
     const tbody = document.getElementById('tabelaCargas');
-    const noPainel = todasAgendasDoBanco.filter(a => a.noPainel === true);
+    const btnOcultar = document.getElementById('btnOcultarPainel');
+
+    // REGRA DE FILTRAGEM:
+    let noPainel;
+    if (ocultosVisiveis) {
+        // Se o modo "Visualizar Ocultos" estiver ativo, mostra apenas o que está na lista de ocultos
+        noPainel = todasAgendasDoBanco.filter(a => a.noPainel === true && idsOcultadosNoFront.includes(a.id));
+        if(btnOcultar) btnOcultar.innerHTML = '<i class="fas fa-eye"></i> VER AGENDAS ATIVAS';
+    } else {
+        // Modo Normal: mostra o que é noPainel mas NÃO está na lista de ocultos
+        noPainel = todasAgendasDoBanco.filter(a => a.noPainel === true && !idsOcultadosNoFront.includes(a.id));
+        if(btnOcultar) btnOcultar.innerHTML = '<i class="fas fa-low-vision"></i> OCULTAR AGENDAS';
+    }
     
     tbody.innerHTML = noPainel.map(c => {
         const options = Object.keys(situacoesCores).map(s => 
