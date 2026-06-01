@@ -472,7 +472,7 @@ window.salvarAcerto = async () => {
             usuario: usuarioLogin,
             acao: "ACERTO MULTIPLO DESCARGA",
             detalhe: `Equipe: ${equipeString} | Valor: R$ ${valor}`,
-            senha: senha,
+            senha: senhaAgendamento,
             dataHora: serverTimestamp()
         });
 
