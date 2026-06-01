@@ -257,23 +257,24 @@ window.copiarSelecionados = () => {
     navigator.clipboard.write(data).then(() => alert("Dados Selecionados Copiados!"));
 };
 
+// Mantenha este objeto FORA das funções para ambos usarem
+const situacoesCoresMaster = {
+    "CARGA RECEBIDA": { hex: "4CAF50", rgb: [76, 175, 80], txt: [255, 255, 255] },
+    "NO PATIO - FICOU P/ AMANHÃ": { hex: "3ACFB9", rgb: [58, 207, 185], txt: [0, 0, 0] },
+    "CANCELADA": { hex: "7A002B", rgb: [122, 0, 43], txt: [255, 255, 255] },
+    "SOB AJUSTE": { hex: "8B27F5", rgb: [139, 39, 245], txt: [255, 255, 255] },
+    "NO PATIO - SOB ENCAIXE": { hex: "FF7625", rgb: [255, 118, 37], txt: [0, 0, 0] },
+    "NO PATIO - FICOU DE ONTEM": { hex: "B249BF", rgb: [178, 73, 191], txt: [255, 255, 255] },
+    "EM RECEBIMENTO": { hex: "FFC107", rgb: [255, 193, 7], txt: [0, 0, 0] },
+    "NO PATIO": { hex: "03A9F4", rgb: [3, 169, 244], txt: [0, 0, 0] },
+    "EM ATRASO": { hex: "F44336", rgb: [244, 67, 54], txt: [255, 255, 255] },
+    "REAGENDA": { hex: "9B591B", rgb: [155, 89, 27], txt: [255, 255, 255] },
+    "DEFAULT": { hex: "646464", rgb: [100, 100, 100], txt: [255, 255, 255] }
+};
+
 window.exportarPDF = async (modo) => {
     const { jsPDF } = window.jspdf;
-    const docPdf = new jsPDF('l', 'mm', 'a4'); // Paisagem para caber todas as colunas
-
-    const situacoesCores = {
-        "CARGA RECEBIDA": { hex: "4CAF50", rgb: [76, 175, 80] },
-        "NO PATIO - FICOU P/ AMANHÃ": { hex: "3ACFB9", rgb: [58, 207, 185] },
-        "CANCELADA": { hex: "7A002B", rgb: [122, 0, 43] },
-        "SOB AJUSTE": { hex: "8B27F5", rgb: [139, 39, 245] },
-        "NO PATIO - SOB ENCAIXE": { hex: "FF7625", rgb: [255, 118, 37] },
-        "NO PATIO - FICOU DE ONTEM": { hex: "B249BF", rgb: [178, 73, 191] },
-        "EM RECEBIMENTO": { hex: "FFC107", rgb: [255, 193, 7] },
-        "NO PATIO": { hex: "03A9F4", rgb: [3, 169, 244] },
-        "EM ATRASO": { hex: "F44336", rgb: [244, 67, 54] },
-        "REAGENDA": { hex: "9B591B", rgb: [155, 89, 27] },
-        "DEFAULT": { b: [100, 100, 100], t: [255, 255, 255] }
-    };
+    const docPdf = new jsPDF('l', 'mm', 'a4');
 
     const getCoresPorTipo = (tipo) => {
         const t = (tipo || "").toUpperCase();
@@ -288,31 +289,30 @@ window.exportarPDF = async (modo) => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
+    // IMPORTANTE: use o seu método de busca do Firestore (getDocs/collection)
     const snap = await getDocs(collection(db, "agendamentos"));
     const agendas = [];
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
-    // Lógica de contagem
     const totalAgendas = agendas.length;
     const veiculosUnicos = new Set(agendas.map(a => a.cargas)).size;
 
-    // Cabeçalho Simonetti
-    docPdf.setFillColor(211, 47, 47); // Vermelho Simonetti
+    // Cabeçalho Vermelho Simonetti
+    docPdf.setFillColor(211, 47, 47);
     docPdf.rect(0, 0, 297, 20, 'F');
     docPdf.setFontSize(14);
     docPdf.setTextColor(255, 255, 255);
     docPdf.text("MS RECEBIMENTO - MÓVEIS SIMONETTI", 10, 13);
-    
     docPdf.setFontSize(10);
     docPdf.text(`VEÍCULOS: ${veiculosUnicos}  |  AGENDAS: ${totalAgendas}`, 230, 13);
 
     const columns = ["SENHA", "DATA", "CENTRAL", "CARGAS", "SITUAÇÃO", "BOX", "FORNECEDOR", "TIPO", "LINHA"];
-    const body = agendas.map(ag => [
+    const tableBody = agendas.map(ag => [
         ag.senhaAgendamento,
         ag.data.split('-').reverse().join('/'),
         ag.central,
         ag.cargas || '-',
-        ag.agendasituacao || 'OK',
+        ag.agendasituacao || 'NO PATIO',
         ag.box || '-',
         ag.fornecedor,
         ag.tipoProduto,
@@ -321,48 +321,24 @@ window.exportarPDF = async (modo) => {
 
     docPdf.autoTable({
         head: [columns],
-        body: body,
+        body: tableBody,
         startY: 25,
         theme: 'grid',
-        headStyles: { fillColor: [40, 40, 40], fontSize: 8 },
-        styles: { fontSize: 7, halign: 'center' },
+        headStyles: { fillColor: [40, 40, 40], fontSize: 8, halign: 'center' },
+        styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
         didParseCell: (data) => {
-            // Cor na coluna TIPO
             if (data.section === 'body' && data.column.index === 7) {
                 const estilo = getCoresPorTipo(data.cell.raw);
                 data.cell.styles.fillColor = estilo.rgb;
                 data.cell.styles.textColor = estilo.text;
             }
-            // Cor na coluna SITUAÇÃO
             if (data.section === 'body' && data.column.index === 4) {
                 const situ = data.cell.raw;
-                const cor = coresSituacao[situ] || coresSituacao['DEFAULT'];
-                data.cell.styles.fillColor = cor.b;
-                data.cell.styles.textColor = cor.t;
+                const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+                data.cell.styles.fillColor = config.rgb;
+                data.cell.styles.textColor = config.txt;
             }
         }
-    });
-
-    // Resumo no Rodapé
-    let finalY = docPdf.lastAutoTable.finalY + 10;
-    const resumo = agendas.reduce((acc, curr) => {
-        const s = curr.agendasituacao || 'OK';
-        acc[s] = (acc[s] || 0) + 1;
-        return acc;
-    }, {});
-
-    docPdf.setFontSize(9);
-    docPdf.setTextColor(0);
-    docPdf.text("RESUMO POR SITUAÇÃO:", 10, finalY);
-    
-    let posX = 10;
-    Object.keys(resumo).forEach(key => {
-        const cor = coresSituacao[key] || coresSituacao['DEFAULT'];
-        docPdf.setFillColor(cor.b[0], cor.b[1], cor.b[2]);
-        docPdf.rect(posX, finalY + 2, 35, 8, 'F');
-        docPdf.setTextColor(255);
-        docPdf.text(`${key}: ${resumo[key]}`, posX + 2, finalY + 7);
-        posX += 40;
     });
 
     docPdf.save(`Cargas_Simonetti_${new Date().toLocaleDateString()}.pdf`);
@@ -373,21 +349,14 @@ window.exportarExcel = async (modo) => {
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Relatorio_Cargas');
-
-    // Mapeamento de Cores para o Excel (Hexadecimal)
-    const coresSituacaoExcel = {
-        'OK': '2E7D32',
-        'SEM NOTA': 'D32F2F',
-        'REAGENDADA': 'FF9800'
-    };
+    const worksheet = workbook.addWorksheet('Relatorio');
 
     worksheet.columns = [
-        { header: 'SENHA', key: 'senha', width: 20 },
+        { header: 'SENHA', key: 'senha', width: 25 },
         { header: 'DATA', key: 'data', width: 12 },
         { header: 'CENTRAL', key: 'central', width: 15 },
         { header: 'CARGAS', key: 'cargas', width: 15 },
-        { header: 'SITUAÇÃO', key: 'situacao', width: 18 },
+        { header: 'SITUAÇÃO', key: 'situacao', width: 25 },
         { header: 'BOX', key: 'box', width: 10 },
         { header: 'FORNECEDOR', key: 'fornecedor', width: 30 },
         { header: 'TIPO', key: 'tipo', width: 20 },
@@ -398,48 +367,51 @@ window.exportarExcel = async (modo) => {
     const agendas = [];
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
-    // Ordenar por Cargas para identificar veículos juntos
     agendas.sort((a, b) => (a.cargas || "").localeCompare(b.cargas || ""));
 
     agendas.forEach((ag, index) => {
         const isMesmoVeiculo = index > 0 && ag.cargas === agendas[index-1].cargas && ag.cargas !== "";
-        
+        const situ = ag.agendasituacao || "NO PATIO";
+        const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+
         const row = worksheet.addRow({
-            senha: isMesmoVeiculo ? `${ag.senhaAgendamento} (MESMO VEÍCULO)` : ag.senhaAgendamento,
+            senha: isMesmoVeiculo ? `${ag.senhaAgendamento} (CARGA AGRUPADA)` : ag.senhaAgendamento,
             data: ag.data.split('-').reverse().join('/'),
             central: ag.central,
             cargas: ag.cargas,
-            situacao: ag.agendasituacao || 'OK',
+            situacao: situ,
             box: ag.box || '-',
             fornecedor: ag.fornecedor,
             tipo: ag.tipoProduto,
             linha: ag.linhaSeparacao || 'N/A'
         });
 
-        // Estilo da Célula de Situação
-        const situCor = coresSituacaoExcel[ag.agendasituacao || 'OK'] || '646464';
+        // Cor da Situação no Excel
         const cellSitu = row.getCell('situacao');
-        cellSitu.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: situCor } };
-        cellSitu.font = { color: { argb: 'FFFFFF' }, bold: true };
+        cellSitu.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + config.hex } };
+        const txtColor = (config.txt[0] === 255) ? 'FFFFFF' : '000000';
+        cellSitu.font = { color: { argb: txtColor }, bold: true };
 
-        // Destaque se for o mesmo veículo (Itálico e cinza claro)
         if (isMesmoVeiculo) {
-            row.getCell('senha').font = { italic: true, color: { argb: '444444' } };
-            row.eachCell(cell => {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
-            });
+            row.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } }; });
         }
     });
 
-    // Estilização do cabeçalho
+    // Estilo cabeçalho
     worksheet.getRow(1).eachCell(cell => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C00000' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
         cell.font = { color: { argb: 'FFFFFF' }, bold: true };
-        cell.alignment = { horizontal: 'center' };
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `Excel_Simonetti_${Date.now()}.xlsx`);
+    // SOLUÇÃO PARA O ERRO saveAs:
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Cargas_Simonetti_${Date.now()}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
 };
 
 window.abrirModalAcerto = (id, senha, equipeSalva, valorSalvo) => {
