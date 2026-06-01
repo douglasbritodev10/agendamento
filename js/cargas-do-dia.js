@@ -74,6 +74,15 @@ window.toggleOcultarAgendas = () => {
     renderizarPainelPrincipal();
 };
 
+window.acaoBotaoOcultar = () => {
+    // Aqui dentro o JS consegue ler a variável 'ocultosVisiveis' perfeitamente
+    if (ocultosVisiveis) {
+        alternarModoVisualizacao();
+    } else {
+        toggleOcultarAgendas();
+    }
+};
+
 window.alternarModoVisualizacao = () => {
     ocultosVisiveis = !ocultosVisiveis;
     renderizarPainelPrincipal();
