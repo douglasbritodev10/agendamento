@@ -257,7 +257,9 @@ window.copiarSelecionados = () => {
     navigator.clipboard.write(data).then(() => alert("Dados Selecionados Copiados!"));
 };
 
-// Mantenha este objeto FORA das funções para ambos usarem
+// --- AJUSTE COMPLETO PARA EXPORTAÇÃO (PDF E EXCEL) ---
+
+// 1. Objeto de Cores Master (Mantenha fora das funções)
 const situacoesCoresMaster = {
     "CARGA RECEBIDA": { hex: "4CAF50", rgb: [76, 175, 80], txt: [255, 255, 255] },
     "NO PATIO - FICOU P/ AMANHÃ": { hex: "3ACFB9", rgb: [58, 207, 185], txt: [0, 0, 0] },
@@ -272,30 +274,32 @@ const situacoesCoresMaster = {
     "DEFAULT": { hex: "646464", rgb: [100, 100, 100], txt: [255, 255, 255] }
 };
 
-window.exportarPDF = async (modo) => {
+// 2. Função de Cores por Tipo (Centralizada para PDF e Painel)
+const getCoresPorTipoFull = (tipo) => {
+    const t = (tipo || "").toUpperCase();
+    if (['ROUPEIRO', 'ARMARIO', 'COZINHA', 'PAINEL', 'MODULO', 'MULTIUSO', 'BALCAO', 'COMODA'].some(x => t.includes(x))) 
+        return { hex: 'FFFF00', rgb: [255, 255, 0], txt: [0, 0, 0] };
+    if (['CELULAR', 'TABLET', 'RELOGIO', 'ROBO', 'NOTEBOOK'].some(x => t.includes(x))) 
+        return { hex: '00BFFF', rgb: [0, 191, 255], txt: [255, 255, 255] };
+    if (t.includes('MESA')) 
+        return { hex: '4CAF50', rgb: [76, 175, 80], txt: [255, 255, 255] };
+    return { hex: 'FFFFFF', rgb: [255, 255, 255], txt: [0, 0, 0] };
+};
+
+window.exportarPDF = async () => {
     const { jsPDF } = window.jspdf;
     const docPdf = new jsPDF('l', 'mm', 'a4');
-
-    const getCoresPorTipo = (tipo) => {
-        const t = (tipo || "").toUpperCase();
-        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
-            return { rgb: [255, 255, 0], text: [0, 0, 0] };
-        if (t.includes('MESA')) return { rgb: [76, 175, 80], text: [255, 255, 255] };
-        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
-            return { rgb: [0, 191, 255], text: [255, 255, 255] };
-        return { rgb: [255, 255, 255], text: [0, 0, 0] };
-    };
 
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
-    // IMPORTANTE: use o seu método de busca do Firestore (getDocs/collection)
     const snap = await getDocs(collection(db, "agendamentos"));
     const agendas = [];
-    snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
+    snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push({id: d.id, ...d.data()}); });
 
+    // LÓGICA DE CONTAGEM RESPEITANDO VEÍCULO AGRUPADO
     const totalAgendas = agendas.length;
-    const veiculosUnicos = new Set(agendas.map(a => a.cargas)).size;
+    const veiculosUnicos = new Set(agendas.map(a => a.veiculoAgrupado || a.senhaAgendamento)).size;
 
     // Cabeçalho Vermelho Simonetti
     docPdf.setFillColor(211, 47, 47);
@@ -308,14 +312,14 @@ window.exportarPDF = async (modo) => {
 
     const columns = ["SENHA", "DATA", "CENTRAL", "CARGAS", "SITUAÇÃO", "BOX", "FORNECEDOR", "TIPO", "LINHA"];
     const tableBody = agendas.map(ag => [
-        ag.senhaAgendamento,
-        ag.data.split('-').reverse().join('/'),
-        ag.central,
+        ag.veiculoAgrupado ? `${ag.senhaAgendamento}\n(VEÍCULO: ${ag.veiculoAgrupado})` : ag.senhaAgendamento,
+        ag.data ? ag.data.split('-').reverse().join('/') : '-',
+        ag.central || '-',
         ag.cargas || '-',
         ag.agendasituacao || 'NO PATIO',
         ag.box || '-',
-        ag.fornecedor,
-        ag.tipoProduto,
+        ag.fornecedor || '-',
+        ag.tipoProduto || ag.tipo || '-',
         ag.linhaSeparacao || 'N/A'
     ]);
 
@@ -324,27 +328,58 @@ window.exportarPDF = async (modo) => {
         body: tableBody,
         startY: 25,
         theme: 'grid',
-        headStyles: { fillColor: [40, 40, 40], fontSize: 8, halign: 'center' },
-        styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
+        headStyles: { fillColor: [211, 47, 47], fontSize: 8, halign: 'center' }, // Cabeçalho Vermelho
+        styles: { fontSize: 7, halign: 'center', cellPadding: 2, overflow: 'linebreak' },
         didParseCell: (data) => {
+            // Cor na coluna TIPO (Índice 7)
             if (data.section === 'body' && data.column.index === 7) {
-                const estilo = getCoresPorTipo(data.cell.raw);
+                const estilo = getCoresPorTipoFull(data.cell.raw);
                 data.cell.styles.fillColor = estilo.rgb;
-                data.cell.styles.textColor = estilo.text;
+                data.cell.styles.textColor = estilo.txt;
             }
+            // Cor na coluna SITUAÇÃO (Índice 4)
             if (data.section === 'body' && data.column.index === 4) {
                 const situ = data.cell.raw;
                 const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
                 data.cell.styles.fillColor = config.rgb;
                 data.cell.styles.textColor = config.txt;
             }
+            // Destaque para Carga Agrupada na Senha (Índice 0)
+            if (data.section === 'body' && data.column.index === 0 && data.cell.raw.includes('VEÍCULO:')) {
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.textColor = [0, 0, 255]; // Azul para destacar agrupamento
+            }
         }
+    });
+
+    // RESUMO POR SITUAÇÃO NO RODAPÉ DO PDF
+    let finalY = docPdf.lastAutoTable.finalY + 10;
+    const resumo = agendas.reduce((acc, curr) => {
+        const s = curr.agendasituacao || 'NO PATIO';
+        acc[s] = (acc[s] || 0) + 1;
+        return acc;
+    }, {});
+
+    docPdf.setFontSize(9);
+    docPdf.setTextColor(0);
+    docPdf.text("RESUMO POR SITUAÇÃO:", 10, finalY);
+    
+    let posX = 10;
+    Object.keys(resumo).forEach(key => {
+        const config = situacoesCoresMaster[key] || situacoesCoresMaster['DEFAULT'];
+        docPdf.setFillColor(config.rgb[0], config.rgb[1], config.rgb[2]);
+        docPdf.rect(posX, finalY + 2, 40, 8, 'F');
+        docPdf.setTextColor(config.txt[0]);
+        docPdf.setFontSize(7);
+        docPdf.text(`${key}: ${resumo[key]}`, posX + 2, finalY + 7);
+        posX += 45;
+        if(posX > 250) { posX = 10; finalY += 10; } // Quebra linha se resumo for longo
     });
 
     docPdf.save(`Cargas_Simonetti_${new Date().toLocaleDateString()}.pdf`);
 };
 
-window.exportarExcel = async (modo) => {
+window.exportarExcel = async () => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
@@ -352,10 +387,10 @@ window.exportarExcel = async (modo) => {
     const worksheet = workbook.addWorksheet('Relatorio');
 
     worksheet.columns = [
-        { header: 'SENHA', key: 'senha', width: 25 },
+        { header: 'SENHA', key: 'senha', width: 30 },
         { header: 'DATA', key: 'data', width: 12 },
         { header: 'CENTRAL', key: 'central', width: 15 },
-        { header: 'CARGAS', key: 'cargas', width: 15 },
+        { header: 'CARGAS', key: 'cargas', width: 20 },
         { header: 'SITUAÇÃO', key: 'situacao', width: 25 },
         { header: 'BOX', key: 'box', width: 10 },
         { header: 'FORNECEDOR', key: 'fornecedor', width: 30 },
@@ -367,51 +402,52 @@ window.exportarExcel = async (modo) => {
     const agendas = [];
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
-    agendas.sort((a, b) => (a.cargas || "").localeCompare(b.cargas || ""));
-
-    agendas.forEach((ag, index) => {
-        const isMesmoVeiculo = index > 0 && ag.cargas === agendas[index-1].cargas && ag.cargas !== "";
+    agendas.forEach((ag) => {
         const situ = ag.agendasituacao || "NO PATIO";
-        const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+        const configSitu = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+        const estiloTipo = getCoresPorTipoFull(ag.tipoProduto || ag.tipo);
 
         const row = worksheet.addRow({
-            senha: isMesmoVeiculo ? `${ag.senhaAgendamento} (CARGA AGRUPADA)` : ag.senhaAgendamento,
-            data: ag.data.split('-').reverse().join('/'),
+            senha: ag.veiculoAgrupado ? `${ag.senhaAgendamento} (VEÍCULO: ${ag.veiculoAgrupado})` : ag.senhaAgendamento,
+            data: ag.data ? ag.data.split('-').reverse().join('/') : '',
             central: ag.central,
             cargas: ag.cargas,
             situacao: situ,
             box: ag.box || '-',
             fornecedor: ag.fornecedor,
-            tipo: ag.tipoProduto,
+            tipo: ag.tipoProduto || ag.tipo,
             linha: ag.linhaSeparacao || 'N/A'
         });
 
-        // Cor da Situação no Excel
+        // Cor da Situação
         const cellSitu = row.getCell('situacao');
-        cellSitu.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + config.hex } };
-        const txtColor = (config.txt[0] === 255) ? 'FFFFFF' : '000000';
-        cellSitu.font = { color: { argb: txtColor }, bold: true };
+        cellSitu.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + configSitu.hex } };
+        cellSitu.font = { color: { argb: (configSitu.txt[0] === 255 ? 'FFFFFF' : '000000') }, bold: true };
 
-        if (isMesmoVeiculo) {
-            row.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } }; });
+        // Cor do Tipo de Produto
+        const cellTipo = row.getCell('tipo');
+        cellTipo.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + estiloTipo.hex } };
+        cellTipo.font = { color: { argb: (estiloTipo.txt[0] === 255 ? 'FFFFFF' : '000000') }, bold: true };
+
+        // Destaque Senha Agrupada
+        if(ag.veiculoAgrupado) {
+            row.getCell('senha').font = { bold: true, color: { argb: '0000FF' } };
         }
     });
 
-    // Estilo cabeçalho
+    // Cabeçalho Vermelho
     worksheet.getRow(1).eachCell(cell => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD32F2F' } };
         cell.font = { color: { argb: 'FFFFFF' }, bold: true };
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    // SOLUÇÃO PARA O ERRO saveAs:
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `Cargas_Simonetti_${Date.now()}.xlsx`;
     a.click();
-    window.URL.revokeObjectURL(url);
 };
 
 window.abrirModalAcerto = (id, senha, equipeSalva, valorSalvo) => {
