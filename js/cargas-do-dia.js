@@ -259,14 +259,27 @@ window.copiarSelecionados = () => {
 
 window.exportarPDF = async (modo) => {
     const { jsPDF } = window.jspdf;
-    const docPdf = new jsPDF('p', 'mm', 'a4');
-    
+    const docPdf = new jsPDF('l', 'mm', 'a4'); // Paisagem para caber todas as colunas
+
+    const situacoesCores = {
+        "CARGA RECEBIDA": { hex: "4CAF50", rgb: [76, 175, 80] },
+        "NO PATIO - FICOU P/ AMANHÃ": { hex: "3ACFB9", rgb: [58, 207, 185] },
+        "CANCELADA": { hex: "7A002B", rgb: [122, 0, 43] },
+        "SOB AJUSTE": { hex: "8B27F5", rgb: [139, 39, 245] },
+        "NO PATIO - SOB ENCAIXE": { hex: "FF7625", rgb: [255, 118, 37] },
+        "NO PATIO - FICOU DE ONTEM": { hex: "B249BF", rgb: [178, 73, 191] },
+        "EM RECEBIMENTO": { hex: "FFC107", rgb: [255, 193, 7] },
+        "NO PATIO": { hex: "03A9F4", rgb: [3, 169, 244] },
+        "EM ATRASO": { hex: "F44336", rgb: [244, 67, 54] },
+        "REAGENDA": { hex: "9B591B", rgb: [155, 89, 27] },
+        "DEFAULT": { b: [100, 100, 100], t: [255, 255, 255] }
+    };
+
     const getCoresPorTipo = (tipo) => {
         const t = (tipo || "").toUpperCase();
         if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
             return { rgb: [255, 255, 0], text: [0, 0, 0] };
-        if (t.includes('MESA')) 
-            return { rgb: [76, 175, 80], text: [255, 255, 255] };
+        if (t.includes('MESA')) return { rgb: [76, 175, 80], text: [255, 255, 255] };
         if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
             return { rgb: [0, 191, 255], text: [255, 255, 255] };
         return { rgb: [255, 255, 255], text: [0, 0, 0] };
@@ -276,102 +289,83 @@ window.exportarPDF = async (modo) => {
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const snap = await getDocs(collection(db, "agendamentos"));
-    const agendasMap = {};
-    snap.forEach(d => { agendasMap[d.id] = d.data(); });
-    const agendas = selecionados.map(id => agendasMap[id]).filter(a => a !== undefined);
+    const agendas = [];
+    snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
-    // Cabeçalho fixo do topo
-    docPdf.setFillColor(192, 0, 0); 
-    docPdf.rect(0, 0, 210, 25, 'F');
-    docPdf.setFontSize(18);
+    // Lógica de contagem
+    const totalAgendas = agendas.length;
+    const veiculosUnicos = new Set(agendas.map(a => a.cargas)).size;
+
+    // Cabeçalho Simonetti
+    docPdf.setFillColor(211, 47, 47); // Vermelho Simonetti
+    docPdf.rect(0, 0, 297, 20, 'F');
+    docPdf.setFontSize(14);
     docPdf.setTextColor(255, 255, 255);
-    docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16); //
+    docPdf.text("MS RECEBIMENTO - MÓVEIS SIMONETTI", 10, 13);
     
     docPdf.setFontSize(10);
-    docPdf.setTextColor(0, 0, 0);
-    docPdf.text(`TOTAL DE AGENDAS: ${agendas.length}`, 14, 32);
-    docPdf.setTextColor(100);
-    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32); //
+    docPdf.text(`VEÍCULOS: ${veiculosUnicos}  |  AGENDAS: ${totalAgendas}`, 230, 13);
 
-    let currentY = 38;
+    const columns = ["SENHA", "DATA", "CENTRAL", "CARGAS", "SITUAÇÃO", "BOX", "FORNECEDOR", "TIPO", "LINHA"];
+    const body = agendas.map(ag => [
+        ag.senhaAgendamento,
+        ag.data.split('-').reverse().join('/'),
+        ag.central,
+        ag.cargas || '-',
+        ag.agendasituacao || 'OK',
+        ag.box || '-',
+        ag.fornecedor,
+        ag.tipoProduto,
+        ag.linhaSeparacao || 'N/A'
+    ]);
 
-    if (modo === 'completo') {
-        // --- LÓGICA PARA O PDF COMPLETO (Blocos Elegantes) ---
-        agendas.forEach((ag) => {
-            if (currentY > 240) { docPdf.addPage(); currentY = 20; }
-
-            docPdf.autoTable({
-                head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
-                body: [[
-                    ag.senhaAgendamento, 
-                    ag.data.split('-').reverse().join('/'), 
-                    ag.central, 
-                    ag.cargas || '-', 
-                    ag.fornecedor, 
-                    ag.tipoProduto,
-                    ag.linhaSeparacao || 'N/A'
-                ]],
-                startY: currentY,
-                theme: 'grid',
-                headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
-                styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
-                didParseCell: (data) => {
-                    if (data.section === 'body' && data.column.index === 5) {
-                        const estilo = getCoresPorTipo(data.cell.raw);
-                        data.cell.styles.fillColor = estilo.rgb;
-                        data.cell.styles.textColor = estilo.text;
-                    }
-                }
-            });
-
-            currentY = docPdf.lastAutoTable.finalY;
-
-            if (ag.composicao && ag.composicao.length > 0) {
-                docPdf.autoTable({
-                    head: [['CÓDIGO', 'DESCRIÇÃO DO PRODUTO', 'QTD']],
-                    body: ag.composicao.map(i => [i.codigo, i.descricao, i.qtd]),
-                    startY: currentY,
-                    margin: { left: 14 },
-                    theme: 'grid',
-                    headStyles: { fillColor: [235, 235, 235], textColor: 0, fontSize: 7.5, fontStyle: 'bold' },
-                    styles: { fontSize: 7.5, cellPadding: 2 },
-                    columnStyles: { 0: { cellWidth: 30 }, 2: { cellWidth: 20, halign: 'center' } }
-                });
-                currentY = docPdf.lastAutoTable.finalY + 10; // Espaço maior entre blocos
-            } else {
-                currentY += 8;
+    docPdf.autoTable({
+        head: [columns],
+        body: body,
+        startY: 25,
+        theme: 'grid',
+        headStyles: { fillColor: [40, 40, 40], fontSize: 8 },
+        styles: { fontSize: 7, halign: 'center' },
+        didParseCell: (data) => {
+            // Cor na coluna TIPO
+            if (data.section === 'body' && data.column.index === 7) {
+                const estilo = getCoresPorTipo(data.cell.raw);
+                data.cell.styles.fillColor = estilo.rgb;
+                data.cell.styles.textColor = estilo.text;
             }
-        });
-    } else {
-        // --- LÓGICA PARA O PDF BÁSICO (Tabela Contínua do Print) ---
-        const tableBody = agendas.map(ag => [
-            ag.senhaAgendamento,
-            ag.data.split('-').reverse().join('/'),
-            ag.central,
-            ag.cargas || '-',
-            ag.fornecedor,
-            ag.tipoProduto,
-            ag.linhaSeparacao || 'N/A'
-        ]);
-
-        docPdf.autoTable({
-            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
-            body: tableBody,
-            startY: currentY,
-            theme: 'grid',
-            headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
-            styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
-            didParseCell: (data) => {
-                if (data.section === 'body' && data.column.index === 5) {
-                    const estilo = getCoresPorTipo(data.cell.raw);
-                    data.cell.styles.fillColor = estilo.rgb;
-                    data.cell.styles.textColor = estilo.text;
-                }
+            // Cor na coluna SITUAÇÃO
+            if (data.section === 'body' && data.column.index === 4) {
+                const situ = data.cell.raw;
+                const cor = coresSituacao[situ] || coresSituacao['DEFAULT'];
+                data.cell.styles.fillColor = cor.b;
+                data.cell.styles.textColor = cor.t;
             }
-        });
-    }
+        }
+    });
 
-    docPdf.save(`Relatorio_Simonetti_${modo.toUpperCase()}.pdf`);
+    // Resumo no Rodapé
+    let finalY = docPdf.lastAutoTable.finalY + 10;
+    const resumo = agendas.reduce((acc, curr) => {
+        const s = curr.agendasituacao || 'OK';
+        acc[s] = (acc[s] || 0) + 1;
+        return acc;
+    }, {});
+
+    docPdf.setFontSize(9);
+    docPdf.setTextColor(0);
+    docPdf.text("RESUMO POR SITUAÇÃO:", 10, finalY);
+    
+    let posX = 10;
+    Object.keys(resumo).forEach(key => {
+        const cor = coresSituacao[key] || coresSituacao['DEFAULT'];
+        docPdf.setFillColor(cor.b[0], cor.b[1], cor.b[2]);
+        docPdf.rect(posX, finalY + 2, 35, 8, 'F');
+        docPdf.setTextColor(255);
+        docPdf.text(`${key}: ${resumo[key]}`, posX + 2, finalY + 7);
+        posX += 40;
+    });
+
+    docPdf.save(`Cargas_Simonetti_${new Date().toLocaleDateString()}.pdf`);
 };
 
 window.exportarExcel = async (modo) => {
@@ -379,132 +373,73 @@ window.exportarExcel = async (modo) => {
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Relatorio');
+    const worksheet = workbook.addWorksheet('Relatorio_Cargas');
 
-    const getEstiloExcel = (tipo) => {
-        const t = (tipo || "").toUpperCase();
-        if (['ARMARIO','COMODA','PAINEL','MULTIUSO','MODULO','COZINHA','ROUPEIRO'].some(x => t.includes(x))) 
-            return { fg: 'FFFF00', txt: '000000' }; 
-        if (t.includes('MESA')) 
-            return { fg: '4CAF50', txt: 'FFFFFF' }; 
-        if (['CELULAR','TABLET','RELOGIO','NOTEBOOK'].some(x => t.includes(x))) 
-            return { fg: '00BFFF', txt: 'FFFFFF' }; 
-        return { fg: 'FFFFFF', txt: '000000' }; 
+    // Mapeamento de Cores para o Excel (Hexadecimal)
+    const coresSituacaoExcel = {
+        'OK': '2E7D32',
+        'SEM NOTA': 'D32F2F',
+        'REAGENDADA': 'FF9800'
     };
 
-    const columns = [
-        { header: 'Senha', key: 'Senha', width: 25 },
-        { header: 'Data', key: 'Data', width: 12 },
-        { header: 'Central', key: 'Central', width: 15 },
-        { header: 'Cargas', key: 'Cargas', width: 15 },
-        { header: 'Pedido', key: 'Pedido', width: 15 },
-        { header: 'Fornecedor', key: 'Fornecedor', width: 25 },
-        { header: 'Tipo', key: 'Tipo', width: 20 },
-        { header: 'Linha', key: 'linhaSeparacao', width: 15 }
+    worksheet.columns = [
+        { header: 'SENHA', key: 'senha', width: 20 },
+        { header: 'DATA', key: 'data', width: 12 },
+        { header: 'CENTRAL', key: 'central', width: 15 },
+        { header: 'CARGAS', key: 'cargas', width: 15 },
+        { header: 'SITUAÇÃO', key: 'situacao', width: 18 },
+        { header: 'BOX', key: 'box', width: 10 },
+        { header: 'FORNECEDOR', key: 'fornecedor', width: 30 },
+        { header: 'TIPO', key: 'tipo', width: 20 },
+        { header: 'LINHA', key: 'linha', width: 15 }
     ];
 
-    if (modo === 'completo') {
-        columns.push(
-            { header: 'Cód. Item', key: 'Cod_Item', width: 15 },
-            { header: 'Descrição', key: 'Descricao', width: 40 },
-            { header: 'Qtd', key: 'Qtd', width: 10 }
-        );
-    }
-    worksheet.columns = columns;
-
     const snap = await getDocs(collection(db, "agendamentos"));
-    
-    // Filtramos e ordenamos por data para a separação funcionar corretamente
-    const agendamentosProcessados = [];
-    snap.forEach(doc => {
-        if (selecionados.includes(doc.id)) {
-            agendamentosProcessados.push(doc.data());
-        }
-    });
-    
-    // Ordenar por data (garante que agendamentos do mesmo dia fiquem juntos)
-    agendamentosProcessados.sort((a, b) => a.data.localeCompare(b.data));
+    const agendas = [];
+    snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
-    let dataAnterior = null;
+    // Ordenar por Cargas para identificar veículos juntos
+    agendas.sort((a, b) => (a.cargas || "").localeCompare(b.cargas || ""));
 
-    agendamentosProcessados.forEach(d => {
-        const dataFormatada = d.data.split('-').reverse().join('/');
+    agendas.forEach((ag, index) => {
+        const isMesmoVeiculo = index > 0 && ag.cargas === agendas[index-1].cargas && ag.cargas !== "";
         
-        // Se a data mudou e não é a primeira linha, insere linha em branco
-        if (dataAnterior && dataAnterior !== dataFormatada) {
-            worksheet.addRow({}); 
-        }
-
-        const base = {
-            Senha: d.senhaAgendamento,
-            Data: dataFormatada,
-            Central: d.central,
-            Cargas: d.cargas,
-            Pedido: d.pedido,
-            Fornecedor: d.fornecedor,
-            Tipo: d.tipoProduto,
-            linhaSeparacao: d.linhaSeparacao || "N/A"
-        };
-
-        if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
-            d.composicao.forEach(item => {
-                const row = worksheet.addRow({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
-                aplicarEstiloCelula(row, d.tipoProduto);
-            });
-        } else {
-            const row = worksheet.addRow(base);
-            aplicarEstiloCelula(row, d.tipoProduto);
-        }
-
-        dataAnterior = dataFormatada;
-    });
-
-    // Função para aplicar bordas e cores
-    function aplicarEstiloCelula(row, tipo) {
-        row.eachCell({ includeEmpty: false }, (cell) => {
-            // Aplicar bordas em todas as células com dados
-            cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-            };
-            
-            // Centralizar dados (opcional, para ficar mais limpo)
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        const row = worksheet.addRow({
+            senha: isMesmoVeiculo ? `${ag.senhaAgendamento} (MESMO VEÍCULO)` : ag.senhaAgendamento,
+            data: ag.data.split('-').reverse().join('/'),
+            central: ag.central,
+            cargas: ag.cargas,
+            situacao: ag.agendasituacao || 'OK',
+            box: ag.box || '-',
+            fornecedor: ag.fornecedor,
+            tipo: ag.tipoProduto,
+            linha: ag.linhaSeparacao || 'N/A'
         });
 
-        // Aplicar cor na coluna Tipo
-        const estilo = getEstiloExcel(tipo);
-        const cellTipo = row.getCell('Tipo');
-        cellTipo.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: estilo.fg }
-        };
-        cellTipo.font = { color: { argb: estilo.txt }, bold: true };
-    }
+        // Estilo da Célula de Situação
+        const situCor = coresSituacaoExcel[ag.agendasituacao || 'OK'] || '646464';
+        const cellSitu = row.getCell('situacao');
+        cellSitu.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: situCor } };
+        cellSitu.font = { color: { argb: 'FFFFFF' }, bold: true };
 
-    // Estilo do Cabeçalho Vermelho Simonetti
-    worksheet.getRow(1).eachCell((cell) => {
+        // Destaque se for o mesmo veículo (Itálico e cinza claro)
+        if (isMesmoVeiculo) {
+            row.getCell('senha').font = { italic: true, color: { argb: '444444' } };
+            row.eachCell(cell => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
+            });
+        }
+    });
+
+    // Estilização do cabeçalho
+    worksheet.getRow(1).eachCell(cell => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'C00000' } };
         cell.font = { color: { argb: 'FFFFFF' }, bold: true };
         cell.alignment = { horizontal: 'center' };
-        cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' }
-        };
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Simonetti_Export_${modo.toUpperCase()}.xlsx`;
-    a.click();
+    saveAs(new Blob([buffer]), `Excel_Simonetti_${Date.now()}.xlsx`);
 };
 
 window.abrirModalAcerto = (id, senha, equipeSalva, valorSalvo) => {
