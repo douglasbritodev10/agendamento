@@ -119,10 +119,15 @@ function renderizarTabela() {
         const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
         const confStatus = situacoesCoresMaster[item.agendasituacao] || situacoesCoresMaster['DEFAULT'];
         
+        // Lógica para exibir Senha + Veículo Agrupado
+        const infoSenha = item.veiculoAgrupado 
+            ? `<div style="color:#0000FF; font-size:11px;">VEÍCULO: ${item.veiculoAgrupado}</div><div style="font-weight:bold">${item.senhaAgendamento}</div>`
+            : `<div style="font-weight:bold">${item.senhaAgendamento || '---'}</div>`;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><input type="checkbox" class="row-check check-export" value="${item.id}"></td>
-            <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
+            <td>${infoSenha}</td>
             <td>${dataBR}</td>
             <td>${item.central || '---'}</td>
             <td>${item.cargas || 1}</td>
@@ -160,16 +165,29 @@ function renderizarGrafico(dados) {
 
     const ctx = document.getElementById('chartSituacao').getContext('2d');
     if (myChart) myChart.destroy();
+    
     myChart = new Chart(ctx, {
         type: 'pie',
         data: { labels, datasets: [{ data: valores, backgroundColor: cores }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { display: false } },
+            // NOVIDADE: Captura de clique no gráfico
+            onClick: (evt, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const situacaoClicada = labels[index];
+                    abrirModalResumoGrafico(situacaoClicada);
+                }
+            }
+        }
     });
 
     document.getElementById('resumoSituacoes').innerHTML = labels.map(l => {
         const c = situacoesCoresMaster[l] || situacoesCoresMaster['DEFAULT'];
         return `
-            <div class="legenda-item" style="border-left-color: #${c.hex}">
+            <div class="legenda-item" style="border-left-color: #${c.hex}; cursor:pointer" onclick="abrirModalResumoGrafico('${l}')">
                 <div style="flex:1">${l} (${resumo[l]})</div>
             </div>
         `;
@@ -178,6 +196,50 @@ function renderizarGrafico(dados) {
     const totalCarros = new Set(dados.map(d => d.veiculoAgrupado || d.senhaAgendamento)).size;
     document.getElementById('infoTotal').innerHTML = `CARROS: ${totalCarros} | AGENDAS: ${dados.length}`;
 }
+
+window.abrirModalResumoGrafico = (situacao) => {
+    const lista = dadosFiltrados.filter(d => (d.agendasituacao || 'NO PATIO') === situacao);
+    const container = document.getElementById('detalhesItens'); // Reutilizando container de detalhes
+    document.getElementById('tituloComp').innerText = `Lista: ${situacao}`;
+
+    let html = `
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead style="background:#D32F2F; color:white;">
+                <tr>
+                    <th>SENHA</th>
+                    <th>DATA</th>
+                    <th>CARGAS</th>
+                    <th>FORNECEDOR</th>
+                    <th>TIPO</th>
+                    <th>AÇÃO</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    lista.forEach(item => {
+        const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
+        html += `
+            <tr style="border-bottom:1px solid #ddd; text-align:center;">
+                <td style="padding:8px;">${item.senhaAgendamento}</td>
+                <td>${dataBR}</td>
+                <td>${item.cargas || 1}</td>
+                <td style="text-align:left;">${item.fornecedor || '---'}</td>
+                <td>${item.tipoProduto || '---'}</td>
+                <td>
+                    <button onclick="verDetalhes('${item.id}')" style="background:#0A497B; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">
+                        Ver Itens
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    
+    container.innerHTML = html;
+    document.getElementById('modalComposicao').style.display = "flex";
+};
 
 // --- CONTROLES DO MODAL DE FILTRO INTELIGENTE ---
 window.abrirFiltro = (coluna, event) => {
