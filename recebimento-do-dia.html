@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -32,16 +33,21 @@
         .card-estat { text-align: center; }
         .card-estat h3 { margin: 0; color: #666; font-size: 14px; }
         .card-estat p { margin: 5px 0 0; font-size: 32px; font-weight: bold; color: var(--primary); }
-        .chart-container { display: flex; justify-content: center; align-items: center; height: 150px; }
+        
+        /* Ajuste do Gráfico e Legenda */
+        .chart-section { display: flex; flex-direction: column; align-items: center; }
+        .chart-container { width: 150px; height: 150px; position: relative; }
+        #resumoSituacoes { margin-top: 10px; width: 100%; max-width: 250px; }
+        #infoTotal { margin-top: 5px; font-weight: bold; color: #333; font-size: 14px; }
 
         .container { padding: 0 20px 20px; }
         .acoes-topo { display: flex; gap: 10px; margin-bottom: 20px; }
         
         table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
-        th { background: #f8f9fa; padding: 12px; border: 1px solid #ddd; position: sticky; top: 60px; }
+        th { background: #f8f9fa; padding: 12px; border: 1px solid #ddd; position: sticky; top: 60px; z-index: 10; }
         td { padding: 10px; border: 1px solid #eee; text-align: center; }
         
-        .btn-filter { display: block; margin: 5px auto 0; font-size: 10px; cursor: pointer; }
+        .btn-filter { display: block; margin: 5px auto 0; font-size: 10px; cursor: pointer; border: 1px solid #ccc; background: white; border-radius: 3px; }
         .check-all { transform: scale(1.2); cursor: pointer; }
         
         .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 2000; }
@@ -53,7 +59,7 @@
     <nav class="navbar">
         <div style="display: flex; align-items: center;">
             <a href="inicial.html" class="btn-voltar" title="Voltar para Início"><i class="fas fa-arrow-left"></i></a>
-            <span id="txtUser" style="font-weight: bold;">DBRITO</span>
+            <span id="txtUser" style="font-weight: bold;">AGUARDANDO...</span>
         </div>
         <h2 style="margin:0; color: var(--primary); font-size: 18px;">OPERACIONAL: RECEBIMENTO DO DIA</h2>
         <button onclick="logout()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">SAIR</button>
@@ -61,12 +67,19 @@
 
     <div class="painel-estatistico">
         <div class="card-estat">
-            <h3>TOTAL AGENDAS</h3>
+            <h3>AGENDAS NO PAINEL</h3>
             <p id="totalAgendas">0</p>
         </div>
-        <div class="chart-container">
-            <canvas id="chartSituacao"></canvas>
+
+        <div class="chart-section">
+            <div class="chart-container">
+                <canvas id="chartSituacao"></canvas>
+            </div>
+            <div id="infoTotal">CARROS: 0 | AGENDAS: 0</div>
+            <div id="resumoSituacoes">
+                </div>
         </div>
+
         <div class="card-estat">
             <h3>VEÍCULOS NO PÁTIO</h3>
             <p id="totalPatio">0</p>
@@ -75,27 +88,32 @@
 
     <div class="container">
         <div class="acoes-topo">
-            <input type="text" id="inputBusca" placeholder="Buscar por Senha, Fornecedor ou Carga..." style="flex:1; padding: 10px;">
-            <button onclick="exportarExcel('simples')" class="btn-export-excel" style="background:#27ae60; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">EXCEL</button>
-            <button onclick="exportarExcel('completo')" style="background:#1e8449; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">EXCEL COMPLETO</button>
-            <button onclick="exportarPDF()" style="background:#e74c3c; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">PDF</button>
+            <input type="text" id="inputBusca" placeholder="Buscar por Senha, Fornecedor ou Carga..." style="flex:1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+            <button onclick="exportarExcel()" style="background:#27ae60; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight: bold;">
+                <i class="fas fa-file-excel"></i> EXCEL COMPLETO
+            </button>
+            <button onclick="exportarPDF()" style="background:#e74c3c; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight: bold;">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
         </div>
 
         <table id="mainTable">
             <thead>
                 <tr>
                     <th style="width: 30px;"><input type="checkbox" id="checkMaster" class="check-all"></th>
-                    <th>SENHA / VEÍCULO <button onclick="abrirFiltro('senhaAgendamento')">FILTRO</button></th>
-                    <th>DATA <button onclick="abrirFiltro('data')">FILTRO</button></th>
-                    <th>CARGAS <button onclick="abrirFiltro('cargas')">FILTRO</button></th>
-                    <th>SITUAÇÃO <button onclick="abrirFiltro('agendasituacao')">FILTRO</button></th>
-                    <th>FORNECEDOR <button onclick="abrirFiltro('fornecedor')">FILTRO</button></th>
-                    <th>TIPO <button onclick="abrirFiltro('tipoProduto')">FILTRO</button></th>
+                    <th>SENHA / VEÍCULO <button class="btn-filter" onclick="abrirFiltro('senhaAgendamento')">FILTRO</button></th>
+                    <th>DATA <button class="btn-filter" onclick="abrirFiltro('data')">FILTRO</button></th>
+                    <th>CENTRAL <button class="btn-filter" onclick="abrirFiltro('central')">FILTRO</button></th>
+                    <th>CARGAS <button class="btn-filter" onclick="abrirFiltro('cargas')">FILTRO</button></th>
+                    <th>SITUAÇÃO <button class="btn-filter" onclick="abrirFiltro('agendasituacao')">FILTRO</button></th>
+                    <th>FORNECEDOR <button class="btn-filter" onclick="abrirFiltro('fornecedor')">FILTRO</button></th>
+                    <th>TIPO <button class="btn-filter" onclick="abrirFiltro('tipoProduto')">FILTRO</button></th>
                     <th>BOX</th>
-                    <th>COMPOSIÇÃO</th>
+                    <th>VER</th>
                 </tr>
             </thead>
-            <tbody id="corpoTabela"></tbody>
+            <tbody id="corpoTabela">
+                </tbody>
         </table>
     </div>
 
@@ -103,11 +121,12 @@
         <div class="modal-content">
             <h3 id="modalTitulo">Composição da Carga</h3>
             <hr>
-            <div id="listaItens"></div>
-            <button onclick="document.getElementById('modalComposicao').style.display='none'" style="margin-top:15px; width:100%; padding:10px;">FECHAR</button>
+            <div id="listaItens" style="max-height: 300px; overflow-y: auto;"></div>
+            <button onclick="document.getElementById('modalComposicao').style.display='none'" style="margin-top:15px; width:100%; padding:10px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">FECHAR</button>
         </div>
     </div>
 
     <script type="module" src="js/recebimento-do-dia.js"></script>
+
 </body>
 </html>
