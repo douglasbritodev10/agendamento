@@ -1,13 +1,9 @@
 import { app } from './firebase-config.js';
-import { 
-    getFirestore, collection, query, onSnapshot, orderBy 
-} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, query, onSnapshot, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
-let todasAgendas = [];
-let meuGrafico = null;
 
-// Configurações de Cores (Mesma lógica do seu sistema principal)
+// --- CONFIGURAÇÕES DE CORES MASTER ---
 const situacoesCoresMaster = {
     "CARGA RECEBIDA": { hex: "4CAF50", rgb: [76, 175, 80], txt: [255, 255, 255] },
     "NO PATIO - FICOU P/ AMANHÃ": { hex: "3ACFB9", rgb: [58, 207, 185], txt: [0, 0, 0] },
@@ -33,150 +29,85 @@ const getCoresPorTipoFull = (tipo) => {
     return { hex: 'FFFFFF', rgb: [255, 255, 255], txt: [0, 0, 0] };
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    iniciarRelogio();
-    popularSelectFiltro();
-    ouvirDados();
-});
+// Variáveis de Controle
+let dadosMestres = [];
+let dadosFiltrados = [];
 
-function popularSelectFiltro() {
-    const select = document.getElementById('filtroSituacao');
-    Object.keys(situacoesCoresMaster).forEach(s => {
-        if(s !== "DEFAULT") {
-            const opt = document.createElement('option');
-            opt.value = s; opt.textContent = s;
-            select.appendChild(opt);
-        }
-    });
-}
+// --- INICIALIZAÇÃO ---
+function init() {
+    // Nome do usuário do Banco (via LocalStorage do Login)
+    const user = localStorage.getItem('username') || "SISTEMAS";
+    const userEl = document.getElementById('txtUser');
+    if(userEl) userEl.innerText = user.toUpperCase();
 
-function ouvirDados() {
     const q = query(collection(db, "agendamentos"), orderBy("data", "desc"));
     onSnapshot(q, (snapshot) => {
-        todasAgendas = snapshot.docs
-            .map(d => ({ id: d.id, ...d.data() }))
-            .filter(a => a.noPainel === true); // Só o que está no painel ativo
-        filtrarTabela();
+        dadosMestres = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        dadosFiltrados = [...dadosMestres];
+        renderizarTabela();
     });
 }
 
-window.filtrarTabela = () => {
-    const busca = document.getElementById('filtroBusca').value.toUpperCase();
-    const situacao = document.getElementById('filtroSituacao').value;
+// --- RENDERIZAÇÃO DA TABELA NO SITE ---
+function renderizarTabela() {
+    const tbody = document.getElementById('corpoTabela');
+    if(!tbody) return;
+    tbody.innerHTML = "";
 
-    const filtradas = todasAgendas.filter(a => {
-        const texto = `${a.senhaAgendamento} ${a.fornecedor} ${a.cargas} ${a.veiculoAgrupado || ''}`.toUpperCase();
-        const bateBusca = texto.includes(busca);
-        const bateSitu = situacao === "" || (a.agendasituacao || "NO PATIO") === situacao;
-        return bateBusca && bateSitu;
-    });
-
-    renderizarTabela(filtradas);
-    atualizarGráfico(filtradas);
-    
-    // Atualiza Totais
-    document.getElementById('txtTotalAgendas').textContent = filtradas.length;
-    const veiculos = new Set(filtradas.map(f => f.veiculoAgrupado || f.senhaAgendamento)).size;
-    document.getElementById('txtTotalVeiculos').textContent = veiculos;
-};
-
-function renderizarTabela(dados) {
-    const tbody = document.getElementById('tbodyOperacional');
-    tbody.innerHTML = dados.map(ag => {
+    dadosFiltrados.forEach(ag => {
         const situ = ag.agendasituacao || "NO PATIO";
         const configS = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
         const configT = getCoresPorTipoFull(ag.tipoProduto || ag.tipo);
-        
-        return `
-            <tr>
-                <td>
-                    <b>${ag.senhaAgendamento}</b>
-                    ${ag.veiculoAgrupado ? `<br><small style="color:blue">🚚 ${ag.veiculoAgrupado}</small>` : ''}
-                </td>
-                <td>${ag.data ? ag.data.split('-').reverse().join('/') : '-'}</td>
-                <td>${ag.central || '-'}</td>
-                <td style="font-size:10px; max-width:200px;">${ag.cargas || '-'}</td>
-                <td>
-                    <span class="badge-situacao" style="background-color: ${configS.hex}; color: ${configS.txt[0] === 255 ? '#fff' : '#000'}">
-                        ${situ}
-                    </span>
-                </td>
-                <td>${ag.fornecedor || '-'}</td>
-                <td>
-                    <span class="badge-tipo" style="background-color: #${configT.hex};">
-                        ${ag.tipoProduto || ag.tipo || '-'}
-                    </span>
-                </td>
-                <td><b>${ag.box || '-'}</b></td>
-            </tr>
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="checkbox" class="check-export" value="${ag.id}"></td>
+            <td style="font-weight:bold">${ag.senhaAgendamento}${ag.veiculoAgrupado ? `<br><small style="color:blue">VEÍCULO: ${ag.veiculoAgrupado}</small>` : ''}</td>
+            <td>${ag.data ? ag.data.split('-').reverse().join('/') : '-'}</td>
+            <td style="background:#${configS.hex}; color:rgb(${configS.txt.join(',')}); font-weight:bold;">${situ}</td>
+            <td>${ag.fornecedor || '-'}</td>
+            <td style="background:#${configT.hex}; color:rgb(${configT.txt.join(',')}); font-weight:bold;">${ag.tipoProduto || ag.tipo || '-'}</td>
+            <td>${ag.box || '-'}</td>
+            <td>
+                <button onclick="verDetalhes('${ag.id}')" style="background:none; border:none; color:#d32f2f; cursor:pointer;">
+                    <i class="fas fa-eye fa-lg"></i>
+                </button>
+            </td>
         `;
-    }).join('');
-}
-
-function atualizarGráfico(dados) {
-    const resumo = dados.reduce((acc, curr) => {
-        const s = curr.agendasituacao || 'NO PATIO';
-        acc[s] = (acc[s] || 0) + 1;
-        return acc;
-    }, {});
-
-    const labels = Object.keys(resumo);
-    const valores = Object.values(resumo);
-    const cores = labels.map(l => situacoesCoresMaster[l]?.hex || "#646464");
-
-    if (meuGrafico) meuGrafico.destroy();
-
-    const ctx = document.getElementById('chartSituacao').getContext('2d');
-    meuGrafico = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: valores,
-                backgroundColor: cores,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'right', labels: { font: { size: 10 } } }
-            }
-        }
+        tbody.appendChild(tr);
     });
 }
 
+// --- EXPORTAÇÃO PDF ---
 window.exportarPDF = async () => {
-    // Aqui usei exatamente a lógica da tabela de resumo que ajustamos antes
     const { jsPDF } = window.jspdf;
     const docPdf = new jsPDF('l', 'mm', 'a4');
-    
-    const busca = document.getElementById('filtroBusca').value.toUpperCase();
-    const situacao = document.getElementById('filtroSituacao').value;
-    const agendas = todasAgendas.filter(a => {
-        const texto = `${a.senhaAgendamento} ${a.fornecedor} ${a.veiculoAgrupado || ''}`.toUpperCase();
-        return texto.includes(busca) && (situacao === "" || (a.agendasituacao || "NO PATIO") === situacao);
-    });
 
-    if(agendas.length === 0) return alert("Nada para exportar");
+    const selecionadosIds = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+    if (selecionadosIds.length === 0) return alert("Selecione agendamentos na tabela!");
 
-    // Cabeçalho
+    const agendas = dadosMestres.filter(ag => selecionadosIds.includes(ag.id));
+    const veiculosUnicos = new Set(agendas.map(a => a.veiculoAgrupado || a.senhaAgendamento)).size;
+
+    // Header Simonetti
     docPdf.setFillColor(211, 47, 47);
     docPdf.rect(0, 0, 297, 20, 'F');
-    docPdf.setFontSize(14);
     docPdf.setTextColor(255, 255, 255);
-    docPdf.text("MÓVEIS SIMONETTI - RELATÓRIO OPERACIONAL", 10, 13);
+    docPdf.setFontSize(14);
+    docPdf.text("MS RECEBIMENTO - MÓVEIS SIMONETTI", 10, 13);
+    docPdf.setFontSize(10);
+    docPdf.text(`VEÍCULOS: ${veiculosUnicos}  |  AGENDAS: ${agendas.length}`, 240, 13);
 
-    const columns = ["SENHA/VEIC", "DATA", "CENTRAL", "SITUAÇÃO", "FORNECEDOR", "TIPO", "BOX"];
+    const columns = ["SENHA", "DATA", "CENTRAL", "CARGAS", "SITUAÇÃO", "BOX", "FORNECEDOR", "TIPO"];
     const body = agendas.map(ag => [
-        ag.veiculoAgrupado ? `${ag.senhaAgendamento}\n(${ag.veiculoAgrupado})` : ag.senhaAgendamento,
+        ag.veiculoAgrupado ? `${ag.senhaAgendamento}\n(VEÍCULO: ${ag.veiculoAgrupado})` : ag.senhaAgendamento,
         ag.data ? ag.data.split('-').reverse().join('/') : '-',
         ag.central || '-',
+        ag.cargas || '-',
         ag.agendasituacao || 'NO PATIO',
+        ag.box || '-',
         ag.fornecedor || '-',
-        ag.tipoProduto || ag.tipo || '-',
-        ag.box || '-'
+        ag.tipoProduto || ag.tipo || '-'
     ]);
 
     docPdf.autoTable({
@@ -184,49 +115,108 @@ window.exportarPDF = async () => {
         body: body,
         startY: 25,
         theme: 'grid',
+        headStyles: { fillColor: [211, 47, 47], fontSize: 8, halign: 'center' },
         styles: { fontSize: 7, halign: 'center' },
-        headStyles: { fillColor: [211, 47, 47] },
         didParseCell: (data) => {
-            if (data.section === 'body' && data.column.index === 3) {
-                const situ = data.cell.raw;
-                const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+            // Cores na Coluna Situação (Índice 4)
+            if (data.section === 'body' && data.column.index === 4) {
+                const config = situacoesCoresMaster[data.cell.raw] || situacoesCoresMaster['DEFAULT'];
+                data.cell.styles.fillColor = config.rgb;
+                data.cell.styles.textColor = config.txt;
+            }
+            // Cores na Coluna Tipo (Índice 7)
+            if (data.section === 'body' && data.column.index === 7) {
+                const config = getCoresPorTipoFull(data.cell.raw);
                 data.cell.styles.fillColor = config.rgb;
                 data.cell.styles.textColor = config.txt;
             }
         }
     });
 
-    // Tabela de Resumo no rodapé (Igual ao que você aprovou)
-    const resumoObj = agendas.reduce((acc, curr) => {
+    // Tabela de Resumo no final
+    const resumo = agendas.reduce((acc, curr) => {
         const s = curr.agendasituacao || 'NO PATIO';
         acc[s] = (acc[s] || 0) + 1;
         return acc;
     }, {});
 
     docPdf.autoTable({
-        head: [['SITUAÇÃO', 'QUANTIDADE']],
-        body: Object.keys(resumoObj).map(key => [key, resumoObj[key]]),
+        head: [['RESUMO POR SITUAÇÃO', 'QTD']],
+        body: Object.keys(resumo).map(k => [k, resumo[k]]),
         startY: docPdf.lastAutoTable.finalY + 10,
-        tableWidth: 80,
-        theme: 'grid',
-        styles: { fontSize: 8, fontStyle: 'bold' },
+        tableWidth: 70,
+        headStyles: { fillColor: [50, 50, 50] },
         didParseCell: (data) => {
             if (data.section === 'body' && data.column.index === 0) {
-                const situ = data.cell.raw;
-                const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+                const config = situacoesCoresMaster[data.cell.raw] || situacoesCoresMaster['DEFAULT'];
                 data.cell.styles.fillColor = config.rgb;
                 data.cell.styles.textColor = config.txt;
             }
         }
     });
 
-    docPdf.save(`Recebimento_Dia_${new Date().toLocaleDateString()}.pdf`);
+    docPdf.save(`Recebimento_Simonetti_${new Date().toLocaleDateString()}.pdf`);
 };
 
-function iniciarRelogio() {
-    const div = document.getElementById('relogio');
-    setInterval(() => {
-        const now = new Date();
-        div.textContent = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
-    }, 1000);
-}
+// --- EXPORTAÇÃO EXCEL ---
+window.exportarExcel = async () => {
+    const selecionadosIds = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+    if (selecionadosIds.length === 0) return alert("Selecione agendamentos!");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Relatorio');
+
+    worksheet.columns = [
+        { header: 'SENHA', key: 'senha', width: 25 },
+        { header: 'DATA', key: 'data', width: 12 },
+        { header: 'SITUAÇÃO', key: 'situacao', width: 25 },
+        { header: 'FORNECEDOR', key: 'fornecedor', width: 30 },
+        { header: 'TIPO', key: 'tipo', width: 20 },
+        { header: 'BOX', key: 'box', width: 10 }
+    ];
+
+    const agendas = dadosMestres.filter(ag => selecionadosIds.includes(ag.id));
+
+    agendas.forEach(ag => {
+        const situ = ag.agendasituacao || "NO PATIO";
+        const cS = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+        const cT = getCoresPorTipoFull(ag.tipoProduto || ag.tipo);
+
+        const row = worksheet.addRow({
+            senha: ag.veiculoAgrupado ? `${ag.senhaAgendamento} (VEÍCULO: ${ag.veiculoAgrupado})` : ag.senhaAgendamento,
+            data: ag.data ? ag.data.split('-').reverse().join('/') : '',
+            situacao: situ,
+            fornecedor: ag.fornecedor,
+            tipo: ag.tipoProduto || ag.tipo,
+            box: ag.box || '-'
+        });
+
+        // Aplicar cores Excel
+        const cellS = row.getCell('situacao');
+        cellS.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + cS.hex.replace('#','') } };
+        cellS.font = { color: { argb: cS.txt[0] === 255 ? 'FFFFFF' : '000000' }, bold: true };
+
+        const cellT = row.getCell('tipo');
+        cellT.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + cT.hex.replace('#','') } };
+        cellT.font = { color: { argb: cT.txt[0] === 255 ? 'FFFFFF' : '000000' }, bold: true };
+    });
+
+    // Estilo do Header
+    worksheet.getRow(1).eachCell(c => {
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD32F2F' } };
+        c.font = { color: { argb: 'FFFFFF' }, bold: true };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Recebimento_Simonetti.xlsx`;
+    link.click();
+};
+
+// Funções globais para botões do HTML
+window.verDetalhes = (id) => { /* Sua lógica de modal de detalhes aqui */ };
+window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
+
+init();
