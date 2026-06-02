@@ -85,6 +85,23 @@ window.atualizarFiltros = () => {
     renderizarTudo();
 };
 
+// Função para marcar/desmarcar todos os checkboxes da tabela
+window.marcarTodos = (el) => {
+    // Seleciona todos os checkboxes que possuem a classe 'row-check' (que você usou no renderizarTabela)
+    const checkboxes = document.querySelectorAll('.row-check');
+    
+    checkboxes.forEach(chk => {
+        chk.checked = el.checked;
+    });
+
+    // Opcional: Se você usa a classe 'check-export' para os filtros de PDF/Excel, 
+    // garanta que eles também sejam marcados
+    const checkboxesExport = document.querySelectorAll('.check-export');
+    checkboxesExport.forEach(chk => {
+        chk.checked = el.checked;
+    });
+};
+
 function renderizarTudo() {
     renderizarTabela();
     renderizarGrafico(dadosFiltrados);
@@ -104,7 +121,7 @@ function renderizarTabela() {
         
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><input type="checkbox" class="row-check" value="${item.id}"></td>
+            <td><input type="checkbox" class="row-check check-export" value="${item.id}"></td>
             <td style="font-weight:bold">${item.senhaAgendamento || '---'}</td>
             <td>${dataBR}</td>
             <td>${item.central || '---'}</td>
