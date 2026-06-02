@@ -13,56 +13,85 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root { --primary: #C00000; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; }
+        :root { --primary: #C00000; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); color: #333; }
         
         .navbar { 
             display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 30px; background: white; border-bottom: 3px solid var(--primary);
+            padding: 10px 20px; background: white; border-bottom: 3px solid var(--primary);
             position: sticky; top: 0; z-index: 1000;
         }
 
-        .btn-voltar { color: var(--primary); font-size: 20px; text-decoration: none; margin-right: 15px; }
+        .btn-voltar { color: var(--primary); font-size: 22px; text-decoration: none; display: flex; align-items: center; }
 
-        /* Painel Superior */
+        /* Painel do Gráfico Mais Robusto */
         .painel-estatistico { 
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; 
-            padding: 20px; background: white; margin: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            align-items: center;
+            background: white; margin: 15px; border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px;
         }
-        .card-estat { text-align: center; }
-        .card-estat h3 { margin: 0; color: #666; font-size: 14px; }
-        .card-estat p { margin: 5px 0 0; font-size: 32px; font-weight: bold; color: var(--primary); }
         
-        /* Ajuste do Gráfico e Legenda */
-        .chart-section { display: flex; flex-direction: column; align-items: center; }
-        .chart-container { width: 150px; height: 150px; position: relative; }
-        #resumoSituacoes { margin-top: 10px; width: 100%; max-width: 250px; }
-        #infoTotal { margin-top: 5px; font-weight: bold; color: #333; font-size: 14px; }
+        .chart-section { 
+            display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; gap: 20px;
+        }
 
-        .container { padding: 0 20px 20px; }
-        .acoes-topo { display: flex; gap: 10px; margin-bottom: 20px; }
+        .chart-container { width: 280px; height: 280px; position: relative; }
+
+        /* Legendas Organizadas em Grade */
+        #resumoSituacoes { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+            gap: 10px; flex: 1; max-width: 600px;
+        }
         
-        table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
-        th { background: #f8f9fa; padding: 12px; border: 1px solid #ddd; position: sticky; top: 60px; z-index: 10; }
-        td { padding: 10px; border: 1px solid #eee; text-align: center; }
+        .legenda-item {
+            background: #f9f9f9; padding: 8px 12px; border-radius: 6px;
+            display: flex; align-items: center; border-left: 4px solid #ccc;
+            font-size: 11px; font-weight: 600; box-shadow: 2px 2px 5px rgba(0,0,0,0.03);
+        }
+
+        #infoTotal { 
+            width: 100%; text-align: center; margin-top: 15px; 
+            font-size: 16px; font-weight: bold; color: var(--primary);
+            border-top: 1px dashed #ddd; padding-top: 10px;
+        }
+
+        .container { padding: 0 15px 20px; }
+        .acoes-topo { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
         
-        .btn-filter { display: block; margin: 5px auto 0; font-size: 10px; cursor: pointer; border: 1px solid #ccc; background: white; border-radius: 3px; }
-        .check-all { transform: scale(1.2); cursor: pointer; }
+        /* Tabela Responsiva */
+        .table-responsive { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px; }
+        th { background: #eee; padding: 12px; border-bottom: 2px solid #ddd; position: sticky; top: 0; }
+        td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; }
         
-        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 2000; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 450px; margin: 50px auto; }
+        .btn-filter { 
+            background: #fff; border: 1px solid var(--primary); color: var(--primary);
+            font-size: 10px; cursor: pointer; border-radius: 4px; padding: 2px 5px;
+            margin-top: 4px; transition: 0.3s;
+        }
+        .btn-filter:hover { background: var(--primary); color: white; }
+
+        /* Estilo dos Botões de Ação */
+        .btn-acao { border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; color: white; }
+
+        /* Modal customizado */
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.7); z-index: 2001; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        
+        @media (max-width: 600px) {
+            .chart-container { width: 220px; height: 220px; }
+            .acoes-topo input { width: 100%; }
+        }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
         <div style="display: flex; align-items: center;">
-            <a href="inicial.html" class="btn-voltar" title="Voltar para Início"><i class="fas fa-arrow-left"></i></a>
-            <span id="txtUser" style="font-weight: bold;">AGUARDANDO...</span>
+            <a href="inicial.html" class="btn-voltar"><i class="fas fa-chevron-left"></i></a>
+            <span id="txtUser" style="margin-left: 15px; font-weight: 800; color: #555;">---</span>
         </div>
-        <h2 style="margin:0; color: var(--primary); font-size: 18px;">OPERACIONAL: RECEBIMENTO DO DIA</h2>
-        <button onclick="logout()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">SAIR</button>
+        <h2 style="margin:0; color: var(--primary); font-size: 16px; text-align: center;">RECEBIMENTO DO DIA</h2>
+        <button onclick="logout()" style="background:#444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size: 12px;">SAIR</button>
     </nav>
 
     <div class="painel-estatistico">
@@ -70,53 +99,52 @@
             <div class="chart-container">
                 <canvas id="chartSituacao"></canvas>
             </div>
-            <div id="infoTotal">CARROS: 0 | AGENDAS: 0</div>
             <div id="resumoSituacoes">
                 </div>
         </div>
+        <div id="infoTotal">CARREGANDO DADOS...</div>
     </div>
 
     <div class="container">
         <div class="acoes-topo">
-            <input type="text" id="inputBusca" placeholder="Buscar por Senha, Fornecedor ou Carga..." style="flex:1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-            <button onclick="exportarExcel()" style="background:#27ae60; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight: bold;">
-                <i class="fas fa-file-excel"></i> EXCEL COMPLETO
-            </button>
-            <button onclick="exportarPDF()" style="background:#e74c3c; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight: bold;">
-                <i class="fas fa-file-pdf"></i> PDF
-            </button>
+            <input type="text" id="inputBusca" placeholder="Pesquisar senha, fornecedor ou carga..." style="flex:2; padding: 12px; border: 1px solid #ccc; border-radius: 6px;">
+            <button onclick="exportarExcel()" class="btn-acao" style="background:#27ae60;"><i class="fas fa-file-excel"></i> EXCEL</button>
+            <button onclick="exportarPDF()" class="btn-acao" style="background:var(--primary);"><i class="fas fa-file-pdf"></i> PDF</button>
         </div>
 
-        <table id="mainTable">
-            <thead>
-                <tr>
-                    <th style="width: 30px;"><input type="checkbox" id="checkMaster" class="check-all"></th>
-                    <th>SENHA / VEÍCULO <button class="btn-filter" onclick="abrirFiltro('senhaAgendamento')">FILTRO</button></th>
-                    <th>DATA <button class="btn-filter" onclick="abrirFiltro('data')">FILTRO</button></th>
-                    <th>CENTRAL <button class="btn-filter" onclick="abrirFiltro('central')">FILTRO</button></th>
-                    <th>CARGAS <button class="btn-filter" onclick="abrirFiltro('cargas')">FILTRO</button></th>
-                    <th>SITUAÇÃO <button class="btn-filter" onclick="abrirFiltro('agendasituacao')">FILTRO</button></th>
-                    <th>FORNECEDOR <button class="btn-filter" onclick="abrirFiltro('fornecedor')">FILTRO</button></th>
-                    <th>TIPO <button class="btn-filter" onclick="abrirFiltro('tipoProduto')">FILTRO</button></th>
-                    <th>BOX</th>
-                    <th>VER</th>
-                </tr>
-            </thead>
-            <tbody id="corpoTabela">
-                </tbody>
-        </table>
+        <div class="table-responsive">
+            <table id="mainTable">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" id="checkMaster" class="check-all"></th>
+                        <th>SENHA / VEÍCULO <br><button class="btn-filter" onclick="showFiltroModal('senha')"><i class="fas fa-filter"></i></button></th>
+                        <th>DATA <br><button class="btn-filter" onclick="showFiltroModal('data')"><i class="fas fa-filter"></i></button></th>
+                        <th>CENTRAL</th>
+                        <th>CARGAS</th>
+                        <th>SITUAÇÃO <br><button class="btn-filter" onclick="showFiltroModal('situacao')"><i class="fas fa-filter"></i></button></th>
+                        <th>FORNECEDOR</th>
+                        <th>TIPO</th>
+                        <th>BOX</th>
+                        <th><i class="fas fa-eye"></i></th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela"></tbody>
+            </table>
+        </div>
     </div>
 
-    <div id="modalComposicao" class="modal-overlay">
+    <div id="modalGeral" class="modal-overlay">
         <div class="modal-content">
-            <h3 id="modalTitulo">Composição da Carga</h3>
-            <hr>
-            <div id="listaItens" style="max-height: 300px; overflow-y: auto;"></div>
-            <button onclick="document.getElementById('modalComposicao').style.display='none'" style="margin-top:15px; width:100%; padding:10px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">FECHAR</button>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="modalTitulo" style="margin:0; color: var(--primary);">Título</h3>
+                <i class="fas fa-times" onclick="fecharModal()" style="cursor:pointer; font-size: 20px;"></i>
+            </div>
+            <hr style="margin: 15px 0; opacity: 0.2;">
+            <div id="modalBody"></div>
+            <button onclick="fecharModal()" style="margin-top:20px; width:100%; padding:12px; background: #444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">FECHAR</button>
         </div>
     </div>
 
     <script type="module" src="js/recebimento-do-dia.js"></script>
-
 </body>
 </html>
