@@ -297,7 +297,6 @@ window.exportarPDF = async () => {
     const agendas = [];
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push({id: d.id, ...d.data()}); });
 
-    // LÓGICA DE CONTAGEM RESPEITANDO VEÍCULO AGRUPADO
     const totalAgendas = agendas.length;
     const veiculosUnicos = new Set(agendas.map(a => a.veiculoAgrupado || a.senhaAgendamento)).size;
 
@@ -328,52 +327,53 @@ window.exportarPDF = async () => {
         body: tableBody,
         startY: 25,
         theme: 'grid',
-        headStyles: { fillColor: [211, 47, 47], fontSize: 8, halign: 'center' }, // Cabeçalho Vermelho
+        headStyles: { fillColor: [211, 47, 47], fontSize: 8, halign: 'center' },
         styles: { fontSize: 7, halign: 'center', cellPadding: 2, overflow: 'linebreak' },
         didParseCell: (data) => {
-            // Cor na coluna TIPO (Índice 7)
             if (data.section === 'body' && data.column.index === 7) {
                 const estilo = getCoresPorTipoFull(data.cell.raw);
                 data.cell.styles.fillColor = estilo.rgb;
                 data.cell.styles.textColor = estilo.txt;
             }
-            // Cor na coluna SITUAÇÃO (Índice 4)
             if (data.section === 'body' && data.column.index === 4) {
                 const situ = data.cell.raw;
                 const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
                 data.cell.styles.fillColor = config.rgb;
                 data.cell.styles.textColor = config.txt;
             }
-            // Destaque para Carga Agrupada na Senha (Índice 0)
             if (data.section === 'body' && data.column.index === 0 && data.cell.raw.includes('VEÍCULO:')) {
                 data.cell.styles.fontStyle = 'bold';
-                data.cell.styles.textColor = [0, 0, 255]; // Azul para destacar agrupamento
+                data.cell.styles.textColor = [0, 0, 255];
             }
         }
     });
 
-    // RESUMO POR SITUAÇÃO NO RODAPÉ DO PDF
-    let finalY = docPdf.lastAutoTable.finalY + 10;
-    const resumo = agendas.reduce((acc, curr) => {
+    // --- TRECHO AJUSTADO: RESUMO POR SITUAÇÃO EM TABELA ---
+    const resumoObj = agendas.reduce((acc, curr) => {
         const s = curr.agendasituacao || 'NO PATIO';
         acc[s] = (acc[s] || 0) + 1;
         return acc;
     }, {});
 
-    docPdf.setFontSize(9);
-    docPdf.setTextColor(0);
-    docPdf.text("RESUMO POR SITUAÇÃO:", 10, finalY);
-    
-    let posX = 10;
-    Object.keys(resumo).forEach(key => {
-        const config = situacoesCoresMaster[key] || situacoesCoresMaster['DEFAULT'];
-        docPdf.setFillColor(config.rgb[0], config.rgb[1], config.rgb[2]);
-        docPdf.rect(posX, finalY + 2, 40, 8, 'F');
-        docPdf.setTextColor(config.txt[0]);
-        docPdf.setFontSize(7);
-        docPdf.text(`${key}: ${resumo[key]}`, posX + 2, finalY + 7);
-        posX += 45;
-        if(posX > 250) { posX = 10; finalY += 10; } // Quebra linha se resumo for longo
+    const resumoData = Object.keys(resumoObj).map(key => [key, resumoObj[key]]);
+
+    docPdf.autoTable({
+        head: [['SITUAÇÃO', 'QUANTIDADE']],
+        body: resumoData,
+        startY: docPdf.lastAutoTable.finalY + 10,
+        margin: { left: 10 },
+        tableWidth: 80, // Tabela mais estreita para o rodapé
+        theme: 'grid',
+        headStyles: { fillColor: [50, 50, 50], fontSize: 8 },
+        styles: { fontSize: 8, fontStyle: 'bold' },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 0) {
+                const situ = data.cell.raw;
+                const config = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
+                data.cell.styles.fillColor = config.rgb;
+                data.cell.styles.textColor = config.txt;
+            }
+        }
     });
 
     docPdf.save(`Cargas_Simonetti_${new Date().toLocaleDateString()}.pdf`);
