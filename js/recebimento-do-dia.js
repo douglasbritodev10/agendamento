@@ -119,7 +119,9 @@ function renderizarTabela() {
         const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
         const confStatus = situacoesCoresMaster[item.agendasituacao] || situacoesCoresMaster['DEFAULT'];
         
-        // Lógica para exibir Senha + Veículo Agrupado
+        // Obter cores para o Tipo de Produto
+        const estiloTipo = getCoresPorTipoFull(item.tipoProduto || item.tipo);
+        
         const infoSenha = item.veiculoAgrupado 
             ? `<div style="color:#0000FF; font-size:11px;">VEÍCULO: ${item.veiculoAgrupado}</div><div style="font-weight:bold">${item.senhaAgendamento}</div>`
             : `<div style="font-weight:bold">${item.senhaAgendamento || '---'}</div>`;
@@ -132,17 +134,21 @@ function renderizarTabela() {
             <td>${item.central || '---'}</td>
             <td>${item.cargas || 1}</td>
             <td>
-                <span style="background:#${confStatus.hex}; color:rgb(${confStatus.txt.join(',')}); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px;">
+                <span style="background:#${confStatus.hex}; color:rgb(${confStatus.txt.join(',')}); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; display: block; text-align: center;">
                     ${item.agendasituacao || 'NO PATIO'}
                 </span>
             </td>
             <td>${item.fornecedor || '---'}</td>
-            <td>${item.tipoProduto || '---'}</td>
+            <td>
+                <span style="background:#${estiloTipo.hex}; color:rgb(${estiloTipo.txt.join(',')}); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; display: block; text-align: center;">
+                    ${item.tipoProduto || '---'}
+                </span>
+            </td>
             <td>${item.box || '-'}</td>
             <td style="font-weight: bold;">${item.linhaSeparacao || '-'}</td>
-            <td>
-                <button onclick="verDetalhes('${item.id}')" style="background:none; border:none; color:#0A497B; cursor:pointer;">
-                    <i class="fas fa-eye fa-lg"></i>
+            <td style="text-align: center;">
+                <button onclick="verDetalhes('${item.id}')" title="Ver Composição" style="background:none; border:none; color:#0A497B; cursor:pointer;">
+                    <i class="fas fa-boxes fa-lg"></i>
                 </button>
             </td>
         `;
@@ -168,12 +174,29 @@ function renderizarGrafico(dados) {
     
     myChart = new Chart(ctx, {
         type: 'pie',
-        data: { labels, datasets: [{ data: valores, backgroundColor: cores }] },
+        data: { 
+            labels, 
+            datasets: [{ 
+                data: valores, 
+                backgroundColor: cores,
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }] 
+        },
+        plugins: [ChartDataLabels], // Ativa o plugin de labels
         options: { 
             responsive: true, 
             maintainAspectRatio: false, 
-            plugins: { legend: { display: false } },
-            // NOVIDADE: Captura de clique no gráfico
+            plugins: { 
+                legend: { display: false },
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 14 },
+                    formatter: (value) => value, // Exibe o número bruto
+                    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+                    textShadowBlur: 4
+                }
+            },
             onClick: (evt, elements) => {
                 if (elements.length > 0) {
                     const index = elements[0].index;
