@@ -1,5 +1,5 @@
 import { app } from './firebase-config.js';
-import { getFirestore, collection, query, onSnapshot, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, collection, query, onSnapshot, orderBy, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
 
@@ -29,13 +29,11 @@ const getCoresPorTipoFull = (tipo) => {
     return { hex: 'FFFFFF', rgb: [255, 255, 255], txt: [0, 0, 0] };
 };
 
-// Variáveis de Controle
 let dadosMestres = [];
-let dadosFiltrados = [];
+let myChart = null;
 
 // --- INICIALIZAÇÃO ---
 function init() {
-    // Nome do usuário do Banco (via LocalStorage do Login)
     const user = localStorage.getItem('username') || "SISTEMAS";
     const userEl = document.getElementById('txtUser');
     if(userEl) userEl.innerText = user.toUpperCase();
@@ -43,18 +41,27 @@ function init() {
     const q = query(collection(db, "agendamentos"), orderBy("data", "desc"));
     onSnapshot(q, (snapshot) => {
         dadosMestres = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        dadosFiltrados = [...dadosMestres];
-        renderizarTabela();
+        renderizarTabela(dadosMestres);
+        renderizarGrafico(dadosMestres);
     });
+
+    // Lógica Marcar/Desmarcar Todos
+    const checkMaster = document.getElementById('checkMaster');
+    if (checkMaster) {
+        checkMaster.addEventListener('change', (e) => {
+            const checks = document.querySelectorAll('.check-export');
+            checks.forEach(cb => cb.checked = e.target.checked);
+        });
+    }
 }
 
-// --- RENDERIZAÇÃO DA TABELA NO SITE ---
-function renderizarTabela() {
+// --- RENDERIZAÇÃO DA TABELA ---
+function renderizarTabela(dados) {
     const tbody = document.getElementById('corpoTabela');
     if(!tbody) return;
     tbody.innerHTML = "";
 
-    dadosFiltrados.forEach(ag => {
+    dados.forEach(ag => {
         const situ = ag.agendasituacao || "NO PATIO";
         const configS = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
         const configT = getCoresPorTipoFull(ag.tipoProduto || ag.tipo);
@@ -64,19 +71,71 @@ function renderizarTabela() {
             <td><input type="checkbox" class="check-export" value="${ag.id}"></td>
             <td style="font-weight:bold">${ag.senhaAgendamento}${ag.veiculoAgrupado ? `<br><small style="color:blue">VEÍCULO: ${ag.veiculoAgrupado}</small>` : ''}</td>
             <td>${ag.data ? ag.data.split('-').reverse().join('/') : '-'}</td>
+            <td>${ag.cargas || '-'}</td>
             <td style="background:#${configS.hex}; color:rgb(${configS.txt.join(',')}); font-weight:bold;">${situ}</td>
             <td>${ag.fornecedor || '-'}</td>
             <td style="background:#${configT.hex}; color:rgb(${configT.txt.join(',')}); font-weight:bold;">${ag.tipoProduto || ag.tipo || '-'}</td>
             <td>${ag.box || '-'}</td>
             <td>
-                <button onclick="verDetalhes('${ag.id}')" style="background:none; border:none; color:#d32f2f; cursor:pointer;">
+                <button onclick="verComp('${ag.id}')" style="background:none; border:none; color:#C00000; cursor:pointer;">
                     <i class="fas fa-eye fa-lg"></i>
                 </button>
             </td>
         `;
         tbody.appendChild(tr);
     });
+
+    // Atualiza contadores
+    document.getElementById('totalAgendas').innerText = dados.length;
+    document.getElementById('totalPatio').innerText = dados.filter(d => (d.agendasituacao || '').includes("PATIO")).length;
 }
+
+// --- GRÁFICO DE PIZZA ---
+function renderizarGrafico(dados) {
+    const resumo = dados.reduce((acc, curr) => {
+        const s = curr.agendasituacao || 'NO PATIO';
+        acc[s] = (acc[s] || 0) + 1;
+        return acc;
+    }, {});
+
+    const labels = Object.keys(resumo);
+    const valores = Object.values(resumo);
+    const cores = labels.map(l => `#${(situacoesCoresMaster[l] || situacoesCoresMaster['DEFAULT']).hex}`);
+
+    const ctx = document.getElementById('chartSituacao').getContext('2d');
+    if (myChart) myChart.destroy();
+
+    myChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{ data: valores, backgroundColor: cores }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+// --- VER COMPOSIÇÃO ---
+window.verComp = async (id) => {
+    const docSnap = await getDoc(doc(db, "agendamentos", id));
+    if (!docSnap.exists()) return;
+
+    const dados = docSnap.data();
+    const listaHtml = (dados.composicao || []).map(item => 
+        `<div style="display:flex; justify-content:space-between; padding:5px; border-bottom:1px solid #eee">
+            <span>${item.descricao}</span>
+            <strong>${item.qtd}</strong>
+        </div>`
+    ).join('') || '<p>Sem itens cadastrados</p>';
+
+    document.getElementById('listaItens').innerHTML = listaHtml;
+    document.getElementById('modalTitulo').innerText = `Composição: ${dados.senhaAgendamento}`;
+    document.getElementById('modalComposicao').style.display = 'block';
+};
 
 // --- EXPORTAÇÃO PDF ---
 window.exportarPDF = async () => {
@@ -158,65 +217,82 @@ window.exportarPDF = async () => {
     docPdf.save(`Recebimento_Simonetti_${new Date().toLocaleDateString()}.pdf`);
 };
 
-// --- EXPORTAÇÃO EXCEL ---
-window.exportarExcel = async () => {
-    const selecionadosIds = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
-    if (selecionadosIds.length === 0) return alert("Selecione agendamentos!");
+
+// --- EXPORTAÇÃO EXCEL COMPLETO ---
+window.exportarExcel = async (modo) => {
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
+    if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Relatorio');
 
-    worksheet.columns = [
-        { header: 'SENHA', key: 'senha', width: 25 },
-        { header: 'DATA', key: 'data', width: 12 },
-        { header: 'SITUAÇÃO', key: 'situacao', width: 25 },
-        { header: 'FORNECEDOR', key: 'fornecedor', width: 30 },
-        { header: 'TIPO', key: 'tipo', width: 20 },
-        { header: 'BOX', key: 'box', width: 10 }
+    const columns = [
+        { header: 'Senha', key: 'Senha', width: 20 },
+        { header: 'Data', key: 'Data', width: 12 },
+        { header: 'Situação', key: 'Situacao', width: 25 },
+        { header: 'Fornecedor', key: 'Fornecedor', width: 25 },
+        { header: 'Tipo', key: 'Tipo', width: 20 }
     ];
 
-    const agendas = dadosMestres.filter(ag => selecionadosIds.includes(ag.id));
+    if (modo === 'completo') {
+        columns.push(
+            { header: 'Cód. Item', key: 'Cod_Item', width: 15 },
+            { header: 'Descrição', key: 'Descricao', width: 40 },
+            { header: 'Qtd', key: 'Qtd', width: 10 }
+        );
+    }
+    worksheet.columns = columns;
 
-    agendas.forEach(ag => {
-        const situ = ag.agendasituacao || "NO PATIO";
-        const cS = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
-        const cT = getCoresPorTipoFull(ag.tipoProduto || ag.tipo);
+    const filtrados = dadosMestres.filter(d => selecionados.includes(d.id)).sort((a,b) => a.data.localeCompare(b.data));
 
-        const row = worksheet.addRow({
-            senha: ag.veiculoAgrupado ? `${ag.senhaAgendamento} (VEÍCULO: ${ag.veiculoAgrupado})` : ag.senhaAgendamento,
-            data: ag.data ? ag.data.split('-').reverse().join('/') : '',
-            situacao: situ,
-            fornecedor: ag.fornecedor,
-            tipo: ag.tipoProduto || ag.tipo,
-            box: ag.box || '-'
-        });
+    filtrados.forEach(d => {
+        const base = {
+            Senha: d.senhaAgendamento,
+            Data: d.data.split('-').reverse().join('/'),
+            Situacao: d.agendasituacao || 'NO PATIO',
+            Fornecedor: d.fornecedor,
+            Tipo: d.tipoProduto
+        };
 
-        // Aplicar cores Excel
-        const cellS = row.getCell('situacao');
-        cellS.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + cS.hex.replace('#','') } };
-        cellS.font = { color: { argb: cS.txt[0] === 255 ? 'FFFFFF' : '000000' }, bold: true };
-
-        const cellT = row.getCell('tipo');
-        cellT.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + cT.hex.replace('#','') } };
-        cellT.font = { color: { argb: cT.txt[0] === 255 ? 'FFFFFF' : '000000' }, bold: true };
+        if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
+            d.composicao.forEach(item => {
+                const row = worksheet.addRow({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
+                aplicarEstiloExcel(row, d);
+            });
+        } else {
+            const row = worksheet.addRow(base);
+            aplicarEstiloExcel(row, d);
+        }
     });
 
-    // Estilo do Header
-    worksheet.getRow(1).eachCell(c => {
-        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD32F2F' } };
-        c.font = { color: { argb: 'FFFFFF' }, bold: true };
+    function aplicarEstiloExcel(row, d) {
+        const estiloT = getCoresPorTipoFull(d.tipoProduto);
+        const estiloS = situacoesCoresMaster[d.agendasituacao || 'NO PATIO'] || situacoesCoresMaster['DEFAULT'];
+        
+        const cellT = row.getCell('Tipo');
+        cellT.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + estiloT.hex } };
+        
+        const cellS = row.getCell('Situacao');
+        cellS.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + estiloS.hex } };
+        cellS.font = { color: { argb: estiloS.txt[0] === 255 ? 'FFFFFF' : '000000' } };
+    }
+
+    // Header Style
+    worksheet.getRow(1).eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC00000' } };
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Recebimento_Simonetti.xlsx`;
-    link.click();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Simonetti_Export_${modo}.xlsx`;
+    a.click();
 };
 
-// Funções globais para botões do HTML
-window.verDetalhes = (id) => { /* Sua lógica de modal de detalhes aqui */ };
+window.abrirFiltro = (coluna) => { console.log("Filtro para: ", coluna); };
 window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
 
 init();
