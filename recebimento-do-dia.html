@@ -3,80 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hub de Operações - Móveis Simonetti</title>
+    <title>Recebimento do Dia - Móveis Simonetti</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root { --primary: #C00000; --dark: #333; }
+        :root { --primary: #C00000; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; }
         
         .navbar { 
             display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 30px; background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px); border-bottom: 3px solid var(--primary);
+            padding: 10px 30px; background: white; border-bottom: 3px solid var(--primary);
             position: sticky; top: 0; z-index: 1000;
         }
 
-        .user-info { display: flex; align-items: center; gap: 10px; font-weight: bold; }
-        .btn-sair { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        .btn-voltar { color: var(--primary); font-size: 20px; text-decoration: none; margin-right: 15px; }
 
-        .container { padding: 20px; }
-        .acoes-topo { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+        /* Painel Superior */
+        .painel-estatistico { 
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; 
+            padding: 20px; background: white; margin: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            align-items: center;
+        }
+        .card-estat { text-align: center; }
+        .card-estat h3 { margin: 0; color: #666; font-size: 14px; }
+        .card-estat p { margin: 5px 0 0; font-size: 32px; font-weight: bold; color: var(--primary); }
+        .chart-container { display: flex; justify-content: center; align-items: center; height: 150px; }
+
+        .container { padding: 0 20px 20px; }
+        .acoes-topo { display: flex; gap: 10px; margin-bottom: 20px; }
         
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        th { background: #f8f9fa; padding: 12px; font-size: 11px; border-bottom: 2px solid #ddd; text-transform: uppercase; }
-        td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
+        th { background: #f8f9fa; padding: 12px; border: 1px solid #ddd; position: sticky; top: 60px; }
+        td { padding: 10px; border: 1px solid #eee; text-align: center; }
         
-        .btn-filter { display: block; margin: 5px auto 0; font-size: 10px; padding: 2px 5px; cursor: pointer; border-radius: 3px; border: 1px solid #ccc; }
-        .btn-filter.ativo { background: #fff176; font-weight: bold; border-color: #fbc02d; }
-
-        /* Modais */
-        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 450px; max-height: 85vh; overflow-y: auto; }
-        .option-disabled { opacity: 0.3; pointer-events: none; background: #f0f0f0; }
-
-        .btn-export-pdf { background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-export-excel { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-filter { display: block; margin: 5px auto 0; font-size: 10px; cursor: pointer; }
+        .check-all { transform: scale(1.2); cursor: pointer; }
+        
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index: 2000; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 450px; margin: 50px auto; }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
-        <div class="user-info">
-            <i class="fas fa-user-circle fa-lg" style="color: var(--primary);"></i>
-            <span id="txtUser">...</span>
+        <div style="display: flex; align-items: center;">
+            <a href="inicial.html" class="btn-voltar" title="Voltar para Início"><i class="fas fa-arrow-left"></i></a>
+            <span id="txtUser" style="font-weight: bold;">DBRITO</span>
         </div>
         <h2 style="margin:0; color: var(--primary); font-size: 18px;">OPERACIONAL: RECEBIMENTO DO DIA</h2>
-        <button class="btn-sair" onclick="logout()"><i class="fas fa-sign-out-alt"></i> SAIR</button>
+        <button onclick="logout()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">SAIR</button>
     </nav>
+
+    <div class="painel-estatistico">
+        <div class="card-estat">
+            <h3>TOTAL AGENDAS</h3>
+            <p id="totalAgendas">0</p>
+        </div>
+        <div class="chart-container">
+            <canvas id="chartSituacao"></canvas>
+        </div>
+        <div class="card-estat">
+            <h3>VEÍCULOS NO PÁTIO</h3>
+            <p id="totalPatio">0</p>
+        </div>
+    </div>
 
     <div class="container">
         <div class="acoes-topo">
-            <input type="text" id="inputBusca" placeholder="Buscar por Senha, Fornecedor ou Carga..." onkeyup="atualizarFiltros()" style="flex:1; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-            <button class="btn-export-excel" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> EXCEL</button>
-            <button class="btn-export-pdf" onclick="exportarPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+            <input type="text" id="inputBusca" placeholder="Buscar por Senha, Fornecedor ou Carga..." style="flex:1; padding: 10px;">
+            <button onclick="exportarExcel('simples')" class="btn-export-excel" style="background:#27ae60; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">EXCEL</button>
+            <button onclick="exportarExcel('completo')" style="background:#1e8449; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">EXCEL COMPLETO</button>
+            <button onclick="exportarPDF()" style="background:#e74c3c; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;">PDF</button>
         </div>
 
         <table id="mainTable">
             <thead>
                 <tr>
-                    <th>SENHA / VEÍCULO <button class="btn-filter" id="btn-filter-senhaAgendamento" onclick="abrirFiltro('senhaAgendamento')">FILTRO</button></th>
-                    <th>DATA <button class="btn-filter" id="btn-filter-data" onclick="abrirFiltro('data')">FILTRO</button></th>
-                    <th>CENTRAL <button class="btn-filter" id="btn-filter-central" onclick="abrirFiltro('central')">FILTRO</button></th>
-                    <th>CARGAS <button class="btn-filter" id="btn-filter-cargas" onclick="abrirFiltro('cargas')">FILTRO</button></th>
-                    <th>SITUAÇÃO <button class="btn-filter" id="btn-filter-situacao" onclick="abrirFiltro('situacao')">FILTRO</button></th>
-                    <th>FORNECEDOR <button class="btn-filter" id="btn-filter-fornecedor" onclick="abrirFiltro('fornecedor')">FILTRO</button></th>
-                    <th>TIPO <button class="btn-filter" id="btn-filter-tipoProduto" onclick="abrirFiltro('tipoProduto')">FILTRO</button></th>
+                    <th style="width: 30px;"><input type="checkbox" id="checkMaster" class="check-all"></th>
+                    <th>SENHA / VEÍCULO <button onclick="abrirFiltro('senhaAgendamento')">FILTRO</button></th>
+                    <th>DATA <button onclick="abrirFiltro('data')">FILTRO</button></th>
+                    <th>CARGAS <button onclick="abrirFiltro('cargas')">FILTRO</button></th>
+                    <th>SITUAÇÃO <button onclick="abrirFiltro('agendasituacao')">FILTRO</button></th>
+                    <th>FORNECEDOR <button onclick="abrirFiltro('fornecedor')">FILTRO</button></th>
+                    <th>TIPO <button onclick="abrirFiltro('tipoProduto')">FILTRO</button></th>
                     <th>BOX</th>
                     <th>COMPOSIÇÃO</th>
                 </tr>
             </thead>
             <tbody id="corpoTabela"></tbody>
         </table>
+    </div>
+
+    <div id="modalComposicao" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modalTitulo">Composição da Carga</h3>
+            <hr>
+            <div id="listaItens"></div>
+            <button onclick="document.getElementById('modalComposicao').style.display='none'" style="margin-top:15px; width:100%; padding:10px;">FECHAR</button>
+        </div>
     </div>
 
     <script type="module" src="js/recebimento-do-dia.js"></script>
