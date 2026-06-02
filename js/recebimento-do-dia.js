@@ -110,7 +110,7 @@ function renderizarTabela() {
             <td>${item.central || '---'}</td>
             <td>${item.cargas || 1}</td>
             <td>
-                <span style="background:#${confStatus.hex}; color:rgb(${confStatus.tex.join(',')}); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px;">
+                <span style="background:#${confStatus.hex}; color:rgb(${confStatus.txt.join(',')}); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px;">
                     ${item.agendasituacao || 'NO PATIO'}
                 </span>
             </td>
