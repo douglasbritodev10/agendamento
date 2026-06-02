@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento de Recebimento | Móveis Simonetti</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root { --primary: #D32F2F; --bg-light: #f4f7f6; --glass: rgba(255, 255, 255, 0.9); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg-light); color: #333; }
+
+        .navbar { background: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .container { padding: 20px; max-width: 1600px; margin: auto; }
+
+        /* Dashboard Layout */
+        .top-row { display: grid; grid-template-columns: 1fr 350px; gap: 20px; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        
+        .card { background: var(--glass); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .stat-card { text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .stat-card span { font-size: 2.2rem; font-weight: bold; color: var(--primary); }
+        
+        .chart-container { height: 250px; position: relative; display: flex; justify-content: center; }
+
+        /* Filtros */
+        .filter-bar { background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #ddd; }
+        .filter-bar input, .filter-bar select { padding: 10px; border: 1px solid #ccc; border-radius: 6px; outline: none; }
+        .search-input { flex: 1; min-width: 250px; }
+
+        .btn-export { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+
+        /* Tabela */
+        .table-resizer { background: white; border-radius: 12px; overflow: hidden; border: 1px solid #ddd; }
+        .table-responsive { overflow-x: auto; max-height: 600px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: #f8f9fa; padding: 12px; text-align: center; position: sticky; top: 0; border-bottom: 2px solid #ddd; z-index: 10; }
+        td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; }
+        
+        .badge-situacao { padding: 5px 10px; border-radius: 20px; color: white; font-weight: bold; font-size: 0.7rem; display: inline-block; min-width: 120px; }
+        .badge-tipo { padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="inicial.html" style="color: var(--primary); font-size: 1.2rem;"><i class="fas fa-arrow-left"></i></a>
+            <h2 style="font-size: 1.3rem;">OPERACIONAL: RECEBIMENTO DO DIA</h2>
+        </div>
+        <div id="relogio" style="font-weight: bold; color: #666;"></div>
+    </nav>
+
+    <main class="container">
+        <div class="top-row">
+            <div class="stats-grid">
+                <div class="card stat-card">
+                    <h3>TOTAL AGENDAS</h3>
+                    <span id="txtTotalAgendas">0</span>
+                </div>
+                <div class="card stat-card">
+                    <h3>VEÍCULOS NO PÁTIO</h3>
+                    <span id="txtTotalVeiculos">0</span>
+                </div>
+            </div>
+            <div class="card" style="padding: 10px;">
+                <div class="chart-container">
+                    <canvas id="chartSituacao"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <i class="fas fa-filter" style="color: #999;"></i>
+            <input type="text" id="filtroBusca" class="search-input" placeholder="Buscar por Senha, Fornecedor ou Carga..." onkeyup="filtrarTabela()">
+            
+            <select id="filtroSituacao" onchange="filtrarTabela()">
+                <option value="">TODAS AS SITUAÇÕES</option>
+            </select>
+
+            <button onclick="exportarPDF()" class="btn-export">
+                <i class="fas fa-file-pdf"></i> EXPORTAR PDF
+            </button>
+        </div>
+
+        <div class="table-resizer">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SENHA / VEÍCULO</th>
+                            <th>DATA</th>
+                            <th>CENTRAL</th>
+                            <th>CARGAS</th>
+                            <th>SITUAÇÃO</th>
+                            <th>FORNECEDOR</th>
+                            <th>TIPO</th>
+                            <th>BOX</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyOperacional">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="js/recebimento-do-dia.js"></script>
+</body>
+</html>
