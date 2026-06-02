@@ -13,76 +13,102 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root { --primary: #C00000; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); }
+        :root { --primary-blue: #0A497B; --bg: #eef2f7; --white: #ffffff; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); color: #333; }
         
-        /* Navbar com Seta no Canto Esquerdo */
+        /* Navbar igual ao Print */
         .navbar { 
             display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 20px; background: white; border-bottom: 3px solid var(--primary);
-            position: sticky; top: 0; z-index: 1000;
+            padding: 12px 20px; background: var(--primary-blue); color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
-        .btn-voltar { color: var(--primary); font-size: 24px; text-decoration: none; padding: 5px; transition: 0.2s; }
-        .btn-voltar:hover { transform: scale(1.1); }
+        .nav-left { display: flex; align-items: center; gap: 15px; font-weight: bold; }
+        .btn-voltar { color: white; font-size: 20px; text-decoration: none; display: flex; align-items: center; }
+        .btn-sair { background: transparent; border: 1px solid white; color: white; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-sair:hover { background: rgba(255,255,255,0.1); }
 
-        /* Painel do Gráfico */
+        .titulo-painel {
+            background: var(--primary-blue); color: white; text-align: center;
+            margin: 15px; padding: 12px; font-size: 18px; font-weight: bold; border-radius: 6px;
+            letter-spacing: 1px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Painel Gráfico Central */
         .painel-estatistico { 
-            background: white; margin: 15px; border-radius: 12px; padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: white; margin: 15px; border-radius: 8px; padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
         .chart-section { display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; gap: 20px; }
         .chart-container { width: 280px; height: 280px; position: relative; }
         
         #resumoSituacoes { 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
-            gap: 10px; flex: 1; max-width: 600px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
+            gap: 12px; flex: 1; max-width: 600px;
         }
         .legenda-item {
-            background: #f9f9f9; padding: 10px; border-radius: 8px;
+            background: #f8f9fa; padding: 10px 12px; border-radius: 6px;
             display: flex; align-items: center; border-left: 5px solid #ccc;
-            font-size: 12px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+            font-size: 11px; font-weight: bold; box-shadow: 1px 1px 4px rgba(0,0,0,0.04);
+        }
+        .indicador-badge {
+            margin: 15px auto 0; width: fit-content; border: 1px solid #0288d1;
+            padding: 8px 24px; border-radius: 20px; font-weight: bold; background: #fff; color: #333;
         }
 
-        /* Tabela e Cabeçalho Estilo Sistema */
-        .table-container { background: white; border-radius: 8px; overflow: hidden; margin: 0 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        /* Barra de Ações Pré-Tabela */
+        .acoes-barra { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin: 15px; }
+        .busca-container { position: relative; width: 250px; }
+        .busca-container input { width: 100%; padding: 8px 12px 8px 30px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .busca-container i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888; font-size: 13px; }
+        .btn-compartilhar { background: #008eff; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+        /* Tabela Estilizada idêntica ao Print */
+        .table-container { margin: 15px; background: white; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden; }
         .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; text-align: center; }
         
-        th { background: #f8f9fa; padding: 12px; border-bottom: 2px solid #dee2e6; color: #444; }
-        .th-content { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        /* Cabeçalhos em Azul Escuro */
+        thead th { background: var(--primary-blue); color: white; padding: 8px 4px; border: 1px solid #063357; font-weight: normal; }
+        .th-content { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+        .th-content span { font-size: 11px; font-weight: bold; text-transform: uppercase; }
         
+        /* Botões de Filtro Internos na TH */
         .btn-filter-ui { 
-            font-size: 0.65rem; cursor: pointer; padding: 2px 6px; border-radius: 4px;
-            border: 1px solid #ccc; background: white; transition: 0.3s;
+            width: 85%; max-width: 110px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4);
+            color: white; font-size: 10px; padding: 3px 0; border-radius: 3px; cursor: pointer; text-align: center; font-weight: bold;
         }
+        .btn-filter-ui:hover { background: rgba(255,255,255,0.3); }
+        
+        tbody td { padding: 10px 6px; border: 1px solid #e0e0e0; vertical-align: middle; }
+        tbody tr:nth-child(even) { background: #f9f9f9; }
 
-        /* Modais Glassmorphism */
+        /* Modais */
         .modal-overlay { 
             display: none; position: fixed; top:0; left:0; width:100%; height:100%; 
-            background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center;
-            backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;
         }
-        .modal-glass { 
-            background: rgba(255, 255, 255, 0.95); padding: 25px; border-radius: 15px; 
-            width: 90%; max-width: 550px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--primary); }
+        .modal-glass { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+        .btn-page { background: #e0e0e0; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; }
+        .btn-page:hover { background: #d5d5d5; }
 
-        .pagination { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #fff; }
-        .btn-page { padding: 6px 12px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; }
+        .pagination { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
 
+    <!-- Topo igual ao do Print -->
     <nav class="navbar">
-        <a href="inicial.html" class="btn-voltar"><i class="fas fa-arrow-left"></i></a>
-        <h2 style="margin:0; color: var(--primary); font-size: 18px; font-weight: 800;">RECEBIMENTO DO DIA</h2>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <span id="txtUser" style="font-weight: bold; color: #666; font-size: 14px;">---</span>
-            <button onclick="logout()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">SAIR</button>
+        <div class="nav-left">
+            <a href="inicial.html" class="btn-voltar"><i class="fas fa-arrow-left"></i></a>
+            <span id="txtUser">Bem-vindo, ---</span>
         </div>
+        <button class="btn-sair" onclick="logout()">SAIR</button>
     </nav>
 
+    <div class="titulo-painel">RECEBIMENTO DO DIA</div>
+
+    <!-- Painel com Gráfico Circular -->
     <div class="painel-estatistico">
         <div class="chart-section">
             <div class="chart-container">
@@ -90,16 +116,24 @@
             </div>
             <div id="resumoSituacoes"></div>
         </div>
-        <div id="infoTotal" style="text-align: center; margin-top: 15px; font-weight: bold; color: var(--primary);"></div>
+        <div class="indicador-badge" id="infoTotal">CARREGANDO...</div>
     </div>
 
-    <div class="table-container">
-        <div style="padding: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <input type="text" id="inputBusca" placeholder="Pesquisa geral..." style="flex:1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-            <button onclick="exportarExcel()" style="background:#27ae60; color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer;"><i class="fas fa-file-excel"></i></button>
-            <button onclick="exportarPDF()" style="background:var(--primary); color:white; border:none; padding:10px 15px; border-radius:6px; cursor:pointer;"><i class="fas fa-file-pdf"></i></button>
+    <!-- Filtro Geral e Exportar -->
+    <div class="acoes-barra">
+        <div class="busca-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="inputBusca" placeholder="Buscar carga ou fornecedor...">
         </div>
+        <button class="btn-compartilhar" onclick="toggleDropdownExport()">COMPARTILHAR ▼</button>
+        <div id="menuExport" style="display:none; position:absolute; background:white; border:1px solid #ccc; right:15px; margin-top:80px; z-index:10; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+            <div style="padding:10px 20px; cursor:pointer;" onclick="exportarExcel()"><i class="fas fa-file-excel" style="color:green"></i> Excel</div>
+            <div style="padding:10px 20px; cursor:pointer;" onclick="exportarPDF()"><i class="fas fa-file-pdf" style="color:red"></i> PDF</div>
+        </div>
+    </div>
 
+    <!-- Tabela Estruturada Baseada no Print -->
+    <div class="table-container">
         <div class="table-responsive">
             <table>
                 <thead>
@@ -107,63 +141,116 @@
                         <th width="40"><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
                         <th onclick="ordenarTabela('senhaAgendamento', this)" style="cursor:pointer">
                             <div class="th-content">
-                                <span>Senha <i class="fas fa-sort"></i></span>
-                                <span class="btn-filter-ui" id="btn-filter-senhaAgendamento" onclick="abrirFiltro('senhaAgendamento', event)">FILTRO</span>
+                                <span>Ordem de Agenda <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-senhaAgendamento" onclick="abrirFiltro('senhaAgendamento', event)">FILTRAR</span>
                             </div>
                         </th>
                         <th onclick="ordenarTabela('data', this)" style="cursor:pointer">
                             <div class="th-content">
                                 <span>Data <i class="fas fa-sort"></i></span>
-                                <span class="btn-filter-ui" id="btn-filter-data" onclick="abrirFiltro('data', event)">FILTRO</span>
+                                <span class="btn-filter-ui" id="btn-filter-data" onclick="abrirFiltro('data', event)">FILTRAR</span>
                             </div>
                         </th>
-                        <th>Central</th>
-                        <th>Cargas</th>
+                        <th onclick="ordenarTabela('central', this)" style="cursor:pointer">
+                            <div class="th-content">
+                                <span>Central <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-central" onclick="abrirFiltro('central', event)">FILTRAR</span>
+                            </div>
+                        </th>
+                        <th onclick="ordenarTabela('cargas', this)" style="cursor:pointer">
+                            <div class="th-content">
+                                <span>Cargas <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-cargas" onclick="abrirFiltro('cargas', event)">FILTRAR</span>
+                            </div>
+                        </th>
                         <th onclick="ordenarTabela('agendasituacao', this)" style="cursor:pointer">
                             <div class="th-content">
-                                <span>Situação <i class="fas fa-sort"></i></span>
-                                <span class="btn-filter-ui" id="btn-filter-agendasituacao" onclick="abrirFiltro('agendasituacao', event)">FILTRO</span>
+                                <span>Status <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-agendasituacao" onclick="abrirFiltro('agendasituacao', event)">FILTRAR</span>
                             </div>
                         </th>
-                        <th>Fornecedor</th>
-                        <th>Tipo</th>
-                        <th>Box</th>
-                        <th width="50">VER</th>
+                        <th onclick="ordenarTabela('fornecedor', this)" style="cursor:pointer">
+                            <div class="th-content">
+                                <span>Fornecedor <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-fornecedor" onclick="abrirFiltro('fornecedor', event)">FILTRAR</span>
+                            </div>
+                        </th>
+                        <th onclick="ordenarTabela('tipoProduto', this)" style="cursor:pointer">
+                            <div class="th-content">
+                                <span>Tipo de Produto <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-tipoProduto" onclick="abrirFiltro('tipoProduto', event)">FILTRAR</span>
+                            </div>
+                        </th>
+                        <th onclick="ordenarTabela('box', this)" style="cursor:pointer">
+                            <div class="th-content">
+                                <span>Box <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-box" onclick="abrirFiltro('box', event)">FILTRAR</span>
+                            </div>
+                        </th>
+                        <th onclick="ordenarTabela('linhaSeparacao', this)" style="cursor:pointer">
+                            <div class="th-content">
+                                <span>Linha <i class="fas fa-sort"></i></span>
+                                <span class="btn-filter-ui" id="btn-filter-linhaSeparacao" onclick="abrirFiltro('linhaSeparacao', event)">FILTRAR</span>
+                            </div>
+                        </th>
+                        <th width="50">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="corpoTabela"></tbody>
             </table>
         </div>
         <div class="pagination">
-            <div id="infoPagina"></div>
-            <div id="botoesPagina"></div>
+            <div id="infoPagina" style="font-size: 13px; color: #666;"></div>
+            <div id="botoesPagina" class="page-buttons"></div>
         </div>
     </div>
 
+    <!-- MODAL FILTRO INTELIGENTE SOLICITADO -->
     <div id="modalFiltro" class="modal-overlay">
         <div class="modal-glass">
             <div class="modal-header">
-                <span id="nomeColunaFiltro" style="font-weight: bold; text-transform: uppercase;"></span>
+                <span id="nomeColunaFiltro" style="font-weight: bold; text-transform: uppercase;">Filtrar</span>
                 <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
             </div>
-            <div id="opcoesFiltro" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="aplicarFiltroColuna()" style="flex:2; padding:12px; background:#2e7d32; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Aplicar Filtro</button>
-                <button onclick="fecharModais()" style="flex:1; padding:12px; background:#666; color:white; border:none; border-radius:8px; cursor:pointer;">Cancelar</button>
+            <div class="modal-body">
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button onclick="marcarTodosFiltro(true)" class="btn-page" style="flex:1">Marcar Todos</button>
+                    <button onclick="marcarTodosFiltro(false)" class="btn-page" style="flex:1">Desmarcar</button>
+                </div>
+                
+                <div id="opcoesFiltro" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px;"></div>
+
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button onclick="fecharModais()" class="btn-page" style="flex:1">Cancelar</button>
+                    <button onclick="aplicarFiltroColuna()" style="flex:2; background: #2e7d32; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Aplicar Filtro</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- MODAL COMPOSIÇÃO / DETALHES -->
     <div id="modalComposicao" class="modal-overlay">
         <div class="modal-glass">
             <div class="modal-header">
-                <h3 id="tituloComp" style="margin:0;">Detalhes</h3>
+                <h2 id="tituloComp" style="margin:0; font-size:1.2rem;">Detalhes do Agendamento</h2>
                 <i class="fas fa-times" style="cursor:pointer" onclick="fecharModais()"></i>
             </div>
-            <div id="detalhesItens"></div>
+            <div class="modal-body" id="detalhesItens"></div>
         </div>
     </div>
 
+    <script>
+        function toggleDropdownExport() {
+            const menu = document.getElementById('menuExport');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        window.onclick = function(event) {
+            if (!event.target.closest('.acoes-barra')) {
+                const menu = document.getElementById('menuExport');
+                if(menu) menu.style.display = 'none';
+            }
+        }
+    </script>
     <script type="module" src="js/recebimento-do-dia.js"></script>
 </body>
 </html>
