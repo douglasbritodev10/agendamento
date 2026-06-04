@@ -118,8 +118,6 @@ function renderizarTabela() {
     dadosPaginados.forEach(item => {
         const dataBR = item.data ? item.data.split('-').reverse().join('/') : '---';
         const confStatus = situacoesCoresMaster[item.agendasituacao] || situacoesCoresMaster['DEFAULT'];
-        
-        // Obter cores para o Tipo de Produto
         const estiloTipo = getCoresPorTipoFull(item.tipoProduto || item.tipo);
         
         const infoSenha = item.veiculoAgrupado 
@@ -147,8 +145,8 @@ function renderizarTabela() {
             <td>${item.box || '-'}</td>
             <td style="font-weight: bold;">${item.linhaSeparacao || '-'}</td>
             <td style="text-align: center;">
-                <button onclick="verDetalhes('${item.id}')" title="Ver Composição" style="background:none; border:none; color:#0A497B; cursor:pointer;">
-                    <i class="fas fa-boxes fa-lg"></i>
+                <button class="btn-view-action" onclick="verDetalhes('${item.id}')" title="Ver Composição">
+                    <i class="fas fa-eye"></i>
                 </button>
             </td>
         `;
