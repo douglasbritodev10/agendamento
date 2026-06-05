@@ -44,19 +44,28 @@
         gap: 12px; 
     }
 
+    /* FORÇANDO A EXIBIÇÃO DA SETA (Estava invisível/zerada em alguns navegadores) */
     .btn-voltar { 
-        color: white; 
-        font-size: 20px; 
-        text-decoration: none; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        transition: transform 0.2s; 
-        width: 35px;
-        height: 35px;
+        color: #ffffff !important; 
+        font-size: 22px !important; 
+        text-decoration: none !important; 
+        display: inline-flex !important; 
+        align-items: center !important; 
+        justify-content: center !important;
+        transition: transform 0.2s, background-color 0.2s; 
+        width: 40px !important;
+        height: 40px !important;
         border-radius: 50%;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
-    .btn-voltar:hover { background: rgba(255,255,255,0.1); transform: scale(1.1); }
+    .btn-voltar i {
+        display: inline-block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        color: #ffffff !important;
+    }
+    .btn-voltar:hover { background: rgba(255,255,255,0.15); transform: scale(1.1); }
     
     #txtUser { font-weight: bold; font-size: 14px; }
 
@@ -120,7 +129,7 @@
     .busca-container i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888; font-size: 13px; }
     .btn-compartilhar { background: #008eff; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-    /* Tabela */
+    /* Tabela Principal */
     .table-container { margin: 15px; background: white; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden; }
     .table-responsive { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; text-align: center; }
@@ -141,7 +150,7 @@
     }
     .btn-view-action:hover { background: #0288d1; }
 
-    /* Modais */
+    /* ESTRUTURA DOS MODAIS */
     .modal-overlay { 
         display: none; position: fixed; top:0; left:0; width:100%; height:100%; 
         background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center;
@@ -150,28 +159,66 @@
     .modal-glass { 
         background: white; padding: 20px; border-radius: 12px; width: 95%; max-width: 400px; 
         box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out;
+        box-sizing: border-box;
     }
-    #modalComposicao .modal-glass { max-width: 850px; width: 90%; }
+
+    /* SUPER CONFIGURAÇÃO PARA O MODAL DE COMPOSIÇÃO NO COMPUTADOR */
+    #modalComposicao .modal-glass { 
+        max-width: 95vw; /* Ocupa quase a tela toda horizontalmente */
+        width: 1350px;    /* Alvo ideal para monitor grande */
+        max-height: 90vh; /* Não estoura a altura do monitor */
+        display: flex;
+        flex-direction: column;
+    }
 
     .modal-header { 
         display: flex; align-items: center; justify-content: flex-start;
         margin-bottom: 15px; padding-bottom: 12px; border-bottom: 2px solid #f4f4f4; gap: 15px;
+        flex-shrink: 0;
     }
     .modal-header .fa-times { order: -1; font-size: 20px; color: var(--primary-red); cursor: pointer; }
     .modal-header h2, .modal-header span { font-weight: bold; flex-grow: 1; margin: 0; font-size: 16px; }
 
-    .modal-body { max-height: 70vh; overflow-y: auto; }
-    .modal-body table { width: 100%; border: 1px solid #eee; }
+    /* Corpo do modal otimizado para rolar internamente se necessário */
+    .modal-body { 
+        max-height: 75vh; 
+        overflow-y: auto; 
+        overflow-x: auto; /* Permite rolagem horizontal apenas se os dados forem gigantes */
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Forçando a tabela interna a usar todo o espaço sem esmagar colunas */
+    .modal-body table { 
+        width: 100%; 
+        border-collapse: collapse;
+        border: 1px solid #eee; 
+        min-width: 100%; /* Garante preenchimento total no Desktop */
+    }
+    .modal-body th, .modal-body td {
+        padding: 10px;
+        text-align: center;
+        border: 1px solid #eee;
+    }
 
     .pagination { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-top: 1px solid #eee; }
 
-    /* Ajustes Mobile */
+    /* Ajustes Exclusivos para Mobile (Celulares) */
     @media (max-width: 768px) {
         .navbar { grid-template-columns: auto 1fr auto; padding: 10px; }
         #txtUser { display: none; }
         .navbar-titulo { font-size: 13px; letter-spacing: 0; }
         .btn-sair { padding: 4px 10px; font-size: 11px; }
         .chart-container { width: 220px; height: 220px; }
+        
+        /* No mobile, voltamos o modal para o tamanho padrão confortável */
+        #modalComposicao .modal-glass { 
+            width: 95%; 
+            max-height: 85vh; 
+        }
+        .modal-body table {
+            min-width: 600px; /* Cria a rolagem lateral saudável no celular */
+        }
     }
 
     @keyframes slideUp {
