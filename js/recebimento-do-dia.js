@@ -41,27 +41,68 @@ const getCoresPorTipoFull = (tipo) => {
 };
 
 function init() {
-    const userDisplay = document.getElementById('txtUser');
-    if(userDisplay) userDisplay.innerText = "Bem-vindo, " + (localStorage.getItem('username') || "D. BRITO");
+    // 1. Inicializa o serviço de autenticação do Firebase
+    const auth = getAuth(app);
     
-    // TRAVA CRUCIAL: Retorna unicamente dados com noPainel == true
-    const q = query(
-        collection(db, "agendamentos"), 
-        where("noPainel", "==", true),
-        orderBy("data", "desc")
-    );
-    
-    onSnapshot(q, (snapshot) => {
-        dadosMestres = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        const hoje = new Date().toISOString().split('T')[0];
-        if (dadosMestres.some(d => d.data === hoje) && Object.values(filtrosAtivos).every(v => v.length === 0)) {
-            filtrosAtivos.data = [hoje];
+    // 2. Monitora o estado de autenticação em tempo real
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            // Se NÃO estiver autenticado, limpa os dados e joga para a tela de login
+            console.log("Usuário não autenticado. Redirecionando...");
+            localStorage.clear();
+            window.location.href = 'index.html';
+            return;
         }
 
-        window.atualizarFiltros();
+        // 3. Usuário autenticado! Vamos buscar o username na coleção 'users' do Firestore
+        try {
+            const userDocRef = doc(db, "users", user.uid);
+            const userSnap = await getDoc(userDocRef);
+            
+            let nomeExibicao = "D. BRITO"; // Nome padrão caso não encontre no banco
+
+            if (userSnap.exists() && userSnap.data().username) {
+                nomeExibicao = userSnap.data().username;
+                localStorage.setItem('username', nomeExibicao); // Atualiza cache local por segurança
+            } else {
+                // Fallback caso o documento não exista ou não tenha o campo username
+                nomeExibicao = user.displayName || user.email || nomeExibicao;
+            }
+
+            // Exibe no elemento correto correspondente ao seu HTML (userNameDisplay)
+            const userDisplay = document.getElementById('userNameDisplay');
+            if (userDisplay) {
+                userDisplay.innerText = nomeExibicao;
+            }
+        } catch (error) {
+            console.error("Erro ao buscar o username no Firestore:", error);
+            // Fallback em caso de erro de permissão/leitura
+            const userDisplay = document.getElementById('userNameDisplay');
+            if (userDisplay) userDisplay.innerText = localStorage.getItem('username') || "D. BRITO";
+        }
+
+        // 4. CARREGAMENTO DOS AGENDAMENTOS (Só executa se o usuário passou pela trava acima)
+        const q = query(
+            collection(db, "agendamentos"), 
+            where("noPainel", "==", true),
+            orderBy("data", "desc")
+        );
+        
+        onSnapshot(q, (snapshot) => {
+            dadosMestres = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            const hoje = new Date().toISOString().split('T')[0];
+            if (dadosMestres.some(d => d.data === hoje) && Object.values(filtrosAtivos).every(v => v.length === 0)) {
+                filtrosAtivos.data = [hoje];
+            }
+
+            window.atualizarFiltros();
+        }, (error) => {
+            console.error("Erro no snapshot de agendamentos:", error);
+        });
     });
 
+    // Ouvinte do campo de busca global
     document.getElementById('inputBusca')?.addEventListener('input', window.atualizarFiltros);
 }
 
