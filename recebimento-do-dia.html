@@ -231,19 +231,11 @@
 
     <nav class="navbar">
         <div class="nav-left">
-            <a href="inicial.html" class="btn-voltar" title="Voltar">
-                <i class="fa-solid fa-arrow-left"></i>
-            </a>
-            <span id="txtUser">Bem-vindo, USUARIO</span>
+            <a href="inicial.html" style="color:var(--primary); margin-right: 15px;"><i class="fas fa-arrow-left"></i></a>
+            <span id="userNameDisplay" class="user-info">...</span>
         </div>
-        
-        <div class="navbar-titulo">
-            RECEBIMENTO DO DIA
-        </div>
-        
-        <div class="nav-right">
-            <button class="btn-sair" onclick="logout()">SAIR</button>
-        </div>
+        <h2>RECEBIMENTOS DO DIA</h2>
+        <button onclick="logout()" style="background:none; border:1px solid #ccc; padding:5px 10px; border-radius:5px; cursor:pointer;">Sair</button>
     </nav>
 
     <div class="painel-estatistico">
