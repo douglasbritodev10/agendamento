@@ -13,6 +13,19 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
+Analisando as alterações que você fez no HTML da `navbar`, existem alguns pequenos detalhes técnicos que quebraram o layout e fizeram o botão de voltar continuar invisível ou desconfigurado.
+
+Aqui estão os **três motivos** do erro na sua alteração:
+
+1. **Falta da classe correta no botão voltar:** Você removeu a classe `class="btn-voltar"` da tag `<a>`. Sem ela, o CSS não consegue aplicar as correções e o botão some ou fica minúsculo.
+2. **Uso de variável inexistente:** Você usou `color: var(--primary);`, mas no seu `:root` só existem as variáveis `--primary-blue` e `--primary-red`. O navegador não reconhece e deixa o link transparente ou preto (invisível no fundo azul).
+3. **Mudança da Tag do Título:** Você alterou de uma `div` com classe para um `<h2>`. O CSS antigo procurava pela classe `.navbar-titulo`.
+
+Para resolver isso de forma definitiva mantendo a estrutura limpa que você deseja, eu ajustei o bloco de `<style>` para abraçar perfeitamente essas tags que você alterou (`<h2>`, IDs novos e classes novas).
+
+Aqui está o código do seu `<style>` completo e corrigido para você substituir:
+
+```css
 <style>
     :root { 
         --primary-blue: #0A497B; 
@@ -44,8 +57,8 @@
         gap: 12px; 
     }
 
-    /* FORÇANDO A EXIBIÇÃO DA SETA (Estava invisível/zerada em alguns navegadores) */
-    .btn-voltar { 
+    /* Correção Direta no Link de Voltar que você colocou */
+    .nav-left a { 
         color: #ffffff !important; 
         font-size: 22px !important; 
         text-decoration: none !important; 
@@ -59,43 +72,35 @@
         visibility: visible !important;
         opacity: 1 !important;
     }
-    .btn-voltar i {
-        display: inline-block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        color: #ffffff !important;
-    }
-    .btn-voltar:hover { background: rgba(255,255,255,0.15); transform: scale(1.1); }
+    .nav-left a:hover { background: rgba(255,255,255,0.15); transform: scale(1.1); }
     
-    #txtUser { font-weight: bold; font-size: 14px; }
+    /* Estilização para o userNameDisplay que você alterou */
+    .user-info { font-weight: bold; font-size: 14px; color: #ffffff; }
 
-    /* Centro: Título */
-    .navbar-titulo {
+    /* Centro: Suporte direto para a tag H2 que você escolheu */
+    .navbar h2 {
         font-weight: bold;
         font-size: 16px;
         text-transform: uppercase;
         letter-spacing: 1px;
         text-align: center;
         white-space: nowrap;
+        margin: 0; /* Remove as margens padrão do H2 que desalinhariam o topo */
     }
 
-    /* Direita: Botão Sair */
-    .nav-right { 
-        display: flex; 
-        justify-content: flex-end; 
-    }
-
-    .btn-sair { 
-        background: transparent; 
-        border: 1px solid white; 
-        color: white; 
-        padding: 6px 16px; 
-        border-radius: 4px; 
+    /* Direita: Ajuste do Botão Sair direto da Tag */
+    .navbar button { 
+        justify-self: end;
+        background: transparent !important; 
+        border: 1px solid white !important; 
+        color: white !important; 
+        padding: 6px 16px !important; 
+        border-radius: 4px !important; 
         cursor: pointer; 
         font-weight: bold;
         transition: 0.2s;
     }
-    .btn-sair:hover { background: white; color: var(--primary-blue); }
+    .navbar button:hover { background: white !important; color: var(--primary-blue) !important; }
 
     /* Painel Gráfico Central */
     .painel-estatistico { 
@@ -150,7 +155,7 @@
     }
     .btn-view-action:hover { background: #0288d1; }
 
-    /* ESTRUTURA DOS MODAIS */
+    /* ESTRUTURA DOS MODAIS (Mantendo a configuração excelente de Computador) */
     .modal-overlay { 
         display: none; position: fixed; top:0; left:0; width:100%; height:100%; 
         background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center;
@@ -162,11 +167,10 @@
         box-sizing: border-box;
     }
 
-    /* SUPER CONFIGURAÇÃO PARA O MODAL DE COMPOSIÇÃO NO COMPUTADOR */
     #modalComposicao .modal-glass { 
-        max-width: 95vw; /* Ocupa quase a tela toda horizontalmente */
-        width: 1350px;    /* Alvo ideal para monitor grande */
-        max-height: 90vh; /* Não estoura a altura do monitor */
+        max-width: 95vw; 
+        width: 1350px;    
+        max-height: 90vh; 
         display: flex;
         flex-direction: column;
     }
@@ -177,23 +181,21 @@
         flex-shrink: 0;
     }
     .modal-header .fa-times { order: -1; font-size: 20px; color: var(--primary-red); cursor: pointer; }
-    .modal-header h2, .modal-header span { font-weight: bold; flex-grow: 1; margin: 0; font-size: 16px; }
+    .modal-header h2, .modal-header span { font-weight: bold; flex-grow: 1; margin: 0; font-size: 16px; color: #333; }
 
-    /* Corpo do modal otimizado para rolar internamente se necessário */
     .modal-body { 
         max-height: 75vh; 
         overflow-y: auto; 
-        overflow-x: auto; /* Permite rolagem horizontal apenas se os dados forem gigantes */
+        overflow-x: auto; 
         width: 100%;
         box-sizing: border-box;
     }
     
-    /* Forçando a tabela interna a usar todo o espaço sem esmagar colunas */
     .modal-body table { 
         width: 100%; 
         border-collapse: collapse;
         border: 1px solid #eee; 
-        min-width: 100%; /* Garante preenchimento total no Desktop */
+        min-width: 100%; 
     }
     .modal-body th, .modal-body td {
         padding: 10px;
@@ -206,18 +208,17 @@
     /* Ajustes Exclusivos para Mobile (Celulares) */
     @media (max-width: 768px) {
         .navbar { grid-template-columns: auto 1fr auto; padding: 10px; }
-        #txtUser { display: none; }
-        .navbar-titulo { font-size: 13px; letter-spacing: 0; }
-        .btn-sair { padding: 4px 10px; font-size: 11px; }
+        .user-info { display: none; }
+        .navbar h2 { font-size: 13px; letter-spacing: 0; }
+        .navbar button { padding: 4px 10px !important; font-size: 11px !important; }
         .chart-container { width: 220px; height: 220px; }
         
-        /* No mobile, voltamos o modal para o tamanho padrão confortável */
         #modalComposicao .modal-glass { 
             width: 95%; 
             max-height: 85vh; 
         }
         .modal-body table {
-            min-width: 600px; /* Cria a rolagem lateral saudável no celular */
+            min-width: 600px; 
         }
     }
 
