@@ -1,5 +1,6 @@
 import { app } from './firebase-config.js';
-import { getFirestore, getDocs, collection, query, onSnapshot, orderBy, where } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getFirestore, getDocs, collection, query, onSnapshot, orderBy, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
 const db = getFirestore(app);
 
