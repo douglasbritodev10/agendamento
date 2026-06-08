@@ -387,7 +387,7 @@ window.exportarPDF = () => {
         head: [columnsT1],
         body: rowsT1,
         theme: 'striped',
-        headStyles: { fill someColor: [66, 66, 66], fontStyle: 'bold' },
+        headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold' },
         styles: { fontSize: 8 },
         columnStyles: {
             5: { cellWidth: 200 } // Dá mais espaço para caber a listagem dos nomes
