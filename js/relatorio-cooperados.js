@@ -11,9 +11,9 @@ const userRole = localStorage.getItem('role') || "COLABORADOR"; // Garante bloqu
 
 document.addEventListener('DOMContentLoaded', () => {
     // Verificação de Segurança de nível ADM
-    if (userRole.toUpperCase() !== "ADMIN" && userRole.toUpperCase() !== "ADM") {
+    if (userRole.toUpperCase() !== "ADM" && userRole.toUpperCase() !== "ADM") {
         alert("Acesso restrito! Apenas administradores podem visualizar esta página.");
-        window.location.href = "cargas-do-dia.html";
+        window.location.href = "index.html";
         return;
     }
 
