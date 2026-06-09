@@ -545,8 +545,8 @@ window.filtrarModal = () => {
 };
 
 window.abrirModalSelecao = () => {
-    // FILTRO ADICIONADO: Traz apenas quem NÃO está no painel E possui a situação exatamente como "Agendada"
-    const lista = todasAgendasDoBanco.filter(a => !a.noPainel && a.agendasituacao === 'Agendada');
+    // FILTRO ADICIONADO: Traz apenas quem NÃO está no painel E possui status exatamente como "Agendada"
+    const lista = todasAgendasDoBanco.filter(a => !a.noPainel && a.status === 'Agendada');
     
     document.getElementById('corpoBuscaModal').innerHTML = lista.map(a => {
         // Converte para exibição em tela e para a filtragem correta
