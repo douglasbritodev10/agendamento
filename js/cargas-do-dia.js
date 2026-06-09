@@ -545,7 +545,9 @@ window.filtrarModal = () => {
 };
 
 window.abrirModalSelecao = () => {
-    const lista = todasAgendasDoBanco.filter(a => !a.noPainel);
+    // FILTRO ADICIONADO: Traz apenas quem NÃO está no painel E possui a situação exatamente como "Agendada"
+    const lista = todasAgendasDoBanco.filter(a => !a.noPainel && a.agendasituacao === 'Agendada');
+    
     document.getElementById('corpoBuscaModal').innerHTML = lista.map(a => {
         // Converte para exibição em tela e para a filtragem correta
         const dataModalFormatada = a.data ? a.data.split('-').reverse().join('/') : '';
@@ -573,8 +575,19 @@ window.atualizarCampo = async (id, campo, valor) => {
 window.puxarSelecionados = async () => {
     const checks = document.querySelectorAll('.check-item:checked');
     for(let cb of checks) {
+        // CORREÇÃO DO FILTRO: Verifica se a linha do checkbox está visível para o usuário antes de enviar
+        const linhaPai = cb.closest('.linha-modal');
+        if (linhaPai && linhaPai.style.display === 'none') {
+            continue; // Se a linha está oculta pelo filtro de data/texto, ignora e pula para o próximo
+        }
+
         await updateDoc(doc(db, "agendamentos", cb.value), { noPainel: true });
-        await addDoc(collection(db, "historico"), { usuario: usuarioLogin, acao: "ADICIONADO AO PAINEL", senha: cb.dataset.senha, dataHora: serverTimestamp() });
+        await addDoc(collection(db, "historico"), { 
+            usuario: usuarioLogin, 
+            acao: "ADICIONADO AO PAINEL", 
+            senha: cb.dataset.senha, 
+            dataHora: serverTimestamp() 
+        });
     }
     fecharModais();
 };
