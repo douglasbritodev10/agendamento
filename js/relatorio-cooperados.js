@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 let listaCooperadosBanco = [];
 let dadosProcessadosReport = [];
 let totaisIndividuaisReport = {};
+let todasAgendasDoPeriodo = [];
 
 // Carrega os nomes dos cooperados para compor o Dropdown Inteligente
 async function carregarListaFiltroCooperados() {
@@ -105,6 +106,11 @@ window.atualizarLabelDropdown = () => {
         label.textContent = `${selecionados.length} Cooperado(s) Selecionado(s)`;
         document.getElementById('chkTodos').checked = false;
     }
+
+    // ADICIONE ESSA LINHA ABAIXO: Dispara a atualização visual instantânea se já houver dados carregados
+    if (todasAgendasDoPeriodo.length > 0) {
+        window.aplicarFiltroEmTempoReal();
+    }
 };
 
 // Gerador Matemático do Relatório Ajustado e Corrigido
@@ -121,10 +127,7 @@ window.gerarRelatorio = async () => {
     const dataInicio = dataInicioRaw.split('T')[0];
     const dataFim = dataFimRaw.split('T')[0];
 
-    const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
-
     try {
-        // CORREÇÃO 1: Removemos o orderBy daqui para evitar problemas de índice composto no Firestore
         const q = query(
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
@@ -134,56 +137,57 @@ window.gerarRelatorio = async () => {
         const querySnapshot = await getDocs(q);
         const agendas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Tratamento e Filtragem via JavaScript
-        dadosProcessadosReport = agendas
-            .map(a => {
-                let listaNomes = [];
-                // Se no banco for String corrida separada por vírgula ou Array
-                if (a.cooperados && typeof a.cooperados === 'string') {
-                    listaNomes = a.cooperados.split(',')
-                        .map(nome => nome.trim())
-                        .filter(nome => nome.length > 0);
-                } else if (Array.isArray(a.cooperados)) {
-                    listaNomes = a.cooperados;
-                } else if (a.NomeCooperados && typeof a.NomeCooperados === 'string') { 
-                    listaNomes = a.NomeCooperados.split(',')
-                        .map(nome => nome.trim())
-                        .filter(nome => nome.length > 0);
-                }
-                return { ...a, cooperadosArray: listaNomes };
-            })
-            .filter(a => {
-                const temCooperados = a.cooperadosArray && a.cooperadosArray.length > 0;
-                
-                // Garante que o valor da descarga seja numérico válido
-                const valorDescargaNum = parseFloat(a.valorDescarga) || 0;
-                const valorValido = valorDescargaNum > 0;
-                
-                // CORREÇÃO 2: Removemos a trava do "PENDENTE". Agora aceita qualquer situação, MENOS "CANCELADA"
-                const situacaoValida = a.agendasituacao !== "CANCELADA";
-                
-                // Se marcou cooperados específicos no filtro dropdown
-                if (cooperadosSelecionados.length > 0) {
-                    const encontrou = a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
-                    return temCooperados && valorValido && situacaoValida && encontrou;
-                }
-                
-                return temCooperados && valorValido && situacaoValida;
-            })
-            // CORREÇÃO 3: Ordenação cronológica manual feita diretamente no Front-End
-            .sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+        // Tratamento inicial e parsing dos nomes (Armazena tudo no cache global)
+        todasAgendasDoPeriodo = agendas.map(a => {
+            let listaNomes = [];
+            if (a.cooperados && typeof a.cooperados === 'string') {
+                listaNomes = a.cooperados.split(',').map(nome => nome.trim()).filter(nome => nome.length > 0);
+            } else if (Array.isArray(a.cooperados)) {
+                listaNomes = a.cooperados;
+            } else if (a.NomeCooperados && typeof a.NomeCooperados === 'string') { 
+                listaNomes = a.NomeCooperados.split(',').map(nome => nome.trim()).filter(nome => nome.length > 0);
+            }
+            return { ...a, cooperadosArray: listaNomes };
+        });
 
-        if (dadosProcessadosReport.length === 0) {
-            alert("Nenhuma movimentação de carga válida encontrada para este período com os filtros selecionados.");
-            limparResultados();
-            return;
-        }
+        // Chama a função para filtrar e renderizar na tela
+        window.aplicarFiltroEmTempoReal();
 
-        renderizarTabelasTela();
     } catch (e) {
         console.error("Erro ao gerar relatório:", e);
         alert("Erro ao buscar dados do banco de dados. Abra o console do navegador (F12) para detalhes.");
     }
+};
+
+// Nova função executada em tempo real para atualizar a tela dinamicamente
+window.aplicarFiltroEmTempoReal = () => {
+    const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
+
+    // Filtra a partir do cache completo guardado na memória
+    dadosProcessadosReport = todasAgendasDoPeriodo
+        .filter(a => {
+            const temCooperados = a.cooperadosArray && a.cooperadosArray.length > 0;
+            const valorDescargaNum = parseFloat(a.valorDescarga) || 0;
+            const valorValido = valorDescargaNum > 0;
+            const situacaoValida = a.agendasituacao !== "CANCELADA";
+            
+            // Se houver cooperados selecionados no dropdown, filtra por eles
+            if (cooperadosSelecionados.length > 0) {
+                const encontrou = a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
+                return temCooperados && valorValido && situacaoValida && encontrou;
+            }
+            
+            // Se nenhum tiver marcado (ou marcar "Todos"), exibe todos do período
+            return temCooperados && valorValido && situacaoValida;
+        })
+        .sort((a, b) => (a.data || "").localeCompare(b.data || ""));
+
+    if (dadosProcessadosReport.length === 0) {
+        limparResultados();
+        return;
+    }
+
+    renderizarTabelasTela();
 };
 
 function limparResultados() {
@@ -266,7 +270,7 @@ function formatarDataBR(dataString) {
     return `${partes[2]}/${partes[1]}/${partes[0]}`; 
 }
 
-// ==================== ENGINE DE EXPORTAÇÃO EXCEL ====================
+// ==================== ENGINE DE EXPORTAÇÃO EXCEL (Ajuste de Segurança) ====================
 window.exportarExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Fechamento de Cooperados');
@@ -296,7 +300,7 @@ window.exportarExcel = async () => {
 
     dadosProcessadosReport.forEach(agenda => {
         const equipe = agenda.cooperadosArray || [];
-        sheet.addRow([
+        const r = sheet.addRow([
             formatarDataBR(agenda.data),
             agenda.fornecedor,
             parseFloat(agenda.valorDescarga) || 0,
@@ -304,13 +308,9 @@ window.exportarExcel = async () => {
             equipe.length,
             equipe.join(', ')
         ]);
-    });
-
-    sheet.eachRow((row, rowNumber) => {
-        if(rowNumber > 5 && row.getCell(3).value) {
-            row.getCell(3).numberFormat = '"R$"#,##0.00';
-            row.getCell(4).numberFormat = '"R$"#,##0.00';
-        }
+        // Formata moeda diretamente na inserção da linha
+        r.getCell(3).numberFormat = '"R$"#,##0.00';
+        r.getCell(4).numberFormat = '"R$"#,##0.00';
     });
 
     sheet.addRow([]);
@@ -319,33 +319,30 @@ window.exportarExcel = async () => {
     const rowTitle2 = sheet.addRow(["2. Demonstrativo de Acerto por Cooperado (Individual)"]);
     rowTitle2.getCell(1).font = { bold: true, size: 12 };
 
-    const headersT2 = ["Nome do Cooperado", "Valor Quota Parte (Bruto)", "Adicional INSS (20%)", "Total Líquido a Receber", "", ""];
+    const headersT2 = ["Nome do Cooperado", "Valor Quota Parte (Bruto)", "Adicional INSS (20%)", "Total Líquido a Receber"];
     const headerRowT2 = sheet.addRow(headersT2);
     headerRowT2.eachCell(c => {
         c.font = { bold: true, color: { argb: 'FFFFFF' } };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B5E20' } };
     });
 
+    // Variável para somar o total de forma limpa via JS
+    let totalGeralRepasse = 0;
+
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
         const item = totaisIndividuaisReport[nome];
-        sheet.addRow([
+        const r = sheet.addRow([
             nome,
             item.bruto,
             item.inss,
             item.liquido
         ]);
-    });
-
-    let totalGeralRepasse = 0;
-    sheet.eachRow((row, rowNumber) => {
-        if(rowNumber > dadosProcessadosReport.length + 8 && row.getCell(2).value) {
-            row.getCell(2).numberFormat = '"R$"#,##0.00';
-            row.getCell(3).numberFormat = '"R$"#,##0.00';
-            row.getCell(4).numberFormat = '"R$"#,##0.00';
-            if(typeof row.getCell(4).value === 'number') {
-                totalGeralRepasse += row.getCell(4).value;
-            }
-        }
+        // Formata moeda diretamente na inserção da linha
+        r.getCell(2).numberFormat = '"R$"#,##0.00';
+        r.getCell(3).numberFormat = '"R$"#,##0.00';
+        r.getCell(4).numberFormat = '"R$"#,##0.00';
+        
+        totalGeralRepasse += item.liquido;
     });
 
     sheet.addRow([]);
