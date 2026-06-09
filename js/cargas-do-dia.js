@@ -480,7 +480,9 @@ window.abrirModalAcerto = (id, senha, equipeSalva, valorSalvo) => {
 window.salvarAcerto = async () => {
     const btnSalvar = document.querySelector('#modalAcerto .btn-puxar'); // Pega o botão de salvar
     const id = document.getElementById('idAgendamentoAcerto').value;
-    const senha = document.getElementById('senhaAgendamentoAcerto').value;
+    
+    // 1. Mudamos o nome da variável para senhaAgendamento para bater com o banco
+    const senhaAgendamento = document.getElementById('senhaAgendamentoAcerto').value; 
     const valor = document.getElementById('valorDescarga').value;
 
     // Coleta todos os nomes marcados
@@ -504,11 +506,12 @@ window.salvarAcerto = async () => {
             valorDescarga: parseFloat(valor) // Salva como número para facilitar relatórios
         });
 
+        // 2. Agora salvamos no histórico usando exatamente a variável com o nome correto
         await addDoc(collection(db, "historico"), {
             usuario: usuarioLogin,
             acao: "ACERTO MULTIPLO DESCARGA",
             detalhe: `Equipe: ${equipeString} | Valor: R$ ${valor}`,
-            senha: senhaAgendamento,
+            senha: senhaAgendamento, // <-- Agora o JavaScript reconhece perfeitamente!
             dataHora: serverTimestamp()
         });
 
