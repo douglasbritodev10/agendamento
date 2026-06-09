@@ -45,10 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Exibe o nome do usuário na tela (Ex: DBRITO)
     document.getElementById('user-display').textContent = usuarioLogin;
     
-    // Inicializar datas com o mês corrente
-    const hoje = new Date();
-    const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
-    const ultimoDia = hoje.toISOString().split('T')[0];
+    // Deixa os campos de data vazios por padrão na inicialização
     document.getElementById('dataInicio').value = primeiroDia;
     document.getElementById('dataFim').value = ultimoDia;
 
@@ -97,7 +94,6 @@ window.marcarTodosCooperados = (status) => {
 };
 
 window.atualizarLabelDropdown = () => {
-    constGrid = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked'));
     const selecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked'));
     const label = document.getElementById('dropdownLabel');
     if (selecionados.length === 0) {
@@ -128,6 +124,8 @@ window.gerarRelatorio = async () => {
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
             where("data", "<=", dataFim),
+            where("valorDescarga", ">", 0),
+            orderBy("valorDescarga"),            
             orderBy("data", "asc")
         );
         
