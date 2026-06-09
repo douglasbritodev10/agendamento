@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Exibe o nome do usuário na tela (Ex: DBRITO)
     document.getElementById('user-display').textContent = usuarioLogin;
     
-    // CORREÇÃO DO ERRO DA LINHA 49: Deixa os campos de data vazios por padrão na inicialização
+    // Deixa os campos de data vazios por padrão na inicialização
     document.getElementById('dataInicio').value = "";
     document.getElementById('dataFim').value = "";
 
@@ -120,7 +120,7 @@ window.gerarRelatorio = async () => {
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
 
     try {
-        // CORREÇÃO DO ERRO DO FIREBASE: Filtro de desigualdade apenas no campo 'data' com ordenação por data
+        // Busca os agendamentos pela data no Firestore
         const q = query(
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
@@ -131,11 +131,11 @@ window.gerarRelatorio = async () => {
         const querySnapshot = await getDocs(q);
         const agendas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Filtro refinado via JS: Tratando 'cooperados' como String
+        // Tratamento e Filtragem via JavaScript
         dadosProcessadosReport = agendas
             .map(a => {
-                // Converte a string de cooperados em um array real de nomes limpos
                 let listaNomes = [];
+                // Se no banco for String corrida separada por vírgula
                 if (a.cooperados && typeof a.cooperados === 'string') {
                     listaNomes = a.cooperados.split(',')
                         .map(nome => nome.trim())
@@ -143,18 +143,18 @@ window.gerarRelatorio = async () => {
                 } else if (Array.isArray(a.cooperados)) {
                     listaNomes = a.cooperados;
                 }
-
                 return { ...a, cooperadosArray: listaNomes };
             })
             .filter(a => {
                 const temCooperados = a.cooperadosArray.length > 0;
                 const valorValido = parseFloat(a.valorDescarga) > 0;
-        
-                if (cooperadosSelecionados.length > 0 && temCooperados) {
-                    // Verifica se algum dos cooperados selecionados no filtro está na lista do agendamento
+                
+                // Se marcou cooperados específicos no filtro
+                if (cooperadosSelecionados.length > 0) {
                     const encontrou = a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
                     return temCooperados && valorValido && encontrou;
                 }
+                // Se não marcou nenhum filtro de cooperado, traz todas as cargas válidas do período
                 return temCooperados && valorValido;
             })
             .sort((a, b) => a.data.localeCompare(b.data));
@@ -192,7 +192,6 @@ function renderizarTabelasTela() {
     dadosProcessadosReport.forEach(agenda => {
         const dataFormatada = formatarDataBR(agenda.data);
         
-        // Altera a cor da linha baseado na mudança de data (ótimo para ver cargas do mesmo dia juntas)
         if (agenda.data !== dataReferenciaAnterior) {
             classeEstiloDia = (classeEstiloDia === "dia-par") ? "dia-impar" : "dia-par";
             dataReferenciaAnterior = agenda.data;
@@ -282,13 +281,14 @@ window.exportarExcel = async () => {
     });
 
     dadosProcessadosReport.forEach(agenda => {
+        const equipe = agenda.cooperadosArray || [];
         sheet.addRow([
             formatarDataBR(agenda.data),
             agenda.fornecedor,
-            parseFloat(agenda.valorDescarga),
-            parseFloat(agenda.valorDescarga) * 0.7,
-            agenda.cooperados.length,
-            agenda.cooperados.join(', ')
+            parseFloat(agenda.valorDescarga) || 0,
+            (parseFloat(agenda.valorDescarga) || 0) * 0.7,
+            equipe.length,
+            equipe.join(', ')
         ]);
     });
 
@@ -382,19 +382,17 @@ window.exportarPDF = () => {
     doc.text("1. Detalhamento das Movimentações de Descarga", 40, 115);
     
     const columnsT1 = ["Data", "Fornecedor", "Total (R$)", "Líq 70% (R$)", "Qtd", "Equipe"];
-    let dataReferenciaAnteriorPDF = "";
 
     const rowsT1 = dadosProcessadosReport.map(agenda => {
-        if (agenda.data !== dataReferenciaAnteriorPDF) {
-            dataReferenciaAnteriorPDF = agenda.data;
-        }
+        const vDescarga = parseFloat(agenda.valorDescarga) || 0;
+        const equipe = agenda.cooperadosArray || [];
         return [
             formatarDataBR(agenda.data),
-            agenda.fornecedor,
-            agenda.valorDescarga.toFixed(2),
-            (agenda.valorDescarga * 0.70).toFixed(2),
-            agenda.cooperados.length,
-            agenda.cooperados.join(', ')
+            agenda.fornecedor || 'N/A',
+            vDescarga.toFixed(2),
+            (vDescarga * 0.70).toFixed(2),
+            equipe.length,
+            equipe.join(', ')
         ];
     });
 
@@ -430,7 +428,7 @@ window.exportarPDF = () => {
     doc.setFont("Helvetica", "bold");
     doc.text("2. Demonstrativo Líquido de Repasse Individual", 40, currentY);
 
-    const columnsT2 = ["Nome do Cooperado Cooperado", "Quota Parte Rateio (R$)", "INSS Próprio +20% (R$)", "Líquido Líquido a Pagar (R$)"];
+    const columnsT2 = ["Nome do Cooperado", "Quota Parte Rateio (R$)", "INSS Próprio +20% (R$)", "Líquido a Pagar (R$)"];
     const rowsT2 = Object.keys(totaisIndividuaisReport).sort().map(nome => {
         const item = totaisIndividuaisReport[nome];
         return [
