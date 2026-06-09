@@ -53,7 +53,7 @@
         .nav-left {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         .btn-voltar {
@@ -93,6 +93,7 @@
             background: rgba(0,0,0,0.05);
             padding: 6px 12px;
             border-radius: 20px;
+            white-space: nowrap;
         }
 
         .btn-sair {
@@ -155,6 +156,7 @@
             border-radius: 8px;
             font-size: 0.95rem;
             background: white;
+            height: 41px; /* Uniformiza altura com o dropdown */
         }
 
         /* Dropdown customizado de Checkboxes para Cooperados */
@@ -173,6 +175,7 @@
             justify-content: space-between;
             align-items: center;
             font-size: 0.95rem;
+            height: 41px;
         }
 
         .dropdown-content {
@@ -183,11 +186,11 @@
             max-height: 250px;
             overflow-y: auto;
             border: 1px solid #ccc;
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            z-index: 10;
+            border-radius: 8px;
+            z-index: 1010;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             padding: 10px;
+            top: 45px;
         }
 
         .dropdown-content.show {
@@ -198,15 +201,15 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 6px 4px;
+            padding: 8px 4px;
             cursor: pointer;
             font-size: 0.95rem;
         }
 
         .dropdown-item input {
             cursor: pointer;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
         }
 
         .btn-gerar {
@@ -223,6 +226,7 @@
             gap: 8px;
             font-size: 0.95rem;
             transition: background 0.2s;
+            height: 41px;
         }
 
         .btn-gerar:hover {
@@ -301,7 +305,6 @@
             color: #333;
         }
 
-        /* Estilo Dinâmico de Linhas para Diferentes Dias no PDF simulado no Front */
         .dia-par { background-color: #ffffff; }
         .dia-impar { background-color: #f7f9fc; }
 
@@ -310,22 +313,27 @@
 
         /* Responsividade Mobile */
         @media(max-width: 768px) {
-            .page-title {
-                position: static;
-                transform: none;
-                font-size: 1.1rem;
-            }
             .navbar {
-                flex-direction: column;
-                gap: 10px;
-                text-align: center;
+                flex-direction: row;
+                justify-content: space-between;
+                padding: 10px 15px;
+            }
+            .page-title {
+                display: none; /* Esconde o título longo no topo do mobile para salvar espaço */
+            }
+            .nav-left {
+                width: auto;
             }
             .nav-right {
-                width: 100%;
-                justify-content: space-between;
+                width: auto;
+                gap: 8px;
+            }
+            .btn-sair {
+                padding: 6px 12px;
+                font-size: 0.85rem;
             }
             .filtro-grid {
-                grid-template-columns: 1xl;
+                grid-template-columns: 1fr; /* Corrigido de 1xl para 1fr */
             }
             .export-actions {
                 justify-content: center;
@@ -381,10 +389,12 @@
             <button class="btn-voltar" onclick="window.location.href='inicial.html'" title="Voltar ao Painel">
                 <i class="fas fa-arrow-left"></i>
             </button>
-        </div>
-        <div class="page-title">Relatório Financeiro de Cooperados</div>
-        <div class="nav-right">
             <span class="user-info" id="user-display">Carregando...</span>
+        </div>
+        
+        <div class="page-title">Relatório Financeiro de Cooperados</div>
+        
+        <div class="nav-right">
             <button class="btn-sair" onclick="window.location.href='index.html'">
                 <i class="fas fa-sign-out-alt"></i> Sair
             </button>
@@ -440,12 +450,12 @@
                 <table id="tabelaAgrupada">
                     <thead>
                         <tr>
-                            <th>Data</th>
-                            <th>Fornecedor</th>
-                            <th>Valor Total (R$)</th>
-                            <th>Líquido (70%)</th>
-                            <th>Qtd. Transbordo</th>
-                            <th>Nomes dos Cooperados Activos</th>
+                            <th data-label="Data">Data</th>
+                            <th data-label="Fornecedor">Fornecedor</th>
+                            <th data-label="Valor Total (R$)">Valor Total (R$)</th>
+                            <th data-label="Líquido (70%)">Líquido (70%)</th>
+                            <th data-label="Qtd. Transbordo">Qtd. Transbordo</th>
+                            <th data-label="Nomes dos Cooperados Activos">Nomes dos Cooperados Activos</th>
                         </tr>
                     </thead>
                     <tbody id="corpoAgrupado"></tbody>
@@ -461,10 +471,10 @@
                 <table id="tabelaIndividual">
                     <thead>
                         <tr>
-                            <th>Nome do Cooperado</th>
-                            <th class="text-end">Valor Bruto Rateado (R$)</th>
-                            <th class="text-end">INSS Próprio (+20%)</th>
-                            <th class="text-end">Líquido Final a Receber (R$)</th>
+                            <th data-label="Nome do Cooperado">Nome do Cooperado</th>
+                            <th data-label="Valor Bruto Rateado (R$)" class="text-end">Valor Bruto Rateado (R$)</th>
+                            <th data-label="INSS Próprio (+20%)" class="text-end">INSS Próprio (+20%)</th>
+                            <th data-label="Líquido Final a Receber (R$)" class="text-end">Líquido Final a Receber (R$)</th>
                         </tr>
                     </thead>
                     <tbody id="corpoIndividual"></tbody>
