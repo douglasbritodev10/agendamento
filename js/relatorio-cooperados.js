@@ -131,19 +131,32 @@ window.gerarRelatorio = async () => {
         const querySnapshot = await getDocs(q);
         const agendas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Filtro refinado via JS: Garante ordenação cronológica correta e traz as agendas com pagamento válido (>0)
+        // Filtro refinado via JS: Tratando 'cooperados' como String
         dadosProcessadosReport = agendas
+            .map(a => {
+                // Converte a string de cooperados em um array real de nomes limpos
+                let listaNomes = [];
+                if (a.cooperados && typeof a.cooperados === 'string') {
+                    listaNomes = a.cooperados.split(',')
+                        .map(nome => nome.trim())
+                        .filter(nome => nome.length > 0);
+                } else if (Array.isArray(a.cooperados)) {
+                    listaNomes = a.cooperados;
+                }
+
+                return { ...a, cooperadosArray: listaNomes };
+            })
             .filter(a => {
-                const temCooperados = a.cooperados && Array.from(a.cooperados).length > 0;
+                const temCooperados = a.cooperadosArray.length > 0;
                 const valorValido = parseFloat(a.valorDescarga) > 0;
-                
+        
                 if (cooperadosSelecionados.length > 0 && temCooperados) {
-                    const encontrou = a.cooperados.some(nome => cooperadosSelecionados.includes(nome));
+                    // Verifica se algum dos cooperados selecionados no filtro está na lista do agendamento
+                    const encontrou = a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
                     return temCooperados && valorValido && encontrou;
                 }
                 return temCooperados && valorValido;
             })
-            // Garante ordenação absoluta por data de forma ascendente
             .sort((a, b) => a.data.localeCompare(b.data));
 
         if (dadosProcessadosReport.length === 0) {
@@ -187,7 +200,7 @@ function renderizarTabelasTela() {
 
         const valorTotal = parseFloat(agenda.valorDescarga) || 0;
         const valorLíquidoSetenta = valorTotal * 0.70; 
-        const listaEquipe = agenda.cooperados || [];
+        const listaEquipe = agenda.cooperadosArray || [];
         const qtdParticipantes = listaEquipe.length;
 
         const quotaParteBruta = valorLíquidoSetenta / qtdParticipantes;
