@@ -531,11 +531,15 @@ window.salvarAcerto = async () => {
 window.filtrarModal = () => {
     const dataFiltro = document.getElementById('filtroDataModal').value;
     const busca = document.getElementById('buscaTextoModal').value.toUpperCase();
+    
+    // Converte a data do input (YYYY-MM-DD) para o formato brasileiro (DD/MM/YYYY)
     let dataBR = dataFiltro ? dataFiltro.split('-').reverse().join('/') : "";
 
     document.querySelectorAll('.linha-modal').forEach(tr => {
+        // Agora ambos os lados vão comparar no formato DD/MM/YYYY
         const bateData = dataBR === "" || tr.getAttribute('data-data') === dataBR;
         const bateTexto = busca === "" || tr.getAttribute('data-txt').toUpperCase().includes(busca);
+        
         tr.style.display = (bateData && bateTexto) ? '' : 'none';
     });
 };
@@ -543,12 +547,14 @@ window.filtrarModal = () => {
 window.abrirModalSelecao = () => {
     const lista = todasAgendasDoBanco.filter(a => !a.noPainel);
     document.getElementById('corpoBuscaModal').innerHTML = lista.map(a => {
-        // Converte apenas para exibição em tela
+        // Converte para exibição em tela e para a filtragem correta
         const dataModalFormatada = a.data ? a.data.split('-').reverse().join('/') : '';
         
+        // Ajustado: data-data agora recebe 'dataModalFormatada' (DD/MM/YYYY)
+        // Ajustado: data-txt agora busca por 'senhaAgendamento' que é o campo real usado no sistema
         return `
-        <tr class="linha-modal" data-data="${a.data}" data-txt="${a.senha} ${a.fornecedor}">
-            <td><input type="checkbox" class="check-item" value="${a.id}" data-senha="${a.senha}"></td>
+        <tr class="linha-modal" data-data="${dataModalFormatada}" data-txt="${a.senhaAgendamento || ''} ${a.fornecedor || ''}">
+            <td><input type="checkbox" class="check-item" value="${a.id}" data-senha="${a.senhaAgendamento || ''}"></td>
             <td><b>${a.senhaAgendamento}</b></td>
             <td>${dataModalFormatada}</td>
             <td style="font-size:10px;">${a.cargas || ''}</td>
