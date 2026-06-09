@@ -156,10 +156,10 @@
             border-radius: 8px;
             font-size: 0.95rem;
             background: white;
-            height: 41px; /* Uniformiza altura com o dropdown */
+            height: 41px;
         }
 
-        /* Dropdown customizado de Checkboxes para Cooperados */
+        /* Dropdown de Checkboxes */
         .dropdown-checkbox {
             position: relative;
             width: 100%;
@@ -319,7 +319,7 @@
                 padding: 10px 15px;
             }
             .page-title {
-                display: none; /* Esconde o título longo no topo do mobile para salvar espaço */
+                display: none;
             }
             .nav-left {
                 width: auto;
@@ -333,7 +333,7 @@
                 font-size: 0.85rem;
             }
             .filtro-grid {
-                grid-template-columns: 1fr; /* Corrigido de 1xl para 1fr */
+                grid-template-columns: 1fr;
             }
             .export-actions {
                 justify-content: center;
@@ -415,7 +415,7 @@
                 <div class="form-group">
                     <label>Filtrar Cooperados:</label>
                     <div class="dropdown-checkbox">
-                        <div class="dropdown-btn" onclick="toggleDropdown()">
+                        <div class="dropdown-btn" id="btnGatilhoDropdown">
                             <span id="dropdownLabel">Todos os Cooperados</span>
                             <i class="fas fa-chevron-down"></i>
                         </div>
@@ -427,7 +427,7 @@
                         </div>
                     </div>
                 </div>
-                <button class="btn-gerar" onclick="gerarRelatorio()">
+                <button class="btn-gerar" id="btnDispararRelatorio">
                     <i class="fas fa-sync"></i> GERAR RELATÓRIO
                 </button>
             </div>
@@ -482,6 +482,34 @@
             </div>
         </div>
     </div>
+
+    <script type="module">
+        import { app } from './firebase-config.js'; // Mantém a inicialização saudável
+        
+        // Aguarda a árvore DOM estar pronta para linkar os botões físicos
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnRelatorio = document.getElementById('btnDispararRelatorio');
+            const btnDropdown = document.getElementById('btnGatilhoDropdown');
+
+            if(btnRelatorio) {
+                btnRelatorio.addEventListener('click', () => {
+                    if (typeof window.gerarRelatorio === 'function') {
+                        window.gerarRelatorio();
+                    } else {
+                        console.error("A função gerarRelatorio não foi exposta no arquivo relatorio-cooperados.js");
+                    }
+                });
+            }
+
+            if(btnDropdown) {
+                btnDropdown.addEventListener('click', () => {
+                    if (typeof window.toggleDropdown === 'function') {
+                        window.toggleDropdown();
+                    }
+                });
+            }
+        });
+    </script>
 
     <script type="module" src="js/relatorio-cooperados.js"></script>
 </body>
