@@ -74,7 +74,6 @@ async function carregarListaFiltroCooperados() {
 
         const container = document.getElementById('listaCheckCooperados');
         
-        // CORREÇÃO DE ESCOPO 1: Ajustado o gatilho onchange para o escopo global explicitado window.
         container.innerHTML = listaCooperadosBanco.map(nome => `
             <div class="dropdown-item">
                 <input type="checkbox" class="chk-cooperado-filtro" value="${nome}" onchange="window.atualizarLabelDropdown()">
@@ -125,7 +124,6 @@ window.gerarRelatorio = async () => {
         return;
     }
 
-    // Garante o formato AAAA-MM-DD para bater certinho com a string do banco
     const dataInicio = dataInicioRaw.split('T')[0];
     const dataFim = dataFimRaw.split('T')[0];
 
@@ -139,7 +137,6 @@ window.gerarRelatorio = async () => {
         const querySnapshot = await getDocs(q);
         const agendas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Tratamento inicial e parsing dos nomes (Armazena tudo no cache global)
         todasAgendasDoPeriodo = agendas.map(a => {
             let listaNomes = [];
             if (a.cooperados && typeof a.cooperados === 'string') {
@@ -152,7 +149,7 @@ window.gerarRelatorio = async () => {
             return { ...a, cooperadosArray: listaNomes };
         });
 
-        // Chama a função para filtrar e renderizar na tela
+        // Chama a função globalizada para filtrar e renderizar na tela
         window.aplicarFiltroEmTempoReal();
 
     } catch (e) {
@@ -161,11 +158,10 @@ window.gerarRelatorio = async () => {
     }
 };
 
-// Nova função executada em tempo real para atualizar a tela dinamicamente
+// Tornada global para evitar erros de chamada interna cruzada em módulos
 window.aplicarFiltroEmTempoReal = () => {
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
 
-    // Filtra a partir do cache completo guardado na memória
     dadosProcessadosReport = todasAgendasDoPeriodo
         .filter(a => {
             const temCooperados = a.cooperadosArray && a.cooperadosArray.length > 0;
@@ -173,32 +169,30 @@ window.aplicarFiltroEmTempoReal = () => {
             const valorValido = valorDescargaNum > 0;
             const situacaoValida = a.agendasituacao !== "CANCELADA";
             
-            // Se houver cooperados selecionados no dropdown, filtra por eles
             if (cooperadosSelecionados.length > 0) {
                 const encontrou = a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
                 return temCooperados && valorValido && situacaoValida && encontrou;
             }
             
-            // Se nenhum tiver marcado (ou marcar "Todos"), exibe todos do período
             return temCooperados && valorValido && situacaoValida;
         })
         .sort((a, b) => (a.data || "").localeCompare(b.data || ""));
 
     if (dadosProcessadosReport.length === 0) {
-        limparResultados();
+        window.limparResultados();
         return;
     }
 
-    renderizarTabelasTela();
+    window.renderizarTabelasTela();
 };
 
-function limparResultados() {
+window.limparResultados = () => {
     document.getElementById('botoesExportacao').style.display = 'none';
     document.getElementById('secaoAgrupado').style.display = 'none';
     document.getElementById('secaoIndividual').style.display = 'none';
-}
+};
 
-function renderizarTabelasTela() {
+window.renderizarTabelasTela = () => {
     const corpoAgrupado = document.getElementById('corpoAgrupado');
     const corpoIndividual = document.getElementById('corpoIndividual');
     
@@ -210,7 +204,7 @@ function renderizarTabelasTela() {
     let classeEstiloDia = "dia-par";
 
     dadosProcessadosReport.forEach(agenda => {
-        const dataFormatada = formatarDataBR(agenda.data);
+        const dataFormatada = window.formatarDataBR(agenda.data);
         
         if (agenda.data !== dataReferenciaAnterior) {
             classeEstiloDia = (classeEstiloDia === "dia-par") ? "dia-impar" : "dia-par";
@@ -263,14 +257,14 @@ function renderizarTabelasTela() {
     document.getElementById('botoesExportacao').style.display = 'flex';
     document.getElementById('secaoAgrupado').style.display = 'block';
     document.getElementById('secaoIndividual').style.display = 'block';
-}
+};
 
-function formatarDataBR(dataString) {
+window.formatarDataBR = (dataString) => {
     if(!dataString) return "";
     const partes = dataString.split('-');
     if(partes.length !== 3) return dataString;
     return `${partes[2]}/${partes[1]}/${partes[0]}`; 
-}
+};
 
 // ==================== ENGINE DE EXPORTAÇÃO EXCEL ====================
 window.exportarExcel = async () => {
@@ -286,7 +280,7 @@ window.exportarExcel = async () => {
     sheet.getRow(1).height = 40;
 
     sheet.mergeCells('A2:F2');
-    sheet.getCell('A2').value = `Período Analisado: ${formatarDataBR(document.getElementById('dataInicio').value)} até ${formatarDataBR(document.getElementById('dataFim').value)}`;
+    sheet.getCell('A2').value = `Período Analisado: ${window.formatarDataBR(document.getElementById('dataInicio').value)} até ${window.formatarDataBR(document.getElementById('dataFim').value)}`;
     sheet.getCell('A2').font = { italic: true, size: 11 };
 
     sheet.addRow([]); 
@@ -303,7 +297,7 @@ window.exportarExcel = async () => {
     dadosProcessadosReport.forEach(agenda => {
         const equipe = agenda.cooperadosArray || [];
         const r = sheet.addRow([
-            formatarDataBR(agenda.data),
+            window.formatarDataBR(agenda.data),
             agenda.fornecedor,
             parseFloat(agenda.valorDescarga) || 0,
             (parseFloat(agenda.valorDescarga) || 0) * 0.7,
@@ -387,7 +381,7 @@ window.exportarPDF = () => {
     doc.setTextColor(51, 51, 51);
     doc.setFontSize(11);
     doc.setFont("Helvetica", "bold");
-    doc.text(`Período de Apuração: ${formatarDataBR(document.getElementById('dataInicio').value)} até ${formatarDataBR(document.getElementById('dataFim').value)}`, 40, 90);
+    doc.text(`Período de Apuração: ${window.formatarDataBR(document.getElementById('dataInicio').value)} até ${window.formatarDataBR(document.getElementById('dataFim').value)}`, 40, 90);
 
     doc.text("1. Detalhamento das Movimentações de Descarga", 40, 115);
     
@@ -397,7 +391,7 @@ window.exportarPDF = () => {
         const vDescarga = parseFloat(agenda.valorDescarga) || 0;
         const equipe = agenda.cooperadosArray || [];
         return [
-            formatarDataBR(agenda.data),
+            window.formatarDataBR(agenda.data),
             agenda.fornecedor || 'N/A',
             vDescarga.toFixed(2),
             (vDescarga * 0.70).toFixed(2),
