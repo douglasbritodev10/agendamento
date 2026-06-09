@@ -107,15 +107,19 @@ window.atualizarLabelDropdown = () => {
     }
 };
 
-// Gerador Matemático do Relatório
+// Gerador Matemático do Relatório Corrigido
 window.gerarRelatorio = async () => {
-    const dataInicio = document.getElementById('dataInicio').value;
-    const dataFim = document.getElementById('dataFim').value;
+    const dataInicioRaw = document.getElementById('dataInicio').value;
+    const dataFimRaw = document.getElementById('dataFim').value;
 
-    if (!dataInicio || !dataFim) {
+    if (!dataInicioRaw || !dataFimRaw) {
         alert("Por favor, preencha o período inicial e final.");
         return;
     }
+
+    // Garante o formato AAAA-MM-DD para o Firestore
+    const dataInicio = dataInicioRaw.split('T')[0];
+    const dataFim = dataFimRaw.split('T')[0];
 
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
 
@@ -135,32 +139,43 @@ window.gerarRelatorio = async () => {
         dadosProcessadosReport = agendas
             .map(a => {
                 let listaNomes = [];
-                // Se no banco for String corrida separada por vírgula
+                // Se no banco for String corrida separada por vírgula ou Array
                 if (a.cooperados && typeof a.cooperados === 'string') {
                     listaNomes = a.cooperados.split(',')
                         .map(nome => nome.trim())
                         .filter(nome => nome.length > 0);
                 } else if (Array.isArray(a.cooperados)) {
                     listaNomes = a.cooperados;
+                } else if (a.NomeCooperados && typeof a.NomeCooperados === 'string') { 
+                    // Fallback caso use a nomenclatura da planilha (Nome de Cooperados)
+                    listaNomes = a.NomeCooperados.split(',')
+                        .map(nome => nome.trim())
+                        .filter(nome => nome.length > 0);
                 }
                 return { ...a, cooperadosArray: listaNomes };
             })
             .filter(a => {
-                const temCooperados = a.cooperadosArray.length > 0;
-                const valorValido = parseFloat(a.valorDescarga) > 0;
+                const temCooperados = a.cooperadosArray && a.cooperadosArray.length > 0;
                 
-                // Se marcou cooperados específicos no filtro
+                // Trata o valor da descarga para garantir que não dê erro matemático se estiver vazio
+                const valorDescargaNum = parseFloat(a.valorDescarga) || 0;
+                const valorValido = valorDescargaNum > 0;
+                
+                // Ignora agendamentos cancelados ou puramente pendentes sem movimentação real
+                const situacaoValida = a.agendasituacao !== "CANCELADA" && a.agendasituacao !== "PENDENTE";
+                
+                // Se marcou cooperados específicos no filtro dropdown
                 if (cooperadosSelecionados.length > 0) {
                     const encontrou = a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
-                    return temCooperados && valorValido && encontrou;
+                    return temCooperados && valorValido && situacaoValida && encontrou;
                 }
-                // Se não marcou nenhum filtro de cooperado, traz todas as cargas válidas do período
-                return temCooperados && valorValido;
+                
+                return temCooperados && valorValido && situacaoValida;
             })
             .sort((a, b) => a.data.localeCompare(b.data));
 
         if (dadosProcessadosReport.length === 0) {
-            alert("Nenhuma movimentação de carga com cooperados encontrada neste período.");
+            alert("Nenhuma movimentação de carga com cooperados encontrada neste período com os filtros selecionados.");
             limparResultados();
             return;
         }
@@ -168,7 +183,7 @@ window.gerarRelatorio = async () => {
         renderizarTabelasTela();
     } catch (e) {
         console.error("Erro ao gerar relatório:", e);
-        alert("Erro ao buscar dados do banco.");
+        alert("Erro ao buscar dados do banco. Verifique se o índice composto de data do Firestore está ativo.");
     }
 };
 
