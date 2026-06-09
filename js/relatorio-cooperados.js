@@ -107,7 +107,7 @@ window.atualizarLabelDropdown = () => {
     }
 };
 
-// Gerador Matemático do Relatório Corrigido
+// Gerador Matemático do Relatório Ajustado e Corrigido
 window.gerarRelatorio = async () => {
     const dataInicioRaw = document.getElementById('dataInicio').value;
     const dataFimRaw = document.getElementById('dataFim').value;
@@ -117,19 +117,18 @@ window.gerarRelatorio = async () => {
         return;
     }
 
-    // Garante o formato AAAA-MM-DD para o Firestore
+    // Garante o formato AAAA-MM-DD para bater certinho com a string do banco
     const dataInicio = dataInicioRaw.split('T')[0];
     const dataFim = dataFimRaw.split('T')[0];
 
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
 
     try {
-        // Busca os agendamentos pela data no Firestore
+        // CORREÇÃO 1: Removemos o orderBy daqui para evitar problemas de índice composto no Firestore
         const q = query(
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
-            where("data", "<=", dataFim),
-            orderBy("data", "asc")
+            where("data", "<=", dataFim)
         );
         
         const querySnapshot = await getDocs(q);
@@ -147,7 +146,6 @@ window.gerarRelatorio = async () => {
                 } else if (Array.isArray(a.cooperados)) {
                     listaNomes = a.cooperados;
                 } else if (a.NomeCooperados && typeof a.NomeCooperados === 'string') { 
-                    // Fallback caso use a nomenclatura da planilha (Nome de Cooperados)
                     listaNomes = a.NomeCooperados.split(',')
                         .map(nome => nome.trim())
                         .filter(nome => nome.length > 0);
@@ -157,12 +155,12 @@ window.gerarRelatorio = async () => {
             .filter(a => {
                 const temCooperados = a.cooperadosArray && a.cooperadosArray.length > 0;
                 
-                // Trata o valor da descarga para garantir que não dê erro matemático se estiver vazio
+                // Garante que o valor da descarga seja numérico válido
                 const valorDescargaNum = parseFloat(a.valorDescarga) || 0;
                 const valorValido = valorDescargaNum > 0;
                 
-                // Ignora agendamentos cancelados ou puramente pendentes sem movimentação real
-                const situacaoValida = a.agendasituacao !== "CANCELADA" && a.agendasituacao !== "PENDENTE";
+                // CORREÇÃO 2: Removemos a trava do "PENDENTE". Agora aceita qualquer situação, MENOS "CANCELADA"
+                const situacaoValida = a.agendasituacao !== "CANCELADA";
                 
                 // Se marcou cooperados específicos no filtro dropdown
                 if (cooperadosSelecionados.length > 0) {
@@ -172,10 +170,11 @@ window.gerarRelatorio = async () => {
                 
                 return temCooperados && valorValido && situacaoValida;
             })
-            .sort((a, b) => a.data.localeCompare(b.data));
+            // CORREÇÃO 3: Ordenação cronológica manual feita diretamente no Front-End
+            .sort((a, b) => (a.data || "").localeCompare(b.data || ""));
 
         if (dadosProcessadosReport.length === 0) {
-            alert("Nenhuma movimentação de carga com cooperados encontrada neste período com os filtros selecionados.");
+            alert("Nenhuma movimentação de carga válida encontrada para este período com os filtros selecionados.");
             limparResultados();
             return;
         }
@@ -183,7 +182,7 @@ window.gerarRelatorio = async () => {
         renderizarTabelasTela();
     } catch (e) {
         console.error("Erro ao gerar relatório:", e);
-        alert("Erro ao buscar dados do banco. Verifique se o índice composto de data do Firestore está ativo.");
+        alert("Erro ao buscar dados do banco de dados. Abra o console do navegador (F12) para detalhes.");
     }
 };
 
