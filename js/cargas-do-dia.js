@@ -118,12 +118,13 @@ function renderizarPainelPrincipal() {
 
         const tipoExibicao = c.tipo || c.tipoProduto || '';
         const infoCarga = c.veiculoAgrupado ? `<br><small style="color:blue;"><b>🚚 ${c.veiculoAgrupado}</b></small>` : '';
+        const dataFormatada = c.data ? c.data.split('-').reverse().join('/') : '';
 
         return `
             <tr>
                 <td style="text-align:center;"><input type="checkbox" class="check-export" value="${c.id}"></td>
                 <td><b>${c.senhaAgendamento || ''}</b>${infoCarga}</td>
-                <td>${c.data || ''}</td>
+                <td>${dataFormatada}</td>
                 <td>${c.central || ''}</td>
                 <td style="font-size:10px; max-width:200px;">${c.cargas || ''}</td>
                 <td style="width:180px;"> 
@@ -541,16 +542,21 @@ window.filtrarModal = () => {
 
 window.abrirModalSelecao = () => {
     const lista = todasAgendasDoBanco.filter(a => !a.noPainel);
-    document.getElementById('corpoBuscaModal').innerHTML = lista.map(a => `
+    document.getElementById('corpoBuscaModal').innerHTML = lista.map(a => {
+        // Converte apenas para exibição em tela
+        const dataModalFormatada = a.data ? a.data.split('-').reverse().join('/') : '';
+        
+        return `
         <tr class="linha-modal" data-data="${a.data}" data-txt="${a.senha} ${a.fornecedor}">
             <td><input type="checkbox" class="check-item" value="${a.id}" data-senha="${a.senha}"></td>
             <td><b>${a.senhaAgendamento}</b></td>
-            <td>${a.data}</td>
+            <td>${dataModalFormatada}</td>
             <td style="font-size:10px;">${a.cargas || ''}</td>
             <td>${a.agendasituacao || 'PENDENTE'}</td>
             <td>${a.fornecedor}</td>
             <td>${a.tipoProduto}</td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
     document.getElementById('modalSelecao').style.display = 'flex';
 };
 
