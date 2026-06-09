@@ -5,19 +5,45 @@ import {
 
 const db = getFirestore(app);
 
-// Controle de Sessão e Nível de Acesso (ADM)
-const usuarioLogin = localStorage.getItem('username') || "SISTEMA";
-const userRole = localStorage.getItem('role') || "COLABORADOR"; // Garante bloqueio se não for ADM
+// Recupera os dados iniciais salvos no navegador
+let usuarioLogin = localStorage.getItem('username') || "SISTEMA";
+let userRole = localStorage.getItem('role') || "COLABORADOR"; 
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Verificação de Segurança de nível ADM
-    if (userRole.toUpperCase() !== "ADM" && userRole.toUpperCase() !== "ADM") {
+document.addEventListener('DOMContentLoaded', async () => {
+    
+    // ==========================================
+    // TRAVA DE SEGURANÇA & PERSISTÊNCIA DE TELA
+    // ==========================================
+    if (usuarioLogin !== "SISTEMA") {
+        try {
+            // Busca o documento do usuário na coleção 'users' para validar em tempo real
+            const qUser = query(collection(db, "users"), where("username", "==", usuarioLogin.toUpperCase()));
+            const querySnapshotUser = await getDocs(qUser);
+            
+            if (!querySnapshotUser.empty) {
+                const dadosUsuario = querySnapshotUser.docs[0].data();
+                
+                // Atualiza as variáveis e o localStorage com os dados reais do banco
+                userRole = dadosUsuario.nivelAcesso || "COLABORADOR";
+                localStorage.setItem('role', userRole);
+            } else {
+                console.warn("Usuário não encontrado na base de dados.");
+            }
+        } catch (error) {
+            console.error("Erro ao validar credenciais no Firestore:", error);
+            // Se falhar a rede, mantém o que está no localStorage temporariamente para não deslogar injustamente
+        }
+    }
+
+    // Validação final do Nível de Acesso (Bloqueia se não for ADM)
+    if (userRole.toUpperCase() !== "ADM") {
         alert("Acesso restrito! Apenas administradores podem visualizar esta página.");
         window.location.href = "index.html";
         return;
     }
 
-    document.getElementById('userNameDisplay').textContent = usuarioLogin;
+    // Exibe o nome do usuário na tela (Ex: DBRITO)
+    document.getElementById('user-display').textContent = usuarioLogin;
     
     // Inicializar datas com o mês corrente
     const hoje = new Date();
@@ -71,6 +97,7 @@ window.marcarTodosCooperados = (status) => {
 };
 
 window.atualizarLabelDropdown = () => {
+    constGrid = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked'));
     const selecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked'));
     const label = document.getElementById('dropdownLabel');
     if (selecionados.length === 0) {
@@ -94,11 +121,9 @@ window.gerarRelatorio = async () => {
         return;
     }
 
-    // Coleta filtros de cooperados selecionados (se vazio, considera TODOS)
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
 
     try {
-        // Query buscando agendamentos dentro do Range de Data
         const q = query(
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
@@ -109,12 +134,10 @@ window.gerarRelatorio = async () => {
         const querySnapshot = await getDocs(q);
         const agendas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Filtrar apenas agendas que contenham cooperados associados e valor de descarga maior que zero
         dadosProcessadosReport = agendas.filter(a => {
             const temCooperados = a.cooperados && Array.from(a.cooperados).length > 0;
             const valorValido = parseFloat(a.valorDescarga) > 0;
             
-            // Se o usuário filtrou nomes, valida se algum participante da descarga está na lista filtrada
             if (cooperadosSelecionados.length > 0 && temCooperados) {
                 const encontrou = a.cooperados.some(nome => cooperadosSelecionados.includes(nome));
                 return temCooperados && valorValido && encontrou;
@@ -155,25 +178,22 @@ function renderizarTabelasTela() {
     dadosProcessadosReport.forEach(agenda => {
         const dataFormatada = formatarDataBR(agenda.data);
         
-        // Altera a cor de fundo das linhas baseado na mudança de data para organização visual (PDF compliance)
         if (agenda.data !== dataReferenciaAnterior) {
             classeEstiloDia = (classeEstiloDia === "dia-par") ? "dia-impar" : "dia-par";
             dataReferenciaAnterior = agenda.data;
         }
 
         const valorTotal = parseFloat(agenda.valorDescarga) || 0;
-        const valorLíquidoSetenta = valorTotal * 0.70; // Desconto corporativo de 30% Simonetti
+        const valorLíquidoSetenta = valorTotal * 0.70; 
         const listaEquipe = agenda.cooperados || [];
         const qtdParticipantes = listaEquipe.length;
 
-        // Cálculos individuais baseados na planilha (Valor por Cada + 20% INSS)
         const quotaParteBruta = valorLíquidoSetenta / qtdParticipantes;
         const inssCalculado = quotaParteBruta * 0.20;
         const liquidoTotalIndividual = quotaParteBruta + inssCalculado;
 
-        // Inserção na Tabela Agrupada
         const trAgrupado = document.createElement('tr');
-        trAgrupado.className = classeEstiloDia;
+        trAgrupado.className = classeEstStyleDia;
         trAgrupado.innerHTML = `
             <td data-label="Data">${dataFormatada}</td>
             <td data-label="Fornecedor">${agenda.fornecedor || 'N/A'}</td>
@@ -184,7 +204,6 @@ function renderizarTabelasTela() {
         `;
         corpoAgrupado.appendChild(trAgrupado);
 
-        // Somatório da carteira individual de cada cooperado participante
         listaEquipe.forEach(nome => {
             if (!totaisIndividuaisReport[nome]) {
                 totaisIndividuaisReport[nome] = { bruto: 0, inss: 0, liquido: 0 };
@@ -195,7 +214,6 @@ function renderizarTabelasTela() {
         });
     });
 
-    // Renderização do Relatório Individual final
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
         const item = totaisIndividuaisReport[nome];
         const trIndiv = document.createElement('tr');
@@ -208,7 +226,6 @@ function renderizarTabelasTela() {
         corpoIndividual.appendChild(trIndiv);
     });
 
-    // Exibe os containers ocultos
     document.getElementById('botoesExportacao').style.display = 'flex';
     document.getElementById('secaoAgrupado').style.display = 'block';
     document.getElementById('secaoIndividual').style.display = 'block';
@@ -218,7 +235,7 @@ function formatarDataBR(dataString) {
     if(!dataString) return "";
     const partes = dataString.split('-');
     if(partes.length !== 3) return dataString;
-    return `${partes[2]}/${partes[1]}/${partes[0]}`; // Retorno DD/MM/YYYY preferencial do usuário
+    return `${partes[2]}/${partes[1]}/${partes[0]}`; 
 }
 
 // ==================== ENGINE DE EXPORTAÇÃO EXCEL ====================
@@ -226,7 +243,6 @@ window.exportarExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Fechamento de Cooperados');
 
-    // Cabeçalho da Empresa
     sheet.mergeCells('A1:F1');
     const headerCell = sheet.getCell('A1');
     headerCell.value = "MÓVEIS SIMONETTI - RELATÓRIO DE REPASSE DE COOPERADOS";
@@ -235,13 +251,11 @@ window.exportarExcel = async () => {
     headerCell.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.getRow(1).height = 40;
 
-    // Linha de Informações de Filtro
     sheet.mergeCells('A2:F2');
     sheet.getCell('A2').value = `Período Analisado: ${formatarDataBR(document.getElementById('dataInicio').value)} até ${formatarDataBR(document.getElementById('dataFim').value)}`;
     sheet.getCell('A2').font = { italic: true, size: 11 };
 
-    // Tabela 1: Resumo das Cargas
-    sheet.addRow([]); // Pula Linha
+    sheet.addRow([]); 
     const rowTitle1 = sheet.addRow(["1. Detalhamento de Lançamentos e Movimentações"]);
     rowTitle1.getCell(1).font = { bold: true, size: 12 };
     
@@ -263,7 +277,6 @@ window.exportarExcel = async () => {
         ]);
     });
 
-    // Formata números da Tabela 1
     sheet.eachRow((row, rowNumber) => {
         if(rowNumber > 5 && row.getCell(3).value) {
             row.getCell(3).numberFormat = '"R$"#,##0.00';
@@ -271,11 +284,9 @@ window.exportarExcel = async () => {
         }
     });
 
-    // REQUISITO EXPLICITO: Saltar linha conforme espaço de divisão entre as tabelas
     sheet.addRow([]);
     sheet.addRow([]);
 
-    // Tabela 2: Resumo Individual Final
     const rowTitle2 = sheet.addRow(["2. Demonstrativo de Acerto por Cooperado (Individual)"]);
     rowTitle2.getCell(1).font = { bold: true, size: 12 };
 
@@ -296,7 +307,6 @@ window.exportarExcel = async () => {
         ]);
     });
 
-    // Formata números da Tabela 2
     let totalGeralRepasse = 0;
     sheet.eachRow((row, rowNumber) => {
         if(rowNumber > dadosProcessadosReport.length + 8 && row.getCell(2).value) {
@@ -309,14 +319,12 @@ window.exportarExcel = async () => {
         }
     });
 
-    // Adiciona Linha de Totalizador Geral do Fechamento
     sheet.addRow([]);
     const linhaTotal = sheet.addRow(["TOTAL GERAL A SER PAGO:", "", "", totalGeralRepasse]);
     linhaTotal.getCell(1).font = { bold: true };
     linhaTotal.getCell(4).font = { bold: true, color: { argb: 'B71C1C' } };
     linhaTotal.getCell(4).numberFormat = '"R$"#,##0.00';
 
-    // Auto-ajuste de colunas para legibilidade
     sheet.columns.forEach(column => {
         let maxLen = 0;
         column.eachCell({ includeEmpty: true }, cell => {
@@ -326,7 +334,6 @@ window.exportarExcel = async () => {
         column.width = maxLen < 15 ? 15 : maxLen + 3;
     });
 
-    // Download do arquivo Excel
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const link = document.createElement("a");
@@ -340,8 +347,7 @@ window.exportarPDF = () => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'pt', 'a4');
 
-    // Cabeçalho institucional do PDF
-    doc.setFillColor(211, 47, 47); // Vermelho Simonetti Primary
+    doc.setFillColor(211, 47, 47); 
     doc.rect(0, 0, 595, 60, 'F');
     
     doc.setFont("Helvetica", "bold");
@@ -353,23 +359,18 @@ window.exportarPDF = () => {
     doc.setFont("Helvetica", "normal");
     doc.text(`Relatório Gerencial de Pagamento de Cooperados | Emitido por: ${usuarioLogin}`, 40, 50);
 
-    // Texto de escopo do período
     doc.setTextColor(51, 51, 51);
     doc.setFontSize(11);
     doc.setFont("Helvetica", "bold");
     doc.text(`Período de Apuração: ${formatarDataBR(document.getElementById('dataInicio').value)} até ${formatarDataBR(document.getElementById('dataFim').value)}`, 40, 90);
 
-    // Tabela 1: Lançamentos Agrupados por Dia
     doc.text("1. Detalhamento das Movimentações de Descarga", 40, 115);
     
     const columnsT1 = ["Data", "Fornecedor", "Total (R$)", "Líq 70% (R$)", "Qtd", "Equipe"];
     let dataReferenciaAnteriorPDF = "";
-    let flagDiaAlternado = false;
 
     const rowsT1 = dadosProcessadosReport.map(agenda => {
-        // REQUISITO EXPLÍCITO: No PDF o fundo das linhas muda conforme o dia de lançamento
         if (agenda.data !== dataReferenciaAnteriorPDF) {
-            flagDiaAlternado = !flagDiaAlternado;
             dataReferenciaAnteriorPDF = agenda.data;
         }
         return [
@@ -390,29 +391,26 @@ window.exportarPDF = () => {
         headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold' },
         styles: { fontSize: 8 },
         columnStyles: {
-            5: { cellWidth: 200 } // Dá mais espaço para caber a listagem dos nomes
+            5: { cellWidth: 200 } 
         },
         didParseCell: function(data) {
-            // Aplicação da regra de coloração dinâmica baseada na mudança de DIA
             if (data.section === 'body') {
                 const dataRowIndex = data.row.index;
                 let refData = dadosProcessadosReport[dataRowIndex].data;
                 
-                // Calcula mudancas
                 let todasDatas = dadosProcessadosReport.map(d => d.data);
                 let listaDatasUnicas = [...new Set(todasDatas)];
                 let indiceData = listaDatasUnicas.indexOf(refData);
 
                 if (indiceData % 2 === 0) {
-                    data.cell.styles.fillColor = [255, 255, 255]; // Branco para dias pares
+                    data.cell.styles.fillColor = [255, 255, 255]; 
                 } else {
-                    data.cell.styles.fillColor = [240, 244, 250]; // Azul bem claro para dias ímpares
+                    data.cell.styles.fillColor = [240, 244, 250]; 
                 }
             }
         }
     });
 
-    // Tabela 2: Relatório Individual de Repasse
     let currentY = doc.lastAutoTable.finalY + 30;
     doc.setFont("Helvetica", "bold");
     doc.text("2. Demonstrativo Líquido de Repasse Individual", 40, currentY);
@@ -433,7 +431,7 @@ window.exportarPDF = () => {
         head: [columnsT2],
         body: rowsT2,
         theme: 'grid',
-        headStyles: { fillColor: [46, 125, 50], fontStyle: 'bold' }, // Verde para fechamento financeiro
+        headStyles: { fillColor: [46, 125, 50], fontStyle: 'bold' }, 
         styles: { fontSize: 9 },
         columnStyles: {
             1: { halign: 'right' },
@@ -442,7 +440,6 @@ window.exportarPDF = () => {
         }
     });
 
-    // Assinatura de auditoria no rodapé
     let finalY = doc.lastAutoTable.finalY + 50;
     if(finalY > 750) { doc.addPage(); finalY = 60; }
     
