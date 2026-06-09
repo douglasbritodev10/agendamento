@@ -73,9 +73,11 @@ async function carregarListaFiltroCooperados() {
             .sort((a, b) => a.localeCompare(b));
 
         const container = document.getElementById('listaCheckCooperados');
+        
+        // CORREÇÃO DE ESCOPO 1: Ajustado o gatilho onchange para o escopo global explicitado window.
         container.innerHTML = listaCooperadosBanco.map(nome => `
             <div class="dropdown-item">
-                <input type="checkbox" class="chk-cooperado-filtro" value="${nome}" onchange="atualizarLabelDropdown()">
+                <input type="checkbox" class="chk-cooperado-filtro" value="${nome}" onchange="window.atualizarLabelDropdown()">
                 <span>${nome}</span>
             </div>
         `).join('');
@@ -84,7 +86,7 @@ async function carregarListaFiltroCooperados() {
     }
 }
 
-// Funções expostas no Objeto window para os triggers inline do HTML
+// Funções expostas no Objeto window para os triggers de renderização e cliques
 window.toggleDropdown = () => {
     document.getElementById('dropdownCooperados').classList.toggle('show');
 };
@@ -107,7 +109,7 @@ window.atualizarLabelDropdown = () => {
         document.getElementById('chkTodos').checked = false;
     }
 
-    // ADICIONE ESSA LINHA ABAIXO: Dispara a atualização visual instantânea se já houver dados carregados
+    // Dispara a atualização visual instantânea se já houver dados carregados
     if (todasAgendasDoPeriodo.length > 0) {
         window.aplicarFiltroEmTempoReal();
     }
@@ -270,7 +272,7 @@ function formatarDataBR(dataString) {
     return `${partes[2]}/${partes[1]}/${partes[0]}`; 
 }
 
-// ==================== ENGINE DE EXPORTAÇÃO EXCEL (Ajuste de Segurança) ====================
+// ==================== ENGINE DE EXPORTAÇÃO EXCEL ====================
 window.exportarExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Fechamento de Cooperados');
@@ -308,7 +310,6 @@ window.exportarExcel = async () => {
             equipe.length,
             equipe.join(', ')
         ]);
-        // Formata moeda diretamente na inserção da linha
         r.getCell(3).numberFormat = '"R$"#,##0.00';
         r.getCell(4).numberFormat = '"R$"#,##0.00';
     });
@@ -326,7 +327,6 @@ window.exportarExcel = async () => {
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B5E20' } };
     });
 
-    // Variável para somar o total de forma limpa via JS
     let totalGeralRepasse = 0;
 
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
@@ -337,7 +337,6 @@ window.exportarExcel = async () => {
             item.inss,
             item.liquido
         ]);
-        // Formata moeda diretamente na inserção da linha
         r.getCell(2).numberFormat = '"R$"#,##0.00';
         r.getCell(3).numberFormat = '"R$"#,##0.00';
         r.getCell(4).numberFormat = '"R$"#,##0.00';
