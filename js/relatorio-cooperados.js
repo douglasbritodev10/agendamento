@@ -45,9 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Exibe o nome do usuário na tela (Ex: DBRITO)
     document.getElementById('user-display').textContent = usuarioLogin;
     
-    // Deixa os campos de data vazios por padrão na inicialização
-    document.getElementById('dataInicio').value = primeiroDia;
-    document.getElementById('dataFim').value = ultimoDia;
+    // CORREÇÃO DO ERRO DA LINHA 49: Deixa os campos de data vazios por padrão na inicialização
+    document.getElementById('dataInicio').value = "";
+    document.getElementById('dataFim').value = "";
 
     carregarListaFiltroCooperados();
     
@@ -69,7 +69,7 @@ async function carregarListaFiltroCooperados() {
         const querySnapshot = await getDocs(collection(db, "cooperados"));
         listaCooperadosBanco = querySnapshot.docs
             .map(doc => doc.data().nome)
-            .sort((a, b) => a.localeCompare(b.nome));
+            .sort((a, b) => a.localeCompare(b));
 
         const container = document.getElementById('listaCheckCooperados');
         container.innerHTML = listaCooperadosBanco.map(nome => `
@@ -120,28 +120,31 @@ window.gerarRelatorio = async () => {
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
 
     try {
+        // CORREÇÃO DO ERRO DO FIREBASE: Filtro de desigualdade apenas no campo 'data' com ordenação por data
         const q = query(
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
             where("data", "<=", dataFim),
-            where("valorDescarga", ">", 0),
-            orderBy("valorDescarga"),            
             orderBy("data", "asc")
         );
         
         const querySnapshot = await getDocs(q);
         const agendas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        dadosProcessadosReport = agendas.filter(a => {
-            const temCooperados = a.cooperados && Array.from(a.cooperados).length > 0;
-            const valorValido = parseFloat(a.valorDescarga) > 0;
-            
-            if (cooperadosSelecionados.length > 0 && temCooperados) {
-                const encontrou = a.cooperados.some(nome => cooperadosSelecionados.includes(nome));
-                return temCooperados && valorValido && encontrou;
-            }
-            return temCooperados && valorValido;
-        });
+        // Filtro refinado via JS: Garante ordenação cronológica correta e traz as agendas com pagamento válido (>0)
+        dadosProcessadosReport = agendas
+            .filter(a => {
+                const temCooperados = a.cooperados && Array.from(a.cooperados).length > 0;
+                const valorValido = parseFloat(a.valorDescarga) > 0;
+                
+                if (cooperadosSelecionados.length > 0 && temCooperados) {
+                    const encontrou = a.cooperados.some(nome => cooperadosSelecionados.includes(nome));
+                    return temCooperados && valorValido && encontrou;
+                }
+                return temCooperados && valorValido;
+            })
+            // Garante ordenação absoluta por data de forma ascendente
+            .sort((a, b) => a.data.localeCompare(b.data));
 
         if (dadosProcessadosReport.length === 0) {
             alert("Nenhuma movimentação de carga com cooperados encontrada neste período.");
@@ -176,6 +179,7 @@ function renderizarTabelasTela() {
     dadosProcessadosReport.forEach(agenda => {
         const dataFormatada = formatarDataBR(agenda.data);
         
+        // Altera a cor da linha baseado na mudança de data (ótimo para ver cargas do mesmo dia juntas)
         if (agenda.data !== dataReferenciaAnterior) {
             classeEstiloDia = (classeEstiloDia === "dia-par") ? "dia-impar" : "dia-par";
             dataReferenciaAnterior = agenda.data;
@@ -191,7 +195,7 @@ function renderizarTabelasTela() {
         const liquidoTotalIndividual = quotaParteBruta + inssCalculado;
 
         const trAgrupado = document.createElement('tr');
-        trAgrupado.className = classeEstStyleDia;
+        trAgrupado.className = classeEstiloDia;
         trAgrupado.innerHTML = `
             <td data-label="Data">${dataFormatada}</td>
             <td data-label="Fornecedor">${agenda.fornecedor || 'N/A'}</td>
