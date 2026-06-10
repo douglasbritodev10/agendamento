@@ -566,7 +566,7 @@ window.exportarPDF = () => {
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
-    doc.text("MÓVEIS SIMONETTI - LOGÍSTICA E SUPRIMENTOS", 40, 36);
+    doc.text("MÓVEIS SIMONETTI - LOGÍSTICA", 40, 36);
     
     doc.setFontSize(10);
     doc.setFont("Helvetica", "normal");
@@ -577,7 +577,7 @@ window.exportarPDF = () => {
     doc.setFont("Helvetica", "bold");
     doc.text(`Período de Apuração: ${window.formatarDataBR(document.getElementById('dataInicio').value)} até ${window.formatarDataBR(document.getElementById('dataFim').value)}`, 40, 90);
 
-    doc.text("1. Resumo de Movimentações por Agenda / Grupo", 40, 115);
+    doc.text("1. Relatório de pagamento de Descarga", 40, 115);
     
     const columnsT1 = [
         "Data", "Fornecedor(es)", "Qtd", "Cooperados", "Líq 70%", "P/ Cada", "20% INSS", "C/ INSS", "Total á Pagar"
@@ -619,13 +619,20 @@ window.exportarPDF = () => {
         head: [columnsT1],
         body: rowsT1,
         foot: footT1,
-        theme: 'striped',
-        headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold', fontSize: 8 },
+        theme: 'grid', // Alterado para Grid para exibir as linhas verticais separadoras
+        showFoot: 'lastPage', // Garante que o total só sai no final de todos os dados e não em cada página
+        headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold', fontSize: 8, halign: 'center' },
         footStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 },
-        styles: { fontSize: 8 },
+        styles: { 
+            fontSize: 8,
+            lineWidth: 0.5,
+            borderColor: [210, 210, 210] // Cor suave para as linhas verticais e horizontais
+        },
         columnStyles: {
-            1: { cellWidth: 110 }, 
-            3: { cellWidth: 150 }, // Coluna dos cooperados
+            0: { halign: 'center', cellWidth: 55 },
+            1: { halign: 'left', cellWidth: 110 }, 
+            2: { halign: 'center', cellWidth: 35 },
+            3: { halign: 'left', cellWidth: 150 }, // Coluna dos nomes dos cooperados
             4: { halign: 'right' },
             5: { halign: 'right' },
             6: { halign: 'right' },
@@ -633,6 +640,7 @@ window.exportarPDF = () => {
             8: { halign: 'right' }
         },
         didParseCell: function(data) {
+            // Mantém o preenchimento zebrado dinâmico por alteração de dia
             if (data.section === 'body') {
                 const dataRowIndex = data.row.index;
                 let refData = dadosProcessadosReport[dataRowIndex].data;
@@ -641,13 +649,22 @@ window.exportarPDF = () => {
                 let indiceData = listaDatasUnicas.indexOf(refData);
                 data.cell.styles.fillColor = (indiceData % 2 === 0) ? [255, 255, 255] : [240, 244, 250];
             }
+            // Força o alinhamento do rodapé de totais para bater com os dados numéricos acima
+            if (data.section === 'foot') {
+                if (data.column.index >= 4 && data.column.index <= 8) {
+                    data.cell.styles.halign = 'right';
+                }
+            }
         }
     });
 
-    let currentY = doc.lastAutoTable.finalY + 30;
-    if (currentY > 530) { doc.addPage(); currentY = 60; }
+    // SEPARAÇÃO E ISOLAMENTO: A segunda tabela agora vai SEMPRE começar numa página nova exclusiva
+    doc.addPage(); 
+    let currentY = 60; // Reinicia o topo coordenado na nova página
 
     doc.setFont("Helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(51, 51, 51);
     doc.text("2. Demonstrativo Líquido de Repasse Individual", 40, currentY);
 
     const columnsT2 = ["Nome do Cooperado", "Quota Parte Rateio (R$)", "INSS Próprio +20% (R$)", "Líquido a Pagar (R$)"];
@@ -657,8 +674,6 @@ window.exportarPDF = () => {
     let sumT2Liquido = 0;
 
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
-
-    // FIX: Inicialização correta do array rowsT2 para mitigar o ReferenceError
     const rowsT2 = [];
 
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
@@ -680,26 +695,46 @@ window.exportarPDF = () => {
     const footT2 = [["TOTAL GERAL DE REPASSES", formatarMoedaBR(sumT2Bruto), formatarMoedaBR(sumT2Inss), formatarMoedaBR(sumT2Liquido)]];
 
     doc.autoTable({
-        startY: currentY + 10,
+        startY: currentY + 15,
         head: [columnsT2],
         body: rowsT2,
         foot: footT2,
-        theme: 'grid',
-        headStyles: { fillColor: [46, 125, 50], fontStyle: 'bold' }, 
+        theme: 'grid', // Mantém as linhas separadoras verticais também na tabela 2
+        showFoot: 'lastPage',
+        headStyles: { fillColor: [46, 125, 50], fontStyle: 'bold', halign: 'center' }, 
         footStyles: { fillColor: [27, 94, 32], textColor: [255, 255, 255], fontStyle: 'bold' },
-        styles: { fontSize: 9 },
+        styles: { 
+            fontSize: 9,
+            lineWidth: 0.5,
+            borderColor: [180, 200, 180]
+        },
         columnStyles: {
+            0: { halign: 'left' },
             1: { halign: 'right' },
             2: { halign: 'right' },
             3: { halign: 'right' }
+        },
+        didParseCell: function(data) {
+            // Garante alinhamento à direita dos valores de totais no rodapé da tabela 2
+            if (data.section === 'foot') {
+                if (data.column.index >= 1) {
+                    data.cell.styles.halign = 'right';
+                }
+            }
         }
     });
 
+    // Define a posição da assinatura controlando o fim da última tabela gerada
     let finalY = doc.lastAutoTable.finalY + 45;
-    if(finalY > 530) { doc.addPage(); finalY = 60; }
+    if (finalY > 530) { 
+        doc.addPage(); 
+        finalY = 60; 
+    }
     
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(10);
     doc.line(40, finalY, 240, finalY);
-    doc.text("Assinatura do Conferente (ADM)", 40, finalY + 15);
+    doc.text("Recebimento Simonetti (ADM)", 40, finalY + 15);
 
     doc.save(`Relatorio_Gerencial_Cooperados_${document.getElementById('dataInicio').value}.pdf`);
 };
