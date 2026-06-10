@@ -40,14 +40,14 @@
             font-size: 0.75rem; 
             color: #333; 
             text-transform: uppercase; 
-            border-bottom: 2px solid #333; 
+            border: 2px solid #333; 
             position: sticky; 
             top: 0; 
         }
 
         td { 
             padding: 10px 12px; 
-            border-bottom: 2px solid #333; 
+            border: 2px solid #333; 
             font-size: 0.85rem; 
             color: #333;
             white-space: normal; 
@@ -108,6 +108,8 @@
             font-size: 0.65rem;
             opacity: 0.5;
         }
+
+        .btn-logout { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -118,7 +120,7 @@
             <span id="userNameDisplay" class="user-info">...</span>
         </div>
         <h2>PAINEL DE CARGAS DO DIA</h2>
-        <button onclick="logout()" style="background:none; border:1px solid #ccc; padding:5px 10px; border-radius:5px; cursor:pointer;">Sair</button>
+        <button class="btn-logout" onclick="window.location.href='index.html'">SAIR</button>
     </nav>
 
     <main class="container">
