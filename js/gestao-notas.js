@@ -72,9 +72,14 @@ let dadosFiltrados = [];
 let paginaAtual = 1;
 let itensPorPagina = 50;
 let colunaFiltroAtual = '';
-let filtrosSelecionados = {}; // Armazena filtros de múltiplas colunas
 let ordemCrescente = true; // Controle de estado
 let ultimaColuna = '';
+
+// Define a data atual no fuso do Brasil (DD/MM/YYYY) como filtro inicial
+const dataHojeBrasil = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+let filtrosSelecionados = {
+    'data': [dataHojeBrasil]
+};
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -90,7 +95,10 @@ function escutarDadosFirebase() {
         querySnapshot.forEach((doc) => {
             dadosOriginais.push({ id: doc.id, ...doc.data() });
         });
+        
+        // Garante que aplica a busca/filtros e já atualiza o visual dos botões de filtro
         aplicarFiltrosEBusca();
+        atualizarVisualFiltros();
     });
 }
 
