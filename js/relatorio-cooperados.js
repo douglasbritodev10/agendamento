@@ -309,7 +309,7 @@ window.renderizarTabelasTela = (cooperadosFiltrados) => {
         <tr class="table-dark fw-bold">
             <td colspan="4" class="text-start">TOTAIS GERAIS ACUMULADOS:</td>
             <td class="text-end text-nowrap">${formatarMoedaLocal(t1TotalGeralCarga)}</td>
-            <td class="text-end text-nowrap" style="color: #ffeb3b;">${formatarMoedaLocal(t1TotalGeralLiquido)}</td>
+            <td class="text-end text-nowrap" style="color: #000000;">${formatarMoedaLocal(t1TotalGeralLiquido)}</td>
             <td colspan="3"></td>
             <td class="text-end text-nowrap" style="color: #4caf50;">${formatarMoedaLocal(t1TotalGeralPagarComInss)}</td>
         </tr>
