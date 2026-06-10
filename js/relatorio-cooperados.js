@@ -390,7 +390,6 @@ window.exportarExcel = async () => {
     const rowTitle1 = sheet.addRow(["1. Resumo de Movimentações por Agenda / Grupo"]);
     rowTitle1.getCell(1).font = { bold: true, size: 12 };
     
-    // Novas Colunas incluídas no Excel
     const headersT1 = [
         "Data", "Fornecedor(es)", "Qtd Colaboradores", "Nomes dos Cooperados Activos", 
         "Valor Total (R$)", "Líquido (70%)", "VALOR P/ CADA", "Valor 20% INSS", "VALOR C/ INSS", "Valor á Pagar da descarga com o INSS INCLOSO"
@@ -405,6 +404,10 @@ window.exportarExcel = async () => {
     let totalT1Carga = 0;
     let totalT1Liquido = 0;
     let totalT1PagarInss = 0;
+
+    // Variáveis para controlar a alternância de cores por dia
+    let dataReferenciaAnterior = "";
+    let usarCorAlternada = false;
 
     dadosProcessadosReport.forEach(agenda => {
         const equipe = agenda.cooperadosArray || [];
@@ -421,6 +424,12 @@ window.exportarExcel = async () => {
         totalT1Liquido += valorLiquido;
         totalT1PagarInss += totalDescargaComInss;
 
+        // Lógica de saltação de cor idêntica ao PDF
+        if (agenda.data !== dataReferenciaAnterior) {
+            usarCorAlternada = !usarCorAlternada;
+            dataReferenciaAnterior = agenda.data;
+        }
+
         const r = sheet.addRow([
             window.formatarDataBR(agenda.data),
             agenda.fornecedoresArray.join(', '),
@@ -434,10 +443,31 @@ window.exportarExcel = async () => {
             totalDescargaComInss
         ]);
 
-        // Formata as células financeiras para Moeda R$
-        for(let col = 5; col <= 10; col++) {
-            r.getCell(col).numberFormat = '"R$"#,##0.00';
-        }
+        // Define a cor de fundo baseado no dia do agendamento
+        const corFundoLinha = usarCorAlternada ? 'F0F4FA' : 'FFFFFF';
+
+        r.eachCell((cell, colNumber) => {
+            // Aplica o fundo zebrado por dia
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: corFundoLinha }
+            };
+            
+            // Adiciona bordas finas para melhor legibilidade
+            cell.border = {
+                top: { style: 'thin', color: { argb: 'E0E0E0' } },
+                bottom: { style: 'thin', color: { argb: 'E0E0E0' } },
+                left: { style: 'thin', color: { argb: 'E0E0E0' } },
+                right: { style: 'thin', color: { argb: 'E0E0E0' } }
+            };
+
+            // Formata as colunas financeiras (da coluna 5 até a 10)
+            if (colNumber >= 5 && colNumber <= 10) {
+                cell.numberFormat = '"R$"#,##0.00';
+                cell.alignment = { horizontal: 'right' };
+            }
+        });
     });
 
     // Linha de totais acumulados da Tabela 1
@@ -461,6 +491,7 @@ window.exportarExcel = async () => {
     headerRowT2.eachCell(c => {
         c.font = { bold: true, color: { argb: 'FFFFFF' } };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B5E20' } };
+        c.alignment = { horizontal: 'center' };
     });
 
     let totalGeralBruto = 0;
@@ -474,6 +505,7 @@ window.exportarExcel = async () => {
 
         const item = totaisIndividuaisReport[nome];
         const r = sheet.addRow([nome, item.bruto, item.inss, item.liquido]);
+        
         r.getCell(2).numberFormat = '"R$"#,##0.00';
         r.getCell(3).numberFormat = '"R$"#,##0.00';
         r.getCell(4).numberFormat = '"R$"#,##0.00';
@@ -490,16 +522,25 @@ window.exportarExcel = async () => {
     linhaTotal.getCell(2).numberFormat = '"R$"#,##0.00';
     linhaTotal.getCell(3).font = { bold: true };
     linhaTotal.getCell(3).numberFormat = '"R$"#,##0.00';
-    linhaTotal.getCell(4).font = { bold: true, color: { argb: 'B71C1C' } };
+    linhaTotal.getCell(4).font = { bold: true, color: { argb: '1B5E20' } };
     linhaTotal.getCell(4).numberFormat = '"R$"#,##0.00';
 
-    sheet.columns.forEach(column => {
+    // Redimensionamento proporcional das colunas com trava no nome (Coluna D)
+    sheet.columns.forEach((column, index) => {
         let maxLen = 0;
         column.eachCell({ includeEmpty: true }, cell => {
             const valLen = cell.value ? cell.value.toString().length : 0;
             if (valLen > maxLen) maxLen = valLen;
         });
-        column.width = maxLen < 12 ? 12 : maxLen + 3;
+        
+        let calculatedWidth = maxLen < 12 ? 12 : maxLen + 4;
+        
+        // Coluna D é o índice 4 (Nomes dos Cooperados Activos) -> Limitar largura máxima
+        if (index === 4) {
+            column.width = calculatedWidth > 45 ? 45 : calculatedWidth; 
+        } else {
+            column.width = calculatedWidth;
+        }
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -538,7 +579,6 @@ window.exportarPDF = () => {
 
     doc.text("1. Resumo de Movimentações por Agenda / Grupo", 40, 115);
     
-    // Novas Colunas detalhadas no PDF Horizontalizado
     const columnsT1 = [
         "Data", "Fornecedor(es)", "Qtd", "Cooperados", "Líq 70%", "P/ Cada", "20% INSS", "C/ INSS", "Total á Pagar"
     ];
@@ -585,7 +625,7 @@ window.exportarPDF = () => {
         styles: { fontSize: 8 },
         columnStyles: {
             1: { cellWidth: 110 }, 
-            3: { cellWidth: 150 },
+            3: { cellWidth: 150 }, // Coluna dos cooperados
             4: { halign: 'right' },
             5: { halign: 'right' },
             6: { halign: 'right' },
@@ -617,6 +657,9 @@ window.exportarPDF = () => {
     let sumT2Liquido = 0;
 
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
+
+    // FIX: Inicialização correta do array rowsT2 para mitigar o ReferenceError
+    const rowsT2 = [];
 
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
         if (cooperadosSelecionados.length > 0 && !cooperadosSelecionados.includes(nome)) return;
