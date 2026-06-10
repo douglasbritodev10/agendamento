@@ -114,6 +114,11 @@ window.atualizarLabelDropdown = () => {
     }
 };
 
+// Formatação Monetária Padrão Real Brasileiro
+const formatarMoedaLocal = (valor) => {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
 // Gerador do Relatório adaptado para a sua estrutura real
 window.gerarRelatorio = async () => {
     const dataInicioRaw = document.getElementById('dataInicio').value;
@@ -124,12 +129,10 @@ window.gerarRelatorio = async () => {
         return;
     }
 
-    // Garante o formato YYYY-MM-DD para busca no Firestore
     const dataInicio = dataInicioRaw.split('T')[0];
     const dataFim = dataFimRaw.split('T')[0];
 
     try {
-        // Traz apenas o status "Agendada" direto do Banco de Dados
         const q = query(
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
@@ -140,7 +143,6 @@ window.gerarRelatorio = async () => {
         const querySnapshot = await getDocs(q);
         const agendasCruas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Filtragem local complementar: valorDescarga > 0
         const agendasValidas = agendasCruas.filter(a => {
             const valor = parseFloat(a.valorDescarga) || 0;
             return valor > 0;
@@ -150,12 +152,10 @@ window.gerarRelatorio = async () => {
         const gruposVeiculo = {};
 
         agendasValidas.forEach(a => {
-            // Se tiver veículo agrupado usa o identificador dele, senhas individuais usam o próprio ID da senha
             const chaveGrupo = (a.veiculoAgrupado && a.veiculoAgrupado.trim() !== "") 
                 ? `GRP_${a.veiculoAgrupado.trim().toUpperCase()}` 
                 : `IND_${a.id}`;
 
-            // Tratamento da string de equipe para Array
             let listaEquipe = [];
             if (a.equipe && typeof a.equipe === 'string') {
                 listaEquipe = a.equipe.split(',').map(n => n.trim()).filter(n => n.length > 0);
@@ -163,20 +163,25 @@ window.gerarRelatorio = async () => {
                 listaEquipe = a.equipe;
             }
 
+            const fornecedorAtual = (a.fornecedor || 'N/A').trim().toUpperCase();
+
             if (!gruposVeiculo[chaveGrupo]) {
                 gruposVeiculo[chaveGrupo] = {
                     data: a.data,
-                    fornecedor: a.fornecedor || "N/A",
+                    fornecedoresArray: [fornecedorAtual],
                     valorDescarga: 0,
                     cooperadosArray: listaEquipe,
                     senhas: [a.senhaAgendamento || "N/A"]
                 };
             } else {
-                // Se for o mesmo veículo agrupado, vai somando o valor da descarga das senhas juntas
                 if (a.senhaAgendamento && !gruposVeiculo[chaveGrupo].senhas.includes(a.senhaAgendamento)) {
                     gruposVeiculo[chaveGrupo].senhas.push(a.senhaAgendamento);
                 }
-                // Mescla os cooperados caso venham mapeados separados (garante nomes únicos)
+                // Adiciona o fornecedor se ele não constar na carga fracionada
+                if (!gruposVeiculo[chaveGrupo].fornecedoresArray.includes(fornecedorAtual)) {
+                    gruposVeiculo[chaveGrupo].fornecedoresArray.push(fornecedorAtual);
+                }
+                // Mescla equipe garantindo nomes únicos
                 listaEquipe.forEach(nome => {
                     if (!gruposVeiculo[chaveGrupo].cooperadosArray.includes(nome)) {
                         gruposVeiculo[chaveGrupo].cooperadosArray.push(nome);
@@ -186,15 +191,12 @@ window.gerarRelatorio = async () => {
             gruposVeiculo[chaveGrupo].valorDescarga += parseFloat(a.valorDescarga) || 0;
         });
 
-        // Transforma o objeto de agrupamentos de volta em Array para o relatório
         todasAgendasDoPeriodo = Object.values(gruposVeiculo);
-
-        // Chama a renderização dinâmica
         window.aplicarFiltroEmTempoReal();
 
     } catch (e) {
         console.error("Erro ao gerar relatório:", e);
-        alert("Erro ao buscar dados do banco de dados. Verifique o console (F12).");
+        alert("Erro ao buscar dados do banco de dados.");
     }
 };
 
@@ -204,9 +206,8 @@ window.aplicarFiltroEmTempoReal = () => {
     dadosProcessadosReport = todasAgendasDoPeriodo
         .filter(a => {
             const temCooperados = a.cooperadosArray && a.cooperadosArray.length > 0;
-            
             if (cooperadosSelecionados.length > 0) {
-                // Filtra para exibir apenas se o cooperado selecionado participou daquela equipe
+                // Exibe apenas as agendas nas quais os cooperados filtrados trabalharam
                 return temCooperados && a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
             }
             return temCooperados;
@@ -218,7 +219,7 @@ window.aplicarFiltroEmTempoReal = () => {
         return;
     }
 
-    window.renderizarTabelasTela();
+    window.renderizarTabelasTela(cooperadosSelecionados);
 };
 
 window.limparResultados = () => {
@@ -227,7 +228,7 @@ window.limparResultados = () => {
     document.getElementById('secaoIndividual').style.display = 'none';
 };
 
-window.renderizarTabelasTela = () => {
+window.renderizarTabelasTela = (cooperadosFiltrados) => {
     const corpoAgrupado = document.getElementById('corpoAgrupado');
     const corpoIndividual = document.getElementById('corpoIndividual');
     
@@ -237,6 +238,11 @@ window.renderizarTabelasTela = () => {
     totaisIndividuaisReport = {};
     let dataReferenciaAnterior = "";
     let classeEstiloDia = "dia-par";
+
+    // Acumuladores de totais gerais da Tabela 1 na tela
+    let t1TotalGeralCarga = 0;
+    let t1TotalGeralLiquido = 0;
+    let t1TotalGeralPagarComInss = 0;
 
     dadosProcessadosReport.forEach(agenda => {
         const dataFormatada = window.formatarDataBR(agenda.data);
@@ -251,44 +257,105 @@ window.renderizarTabelasTela = () => {
         const listaEquipe = agenda.cooperadosArray || [];
         const qtdParticipantes = listaEquipe.length;
 
-        // Evita divisão por zero se a equipe estiver vazia no cadastro
+        // Cálculos unitários solicitados
         const quotaParteBruta = qtdParticipantes > 0 ? (valorLíquidoSetenta / qtdParticipantes) : 0;
         const inssCalculado = quotaParteBruta * 0.20;
-        const liquidoTotalIndividual = quotaParteBruta + inssCalculado;
+        const valorComInss = quotaParteBruta + inssCalculado;
+        const totalDescargaComInssIncluido = valorComInss * qtdParticipantes;
+
+        // Soma acumulativa dos totais da tabela superior
+        t1TotalGeralCarga += valorTotal;
+        t1TotalGeralLiquido += valorLíquidoSetenta;
+        t1TotalGeralPagarComInss += totalDescargaComInssIncluido;
+
+        // Une os fornecedores por vírgula na mesma linha (Sem quebra de linha)
+        const stringFornecedores = agenda.fornecedoresArray.join(', ');
 
         const trAgrupado = document.createElement('tr');
         trAgrupado.className = classeEstiloDia;
         trAgrupado.innerHTML = `
             <td data-label="Data">${dataFormatada}</td>
-            <td data-label="Fornecedor">${agenda.fornecedor || 'N/A'}</td>
-            <td data-label="Valor Total (R$)">R$ ${valorTotal.toFixed(2)}</td>
-            <td data-label="Líquido (70%)">R$ ${valorLíquidoSetenta.toFixed(2)}</td>
-            <td data-label="Qtd. Transbordo" class="fw-bold">${qtdParticipantes} Coops.</td>
+            <td data-label="Fornecedor" class="text-nowrap">${stringFornecedores}</td>
+            <td data-label="Qtd. Colaboradores" class="fw-bold text-center">${qtdParticipantes} Coops.</td>
             <td data-label="Nomes dos Cooperados">${listaEquipe.join(', ') || 'Nenhum'}</td>
+            <td data-label="Valor Total (R$)" class="text-end text-nowrap">${formatarMoedaLocal(valorTotal)}</td>
+            <td data-label="Líquido (70%)" class="text-end text-nowrap fw-bold">${formatarMoedaLocal(valorLíquidoSetenta)}</td>
+            <td data-label="Valor P/ Cada" class="text-end text-nowrap">${formatarMoedaLocal(quotaParteBruta)}</td>
+            <td data-label="Valor 20% INSS" class="text-end text-nowrap text-danger">${formatarMoedaLocal(inssCalculado)}</td>
+            <td data-label="Valor C/ INSS" class="text-end text-nowrap text-success">${formatarMoedaLocal(valorComInss)}</td>
+            <td data-label="Valor á Pagar" class="text-end text-nowrap fw-bold bg-light">${formatarMoedaLocal(totalDescargaComInssIncluido)}</td>
         `;
         corpoAgrupado.appendChild(trAgrupado);
 
+        // Alimenta o cálculo individual da Tabela 2
         listaEquipe.forEach(nome => {
             if (!totaisIndividuaisReport[nome]) {
                 totaisIndividuaisReport[nome] = { bruto: 0, inss: 0, liquido: 0 };
             }
             totaisIndividuaisReport[nome].bruto += quotaParteBruta;
             totaisIndividuaisReport[nome].inss += inssCalculado;
-            totaisIndividuaisReport[nome].liquido += liquidoTotalIndividual;
+            totaisIndividuaisReport[nome].liquido += valorComInss;
         });
     });
 
+    // Renderiza a linha de Totais da Tabela 1 na tela (tfoot)
+    let tfootAgrupado = document.getElementById('footAgrupado');
+    if(!tfootAgrupado) {
+        tfootAgrupado = document.createElement('tfoot');
+        tfootAgrupado.id = 'footAgrupado';
+        corpoAgrupado.parentNode.appendChild(tfootAgrupado);
+    }
+    tfootAgrupado.innerHTML = `
+        <tr class="table-dark fw-bold">
+            <td colspan="4" class="text-start">TOTAIS GERAIS ACUMULADOS:</td>
+            <td class="text-end text-nowrap">${formatarMoedaLocal(t1TotalGeralCarga)}</td>
+            <td class="text-end text-nowrap" style="color: #ffeb3b;">${formatarMoedaLocal(t1TotalGeralLiquido)}</td>
+            <td colspan="3"></td>
+            <td class="text-end text-nowrap" style="color: #4caf50;">${formatarMoedaLocal(t1TotalGeralPagarComInss)}</td>
+        </tr>
+    `;
+
+    // Acumuladores de totais da Tabela 2
+    let t2TotalGeralBruto = 0;
+    let t2TotalGeralInss = 0;
+    let t2TotalGeralLiquido = 0;
+
+    // Filtra para exibir apenas os cooperados selecionados na Tabela 2 se houver filtro ativo
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
+        if (cooperadosFiltrados.length > 0 && !cooperadosFiltrados.includes(nome)) {
+            return; // Ignora se houver filtro ativo e ele não for um dos selecionados
+        }
+
         const item = totaisIndividuaisReport[nome];
+        t2TotalGeralBruto += item.bruto;
+        t2TotalGeralInss += item.inss;
+        t2TotalGeralLiquido += item.liquido;
+
         const trIndiv = document.createElement('tr');
         trIndiv.innerHTML = `
             <td data-label="Nome do Cooperado" class="fw-bold"><i class="fas fa-user-circle"></i> ${nome}</td>
-            <td data-label="Valor Bruto Rateado (R$)" class="text-end">R$ ${item.bruto.toFixed(2)}</td>
-            <td data-label="INSS Próprio (+20%)" class="text-end" style="color: #c62828;">R$ ${item.inss.toFixed(2)}</td>
-            <td data-label="Líquido Final a Receber (R$)" class="text-end fw-bold" style="color: #2e7d32;">R$ ${item.liquido.toFixed(2)}</td>
+            <td data-label="Quota Parte Rateio (R$)" class="text-end text-nowrap">${formatarMoedaLocal(item.bruto)}</td>
+            <td data-label="INSS Próprio +20% (R$)" class="text-end text-nowrap" style="color: #c62828;">${formatarMoedaLocal(item.inss)}</td>
+            <td data-label="Líquido a Pagar (R$)" class="text-end text-nowrap fw-bold" style="color: #2e7d32;">${formatarMoedaLocal(item.liquido)}</td>
         `;
         corpoIndividual.appendChild(trIndiv);
     });
+
+    // Renderiza a linha de Totais da Tabela 2 na tela (tfoot)
+    let tfootIndividual = document.getElementById('footIndividual');
+    if(!tfootIndividual) {
+        tfootIndividual = document.createElement('tfoot');
+        tfootIndividual.id = 'footIndividual';
+        corpoIndividual.parentNode.appendChild(tfootIndividual);
+    }
+    tfootIndividual.innerHTML = `
+        <tr class="table-success fw-bold text-dark">
+            <td class="text-start">TOTAL GERAL DE REPASSES:</td>
+            <td class="text-end text-nowrap">${formatarMoedaLocal(t2TotalGeralBruto)}</td>
+            <td class="text-end text-nowrap" style="color: #b71c1c;">${formatarMoedaLocal(t2TotalGeralInss)}</td>
+            <td class="text-end text-nowrap" style="color: #1b5e20;">${formatarMoedaLocal(t2TotalGeralLiquido)}</td>
+        </tr>
+    `;
 
     document.getElementById('botoesExportacao').style.display = 'flex';
     document.getElementById('secaoAgrupado').style.display = 'block';
@@ -307,7 +374,7 @@ window.exportarExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Fechamento de Cooperados');
 
-    sheet.mergeCells('A1:F1');
+    sheet.mergeCells('A1:J1');
     const headerCell = sheet.getCell('A1');
     headerCell.value = "MÓVEIS SIMONETTI - RELATÓRIO DE REPASSE DE COOPERADOS";
     headerCell.font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFFFFF' } };
@@ -315,53 +382,81 @@ window.exportarExcel = async () => {
     headerCell.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.getRow(1).height = 40;
 
-    sheet.mergeCells('A2:F2');
+    sheet.mergeCells('A2:J2');
     sheet.getCell('A2').value = `Período Analisado: ${window.formatarDataBR(document.getElementById('dataInicio').value)} até ${window.formatarDataBR(document.getElementById('dataFim').value)}`;
     sheet.getCell('A2').font = { italic: true, size: 11 };
 
     sheet.addRow([]); 
-    const rowTitle1 = sheet.addRow(["1. Detalhamento de Lançamentos e Movimentações"]);
+    const rowTitle1 = sheet.addRow(["1. Resumo de Movimentações por Agenda / Grupo"]);
     rowTitle1.getCell(1).font = { bold: true, size: 12 };
     
-    const headersT1 = ["Data", "Fornecedor(es)", "Valor Total Carga", "Líquido Rateio (70%)", "Participantes", "Equipe Escalada"];
+    // Novas Colunas incluídas no Excel
+    const headersT1 = [
+        "Data", "Fornecedor(es)", "Qtd Colaboradores", "Nomes dos Cooperados Activos", 
+        "Valor Total (R$)", "Líquido (70%)", "VALOR P/ CADA", "Valor 20% INSS", "VALOR C/ INSS", "Valor á Pagar da descarga com o INSS INCLOSO"
+    ];
     const headerRowT1 = sheet.addRow(headersT1);
     headerRowT1.eachCell(c => {
-        c.font = { bold: true, color: { argb: 'FFFFFF' } };
+        c.font = { bold: true, color: { argb: 'FFFFFF' }, size: 10 };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '424242' } };
+        c.alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
     });
 
+    let totalT1Carga = 0;
     let totalT1Liquido = 0;
+    let totalT1PagarInss = 0;
 
     dadosProcessadosReport.forEach(agenda => {
         const equipe = agenda.cooperadosArray || [];
-        const valorLiquido = agenda.valorDescarga * 0.7;
+        const valorCarga = agenda.valorDescarga;
+        const valorLiquido = valorCarga * 0.7;
+        const qtd = equipe.length;
+
+        const quotaParte = qtd > 0 ? (valorLiquido / qtd) : 0;
+        const inss = quotaParte * 0.20;
+        const valorComInss = quotaParte + inss;
+        const totalDescargaComInss = valorComInss * qtd;
+
+        totalT1Carga += valorCarga;
         totalT1Liquido += valorLiquido;
+        totalT1PagarInss += totalDescargaComInss;
 
         const r = sheet.addRow([
             window.formatarDataBR(agenda.data),
-            agenda.fornecedor || 'N/A',
-            agenda.valorDescarga,
+            agenda.fornecedoresArray.join(', '),
+            qtd,
+            equipe.join(', '),
+            valorCarga,
             valorLiquido,
-            equipe.length,
-            equipe.join(', ')
+            quotaParte,
+            inss,
+            valorComInss,
+            totalDescargaComInss
         ]);
-        r.getCell(3).numberFormat = '"R$"#,##0.00';
-        r.getCell(4).numberFormat = '"R$"#,##0.00';
+
+        // Formata as células financeiras para Moeda R$
+        for(let col = 5; col <= 10; col++) {
+            r.getCell(col).numberFormat = '"R$"#,##0.00';
+        }
     });
 
-    // Linha de total para a Tabela 1 no Excel
-    const linhaTotalT1 = sheet.addRow(["TOTAL LÍQUIDO RATEIO:", "", "", totalT1Liquido]);
+    // Linha de totais acumulados da Tabela 1
+    const linhaTotalT1 = sheet.addRow(["TOTAL ACUMULADO:", "", "", "", totalT1Carga, totalT1Liquido, "", "", "", totalT1PagarInss]);
     linhaTotalT1.getCell(1).font = { bold: true };
-    linhaTotalT1.getCell(4).font = { bold: true, color: { argb: 'B71C1C' } };
-    linhaTotalT1.getCell(4).numberFormat = '"R$"#,##0.00';
+    linhaTotalT1.getCell(5).font = { bold: true };
+    linhaTotalT1.getCell(5).numberFormat = '"R$"#,##0.00';
+    linhaTotalT1.getCell(6).font = { bold: true, color: { argb: 'B71C1C' } };
+    linhaTotalT1.getCell(6).numberFormat = '"R$"#,##0.00';
+    linhaTotalT1.getCell(10).font = { bold: true, color: { argb: '1B5E20' } };
+    linhaTotalT1.getCell(10).numberFormat = '"R$"#,##0.00';
 
     sheet.addRow([]);
     sheet.addRow([]);
 
-    const rowTitle2 = sheet.addRow(["2. Demonstrativo de Acerto por Cooperado (Individual)"]);
+    const rowTitle2 = sheet.addRow(["2. Demonstrativo Líquido de Repasse Individual"]);
     rowTitle2.getCell(1).font = { bold: true, size: 12 };
 
-    const headersT2 = ["Nome do Cooperado", "Valor Quota Parte (Bruto)", "Adicional INSS (20%)", "Total Líquido a Receber"];
+    const headersT2 = ["Nome do Cooperado", "Quota Parte Rateio (R$)", "INSS Próprio +20% (R$)", "Líquido a Pagar (R$)"];
     const headerRowT2 = sheet.addRow(headersT2);
     headerRowT2.eachCell(c => {
         c.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -372,14 +467,13 @@ window.exportarExcel = async () => {
     let totalGeralInss = 0;
     let totalGeralRepasse = 0;
 
+    const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
+
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
+        if (cooperadosSelecionados.length > 0 && !cooperadosSelecionados.includes(nome)) return;
+
         const item = totaisIndividuaisReport[nome];
-        const r = sheet.addRow([
-            nome,
-            item.bruto,
-            item.inss,
-            item.liquido
-        ]);
+        const r = sheet.addRow([nome, item.bruto, item.inss, item.liquido]);
         r.getCell(2).numberFormat = '"R$"#,##0.00';
         r.getCell(3).numberFormat = '"R$"#,##0.00';
         r.getCell(4).numberFormat = '"R$"#,##0.00';
@@ -390,7 +484,7 @@ window.exportarExcel = async () => {
     });
 
     sheet.addRow([]);
-    const linhaTotal = sheet.addRow(["TOTAL GERAL A SER PAGO:", totalGeralBruto, totalGeralInss, totalGeralRepasse]);
+    const linhaTotal = sheet.addRow(["TOTAL GERAL DE REPASSES:", totalGeralBruto, totalGeralInss, totalGeralRepasse]);
     linhaTotal.getCell(1).font = { bold: true };
     linhaTotal.getCell(2).font = { bold: true };
     linhaTotal.getCell(2).numberFormat = '"R$"#,##0.00';
@@ -405,7 +499,7 @@ window.exportarExcel = async () => {
             const valLen = cell.value ? cell.value.toString().length : 0;
             if (valLen > maxLen) maxLen = valLen;
         });
-        column.width = maxLen < 15 ? 15 : maxLen + 3;
+        column.width = maxLen < 12 ? 12 : maxLen + 3;
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -419,15 +513,12 @@ window.exportarExcel = async () => {
 // ==================== ENGINE DE EXPORTAÇÃO PDF ====================
 window.exportarPDF = () => {
     const { jsPDF } = window.jspdf;
-    // Configura o PDF para 'l' (Landscape / Horizontal)
     const doc = new jsPDF('l', 'pt', 'a4'); 
 
-    // Função interna para formatar valores no padrão monetário do Brasil (R$ 1.234,56)
     const formatarMoedaBR = (valor) => {
         return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
 
-    // Header estendido para o formato horizontal (largura total 842 pontos)
     doc.setFillColor(211, 47, 47); 
     doc.rect(0, 0, 842, 60, 'F');
     
@@ -445,29 +536,43 @@ window.exportarPDF = () => {
     doc.setFont("Helvetica", "bold");
     doc.text(`Período de Apuração: ${window.formatarDataBR(document.getElementById('dataInicio').value)} até ${window.formatarDataBR(document.getElementById('dataFim').value)}`, 40, 90);
 
-    doc.text("1. Detalhamento das Movimentações e Lançamentos", 40, 115);
+    doc.text("1. Resumo de Movimentações por Agenda / Grupo", 40, 115);
     
-    // Removida a coluna de "Total Carga" a pedido
-    const columnsT1 = ["Data", "Fornecedor(es)", "Líq. Rateio (70%)", "Qtd. Coops", "Equipe Escalada"];
+    // Novas Colunas detalhadas no PDF Horizontalizado
+    const columnsT1 = [
+        "Data", "Fornecedor(es)", "Qtd", "Cooperados", "Líq 70%", "P/ Cada", "20% INSS", "C/ INSS", "Total á Pagar"
+    ];
 
     let sumT1Liquido = 0;
+    let sumT1TotalPagar = 0;
 
     const rowsT1 = dadosProcessadosReport.map(agenda => {
-        const vLiquido = agenda.valorDescarga * 0.70;
-        sumT1Liquido += vLiquido;
         const equipe = agenda.cooperadosArray || [];
+        const valorLiquido = agenda.valorDescarga * 0.70;
+        const qtd = equipe.length;
+        
+        const quotaParte = qtd > 0 ? (valorLiquido / qtd) : 0;
+        const inss = quotaParte * 0.20;
+        const cInss = quotaParte + inss;
+        const totalPagar = cInss * qtd;
+
+        sumT1Liquido += valorLiquido;
+        sumT1TotalPagar += totalPagar;
 
         return [
             window.formatarDataBR(agenda.data),
-            agenda.fornecedor || 'N/A',
-            formatarMoedaBR(vLiquido),
-            `${equipe.length} Coops.`,
-            equipe.join(', ')
+            agenda.fornecedoresArray.join(', '),
+            qtd,
+            equipe.join(', '),
+            formatarMoedaBR(valorLiquido),
+            formatarMoedaBR(quotaParte),
+            formatarMoedaBR(inss),
+            formatarMoedaBR(cInss),
+            formatarMoedaBR(totalPagar)
         ];
     });
 
-    // Rodapé com o totalizador da tabela 1
-    const footT1 = [["TOTAL GERAL LÍQUIDO", "", formatarMoedaBR(sumT1Liquido), "", ""]];
+    const footT1 = [["TOTAL ACUMULADO", "", "", "", formatarMoedaBR(sumT1Liquido), "", "", "", formatarMoedaBR(sumT1TotalPagar)]];
 
     doc.autoTable({
         startY: 125,
@@ -475,38 +580,35 @@ window.exportarPDF = () => {
         body: rowsT1,
         foot: footT1,
         theme: 'striped',
-        headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold' },
-        footStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' },
-        styles: { fontSize: 9 },
+        headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold', fontSize: 8 },
+        footStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 },
+        styles: { fontSize: 8 },
         columnStyles: {
-            1: { cellWidth: 200 }, // Espaço otimizado para múltiplos fornecedores fracionados
-            2: { halign: 'right' },
-            4: { cellWidth: 320 }  
+            1: { cellWidth: 110 }, 
+            3: { cellWidth: 150 },
+            4: { halign: 'right' },
+            5: { halign: 'right' },
+            6: { halign: 'right' },
+            7: { halign: 'right' },
+            8: { halign: 'right' }
         },
         didParseCell: function(data) {
             if (data.section === 'body') {
                 const dataRowIndex = data.row.index;
                 let refData = dadosProcessadosReport[dataRowIndex].data;
-                
                 let todasDatas = dadosProcessadosReport.map(d => d.data);
                 let listaDatasUnicas = [...new Set(todasDatas)];
                 let indiceData = listaDatasUnicas.indexOf(refData);
-
-                if (indiceData % 2 === 0) {
-                    data.cell.styles.fillColor = [255, 255, 255]; 
-                } else {
-                    data.cell.styles.fillColor = [240, 244, 250]; 
-                }
+                data.cell.styles.fillColor = (indiceData % 2 === 0) ? [255, 255, 255] : [240, 244, 250];
             }
         }
     });
 
     let currentY = doc.lastAutoTable.finalY + 30;
-    // Evita quebra de página feia se o título ficar isolado na borda de baixo
     if (currentY > 530) { doc.addPage(); currentY = 60; }
 
     doc.setFont("Helvetica", "bold");
-    doc.text("2. Demonstrativo de Repasse Líquido Individual", 40, currentY);
+    doc.text("2. Demonstrativo Líquido de Repasse Individual", 40, currentY);
 
     const columnsT2 = ["Nome do Cooperado", "Quota Parte Rateio (R$)", "INSS Próprio +20% (R$)", "Líquido a Pagar (R$)"];
     
@@ -514,27 +616,25 @@ window.exportarPDF = () => {
     let sumT2Inss = 0;
     let sumT2Liquido = 0;
 
-    const rowsT2 = Object.keys(totaisIndividuaisReport).sort().map(nome => {
+    const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
+
+    Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
+        if (cooperadosSelecionados.length > 0 && !cooperadosSelecionados.includes(nome)) return;
+
         const item = totaisIndividuaisReport[nome];
         sumT2Bruto += item.bruto;
         sumT2Inss += item.inss;
         sumT2Liquido += item.liquido;
 
-        return [
+        rowsT2.push([
             nome,
             formatarMoedaBR(item.bruto),
             formatarMoedaBR(item.inss),
             formatarMoedaBR(item.liquido)
-        ];
+        ]);
     });
 
-    // Rodapé unificado contendo as somas de todas as colunas numéricas solicitadas
-    const footT2 = [[
-        "TOTAL GERAL DE REPASSES", 
-        formatarMoedaBR(sumT2Bruto), 
-        formatarMoedaBR(sumT2Inss), 
-        formatarMoedaBR(sumT2Liquido)
-    ]];
+    const footT2 = [["TOTAL GERAL DE REPASSES", formatarMoedaBR(sumT2Bruto), formatarMoedaBR(sumT2Inss), formatarMoedaBR(sumT2Liquido)]];
 
     doc.autoTable({
         startY: currentY + 10,
