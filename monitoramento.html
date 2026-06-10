@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
-    <style>
+<style>
         :root {
             --primary: #D32F2F;
             --primary-dark: #B71C1C;
@@ -67,7 +67,7 @@
         .titulo-sistema { color: var(--primary); font-weight: bold; font-size: 1.4rem; margin: 0; }
 
         /* CONTAINER PRINCIPAL */
-        .main-container { padding: 20px; max-width: 100%; margin: auto; }
+        .main-container { padding: 20px; max-width: 100%; margin: auto; box-sizing: border-box; }
 
         /* PAINEL DE CONTROLE */
         .control-panel {
@@ -87,6 +87,13 @@
             display: flex;
             gap: 20px;
             align-items: flex-end;
+            flex-wrap: wrap; /* Garante que os inputs quebrem linha se faltar espaço */
+            width: 100%;
+        }
+
+        .control-group {
+            flex: 1;
+            min-width: 120px; /* Impede que o select esmague */
         }
 
         .control-group label {
@@ -105,6 +112,8 @@
             background: #fff;
             outline: none;
             font-size: 14px;
+            width: 100%; /* Ocupa o espaço correto do grupo */
+            box-sizing: border-box;
         }
 
         .control-input:focus { border-color: var(--primary); }
@@ -122,6 +131,7 @@
             cursor: pointer;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             transition: 0.3s;
             font-size: 13px;
@@ -157,36 +167,15 @@
 
         .dropdown-content a:hover { background-color: #f8f9fa; color: var(--primary); }
         
-        /* Estilos para a Árvore de Filtro estilo Excel (Coluna Data) */
-        .filter-tree-node {
-            margin-left: 15px;
-            display: none; /* Começam recolhidos */
-        }
-        .filter-tree-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 3px 0;
-            user-select: none;
-        }
-        .filter-tree-toggle {
-            cursor: pointer;
-            width: 14px;
-            text-align: center;
-            color: #666;
-            font-size: 11px;
-        }
-        .filter-tree-item label {
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
-        }
+        /* Estilos para a Árvore de Filtro estilo Excel */
+        .filter-tree-node { margin-left: 15px; display: none; }
+        .filter-tree-item { display: flex; align-items: center; gap: 6px; padding: 3px 0; user-select: none; }
+        .filter-tree-toggle { cursor: pointer; width: 14px; text-align: center; color: #666; font-size: 11px; }
+        .filter-tree-item label { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
         
         /* TABELA */
-        .table-container { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
-        .scroll-area { overflow-x: auto; }
+        .table-container { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; width: 100%; }
+        .scroll-area { overflow-x: auto; -webkit-overflow-scrolling: touch; } /* Rolagem suave no celular */
         table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         
         thead th {
@@ -200,27 +189,10 @@
             border-right: 1px solid rgba(255,255,255,0.1);
         }
 
-        .th-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        tbody td { 
-            padding: 12px 10px; 
-            text-align: center; 
-            border-bottom: 1px solid #eee; 
-            border-right: 1px solid #f0f0f0; /* LINHA VERTICAL SUAVE */
-            font-size: 13px; 
-        }
+        .th-content { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        tbody td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #eee; border-right: 1px solid #f0f0f0; font-size: 13px; }
+        tbody td:last-child { border-right: none; }
 
-        /* Remove a linha da última coluna para não ficar estranho */
-        tbody td:last-child {
-            border-right: none;
-        }
-
-        /* BADGE DE FILTRO ATIVO */
         .badge-filtro {
             background-color: #fff176;
             color: #333;
@@ -240,8 +212,10 @@
             padding: 15px;
             background: #fff;
             border-top: 1px solid #eee;
+            flex-wrap: wrap;
+            gap: 10px;
         }
-        .page-buttons { display: flex; gap: 5px; }
+        .page-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
         .btn-page { padding: 6px 12px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; font-size: 13px; }
         .btn-page.active { background: var(--primary); color: white; border-color: var(--primary); }
 
@@ -255,34 +229,65 @@
             z-index: 2000;
             justify-content: center;
             align-items: center;
+            padding: 10px; /* Margem pro modal não colar na borda do celular */
+            box-sizing: border-box;
         }
 
         .modal-glass {
             background: white;
-            width: 90%;
-            max-width: 500px; /* Reduzi para o filtro */
+            width: 100%;
+            max-width: 500px;
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         #modalComposicao .modal-glass { max-width: 800px; }
-
         .modal-header { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+        .modal-body { padding: 20px; max-height: 80vh; overflow-y: auto; box-sizing: border-box; }
 
         .option-disabled { opacity: 0.5; color: #999; font-style: italic; }
-        
-        /* Efeito ao passar o mouse no cabeçalho */
-        thead th:hover {
-            background-color: var(--primary-dark) !important;
-        }
+        thead th:hover { background-color: var(--primary-dark) !important; }
+        .th-content span i { margin-left: 5px; font-size: 0.8rem; opacity: 0.7; }
 
-        /* Ajuste no ícone de ordenação */
-        .th-content span i {
-            margin-left: 5px;
-            font-size: 0.8rem;
-            opacity: 0.7;
+        /* ==========================================================================
+           ⚡ MEDIA QUERIES - REGRAS ESPECÍFICAS PARA CELULAR (TELAS ATÉ 768px)
+           ========================================================================== */
+        @media (max-width: 768px) {
+            /* Transforma o Header Grid em blocos flexíveis empilhados */
+            .header-portal {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+                padding: 12px;
+            }
+            .header-left, .header-right { 
+                width: 100%; 
+                justify-content: center; 
+                text-align: center; 
+            }
+            .titulo-sistema { font-size: 1.1rem; }
+            .btn-logout { width: 100%; padding: 6px; }
+
+            /* Ajusta o painel de pesquisa e paginação */
+            .left-controls { gap: 10px; }
+            .control-group[style*="width: 300px;"] { width: 100% !important; }
+            .dropdown, .btn-share { width: 100%; }
+            .dropdown-content { width: 100%; position: relative; } /* Faz o dropdown expandir na tela */
+            
+            .pagination {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            /* Ajustes finos nos botões de modais para não sumirem da tela */
+            .modal-body button {
+                font-size: 12px;
+                padding: 10px 5px;
+            }
         }
     </style>
 </head>
