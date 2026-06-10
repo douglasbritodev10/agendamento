@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Histórico de Ações | Móveis Simonetti</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #D32F2F;
+            --primary-dark: #B71C1C;
+            --bg-light: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #e0e0e0;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+        }
+
+        body { 
+            background: var(--bg-light); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        /* NAVBAR CLARA E PADRONIZADA */
+        .navbar {
+            background: white;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand h2 {
+            font-size: 1.3rem;
+            color: #555;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-brand h2 span {
+            color: var(--primary);
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--text-main);
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+
+        .user-info i {
+            color: var(--primary);
+        }
+
+        .btn-voltar {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-voltar:hover {
+            background: #f5f5f5;
+            color: var(--text-main);
+            border-color: #bbb;
+        }
+
+        /* CONTEÚDO PRINCIPAL */
+        .container {
+            flex: 1;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .page-header {
+            margin-bottom: 25px;
+        }
+
+        .page-header h1 {
+            font-size: 1.6rem;
+            color: #222;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-header h1 i {
+            color: var(--primary);
+        }
+
+        /* FILTROS E BUSCA */
+        .card-filtros {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            margin-bottom: 25px;
+        }
+
+        .grid-filtros {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+            color: var(--text-main);
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-wrapper input {
+            padding-left: 38px;
+        }
+
+        .search-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 0.95rem;
+        }
+
+        .btn-aplicar {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            transition: background 0.2s;
+            height: 44px;
+        }
+
+        .btn-aplicar:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-limpar {
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ddd;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            height: 44px;
+        }
+
+        .btn-limpar:hover {
+            background: #e5e5e5;
+        }
+
+        /* TABELA CUSTOMIZADA E RESPONSIVA */
+        .card-tabela {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+
+        /* Força a rolagem lateral em dispositivos menores de forma elegante */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+            min-width: 800px; /* Garante estrutura firme na rolagem mobile */
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #444;
+            font-weight: 700;
+            padding: 14px 18px;
+            border-bottom: 2px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #eee;
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: #fdfdfd;
+        }
+
+        /* Badges de Destaque para Ações */
+        .badge-acao {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        /* Cores dinâmicas para os tipos de logs encontrados no seu JS */
+        .badge-padrao { background: #e8f0fe; color: #1a73e8; }
+        .badge-sucesso { background: #e6f4ea; color: #137333; }
+        .badge-perigo { background: #fce8e6; color: #c5221f; }
+        .badge-aviso { background: #fef7e0; color: #b06000; }
+
+        /* CONTROLES DE PAGINAÇÃO */
+        .paginacao-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #fff;
+            border-top: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .paginacao-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .paginacao-botoes {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-page {
+            background: white;
+            border: 1px solid #ccc;
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .btn-page:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-page:disabled {
+            background: #f5f5f5;
+            color: #aaa;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+        .btn-page.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* RESPONSIVIDADE EM TELAS MENORES */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+            }
+            .user-info span {
+                display: none; /* Oculta texto do nome em telas muito pequenas */
+            }
+            .grid-filtros {
+                grid-template-columns: 1fr;
+            }
+            .paginacao-container {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h2>MÓVEIS <span>SIMONETTI</span></h2>
+        </div>
+        <div class="nav-user">
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span id="userNameDisplay">CARREGANDO...</span>
+            </div>
+            <a href="inicial.html" class="btn-voltar">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header">
+            <h1><i class="fas fa-history"></i> Histórico de Ações do Sistema</h1>
+        </div>
+
+        <div class="card-filtros">
+            <div class="grid-filtros">
+                <div class="form-group">
+                    <label>Busca Geral</label>
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="inputBuscaGeral" placeholder="Usuário, ação, senha...">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Data Inicial</label>
+                    <input type="date" id="dataInicial">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Final</label>
+                    <input type="date" id="dataFinal">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="limparFiltrosPeríodo()" class="btn-limpar" title="Limpar Filtros de Data">
+                        Limpar
+                    </button>
+                    <button onclick="aplicarFiltros()" class="btn-aplicar">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-tabela">
+            <div class="table-responsive">
+                <table id="tabelaHistorico">
+                    <thead>
+                        <tr>
+                            <th style="width: 180px;">Data / Hora</th>
+                            <th style="width: 150px;">Usuário</th>
+                            <th style="width: 220px;">Ação</th>
+                            <th style="width: 130px;">Senha Ref.</th>
+                            <th>Detalhes Adicionais</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoHistorico">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                <i class="fas fa-spinner fa-spin"></i> Conectando ao banco de dados e buscando logs...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="paginacao-container">
+                <div class="paginacao-info" id="infoPaginacao">
+                    Exibindo 0-0 de 0 registros
+                </div>
+                <div class="paginacao-botoes" id="botoesPaginacao">
+                    </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="js/historico.js"></script>
+</body>
+</html>
