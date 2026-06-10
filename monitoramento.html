@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
-<style>
+    <style>
         :root {
             --primary: #D32F2F;
             --primary-dark: #B71C1C;
@@ -32,10 +32,12 @@
             color: var(--text-main);
         }
 
-        /* HEADER */
+        /* ==========================================
+           HEADER (Ajustado para não quebrar)
+           ========================================== */
         .header-portal {
             background: #fff;
-            padding: 10px 20px;
+            padding: 12px 20px;
             display: grid;
             grid-template-columns: 1fr auto 1fr;
             align-items: center;
@@ -45,7 +47,12 @@
             z-index: 1000;
         }
 
-        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header-left { 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            white-space: nowrap; 
+        }
         .header-center { text-align: center; }
         .header-right { text-align: right; }
 
@@ -56,11 +63,12 @@
             background: var(--primary); 
             border: none; 
             color: white; 
-            padding: 8px 20px; 
+            padding: 8px 18px; 
             border-radius: 6px; 
             cursor: pointer; 
             font-weight: bold;
             transition: 0.3s;
+            font-size: 13px;
         }
         .btn-logout:hover { background: var(--primary-dark); }
         
@@ -69,7 +77,9 @@
         /* CONTAINER PRINCIPAL */
         .main-container { padding: 20px; max-width: 100%; margin: auto; box-sizing: border-box; }
 
-        /* PAINEL DE CONTROLE */
+        /* ==========================================
+           PAINEL DE CONTROLE (PC E CELULAR)
+           ========================================== */
         .control-panel {
             display: flex;
             justify-content: space-between;
@@ -80,20 +90,25 @@
             border-radius: 12px;
             box-shadow: var(--shadow);
             gap: 15px;
-            flex-wrap: wrap;
         }
 
         .left-controls {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             align-items: flex-end;
-            flex-wrap: wrap; /* Garante que os inputs quebrem linha se faltar espaço */
-            width: 100%;
+            flex: 1;
         }
 
-        .control-group {
-            flex: 1;
-            min-width: 120px; /* Impede que o select esmague */
+        /* Controla o select do "Exibir" */
+        .control-group-select {
+            width: 80px; /* Tamanho fixo perfeito para os números de página */
+            flex-shrink: 0;
+        }
+
+        /* Controla a barra do "Pesquisar Geral" */
+        .control-group-search {
+            max-width: 400px;
+            width: 100%;
         }
 
         .control-group label {
@@ -112,14 +127,13 @@
             background: #fff;
             outline: none;
             font-size: 14px;
-            width: 100%; /* Ocupa o espaço correto do grupo */
+            width: 100%;
             box-sizing: border-box;
         }
-
         .control-input:focus { border-color: var(--primary); }
 
         /* DROPDOWN COMPARTILHAR */
-        .dropdown { position: relative; }
+        .dropdown { position: relative; flex-shrink: 0; }
 
         .btn-share {
             background: #1565c0;
@@ -131,12 +145,10 @@
             cursor: pointer;
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
             transition: 0.3s;
             font-size: 13px;
         }
-
         .btn-share:hover { background: #0d47a1; box-shadow: 0 4px 8px rgba(21, 101, 192, 0.3); }
 
         .dropdown-content {
@@ -164,10 +176,9 @@
             border-bottom: 1px solid #f0f0f0;
             transition: 0.2s;
         }
-
         .dropdown-content a:hover { background-color: #f8f9fa; color: var(--primary); }
         
-        /* Estilos para a Árvore de Filtro estilo Excel */
+        /* ÁRVORE DE FILTRO EXCEL */
         .filter-tree-node { margin-left: 15px; display: none; }
         .filter-tree-item { display: flex; align-items: center; gap: 6px; padding: 3px 0; user-select: none; }
         .filter-tree-toggle { cursor: pointer; width: 14px; text-align: center; color: #666; font-size: 11px; }
@@ -175,7 +186,7 @@
         
         /* TABELA */
         .table-container { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; width: 100%; }
-        .scroll-area { overflow-x: auto; -webkit-overflow-scrolling: touch; } /* Rolagem suave no celular */
+        .scroll-area { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         
         thead th {
@@ -212,10 +223,8 @@
             padding: 15px;
             background: #fff;
             border-top: 1px solid #eee;
-            flex-wrap: wrap;
-            gap: 10px;
         }
-        .page-buttons { display: flex; gap: 5px; flex-wrap: wrap; }
+        .page-buttons { display: flex; gap: 5px; }
         .btn-page { padding: 6px 12px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; font-size: 13px; }
         .btn-page.active { background: var(--primary); color: white; border-color: var(--primary); }
 
@@ -229,7 +238,7 @@
             z-index: 2000;
             justify-content: center;
             align-items: center;
-            padding: 10px; /* Margem pro modal não colar na borda do celular */
+            padding: 15px;
             box-sizing: border-box;
         }
 
@@ -240,53 +249,77 @@
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
         }
 
         #modalComposicao .modal-glass { max-width: 800px; }
         .modal-header { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 20px; max-height: 80vh; overflow-y: auto; box-sizing: border-box; }
+        .modal-body { padding: 20px; max-height: 75vh; overflow-y: auto; }
 
         .option-disabled { opacity: 0.5; color: #999; font-style: italic; }
         thead th:hover { background-color: var(--primary-dark) !important; }
         .th-content span i { margin-left: 5px; font-size: 0.8rem; opacity: 0.7; }
 
         /* ==========================================================================
-           ⚡ MEDIA QUERIES - REGRAS ESPECÍFICAS PARA CELULAR (TELAS ATÉ 768px)
+           ⚡ REGRAS EXCLUSIVAS PARA CELULAR (TELAS PEQUENAS)
            ========================================================================== */
         @media (max-width: 768px) {
-            /* Transforma o Header Grid em blocos flexíveis empilhados */
+            /* 1. Correção total do Topo/Header no Celular */
             .header-portal {
                 display: flex;
-                flex-direction: column;
-                gap: 8px;
-                text-align: center;
-                padding: 12px;
+                justify-content: space-between; /* Mantém os elementos na mesma linha */
+                align-items: center;
+                padding: 10px 15px;
             }
-            .header-left, .header-right { 
-                width: 100%; 
-                justify-content: center; 
-                text-align: center; 
+            .header-center { 
+                display: none; /* Oculta o título longo no celular para sobrar espaço real */
             }
-            .titulo-sistema { font-size: 1.1rem; }
-            .btn-logout { width: 100%; padding: 6px; }
+            .header-left { 
+                gap: 8px; 
+            }
+            .header-left span { 
+                font-size: 12px; /* Diminui levemente o texto de boas-vindas */
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis; /* Se o nome for gigante, põe '...' e não quebra a linha */
+            }
+            .btn-back { 
+                font-size: 1.1rem; 
+            }
+            .btn-logout { 
+                padding: 6px 12px; 
+                font-size: 11px; /* Botão menor e mais compacto */
+            }
 
-            /* Ajusta o painel de pesquisa e paginação */
-            .left-controls { gap: 10px; }
-            .control-group[style*="width: 300px;"] { width: 100% !important; }
-            .dropdown, .btn-share { width: 100%; }
-            .dropdown-content { width: 100%; position: relative; } /* Faz o dropdown expandir na tela */
+            /* 2. Correção dos Filtros no Celular */
+            .control-panel {
+                flex-direction: column;
+                align-items: stretch; /* Faz os blocos preencherem o espaço lateral */
+                padding: 12px;
+                gap: 12px;
+            }
+            .left-controls {
+                display: flex;
+                flex-direction: row; /* Mantém na mesma linha lado a lado */
+                gap: 10px;
+                width: 100%;
+            }
+            .control-group-select {
+                width: 75px; /* Mantém o campo de paginação pequeno */
+            }
+            .control-group-search {
+                flex: 1; /* Faz a barra de pesquisa ocupar todo o resto do espaço disponível lateralmente */
+                max-width: none;
+            }
+            .btn-share {
+                width: 100%; /* Botão de compartilhar ocupa a linha de baixo inteira */
+                justify-content: center;
+            }
             
+            /* Paginação compacta */
             .pagination {
                 flex-direction: column;
+                gap: 10px;
                 text-align: center;
-            }
-            
-            /* Ajustes finos nos botões de modais para não sumirem da tela */
-            .modal-body button {
-                font-size: 12px;
-                padding: 10px 5px;
             }
         }
     </style>
@@ -310,21 +343,21 @@
         
         <div class="control-panel">
             <div class="left-controls">
-                <div class="control-group">
+                <div class="control-group control-group-select">
                     <label>Exibir</label>
                     <select id="selectPageSize" onchange="mudarTamanhoPagina()" class="control-input">
                         <option value="25">25</option>
                         <option value="50" selected>50</option>
                         <option value="75">75</option>
                         <option value="100">100</option>
-                    </select>
-                </div>
+                   </select>
+               </div>
                 
-                <div class="control-group" style="width: 300px;">
-                    <label>Pesquisar Geral</label>
-                    <input type="text" id="inputBusca" placeholder="Buscar por fornecedor, senha..." 
-                           class="control-input" style="width: 100%;" oninput="atualizarFiltros()">
-                </div>
+               <div class="control-group control-group-search">
+                   <label>Pesquisar Geral</label>
+                   <input type="text" id="inputBusca" placeholder="Buscar por fornecedor, senha..." 
+                          class="control-input" oninput="atualizarFiltros()">
+               </div>
             </div>
 
             <div class="dropdown">
