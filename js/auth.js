@@ -1,5 +1,6 @@
 import { app } from './firebase-config.js';
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+// ADICIONADO: importação do sendPasswordResetEmail na linha abaixo
+import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const auth = getAuth(app);
@@ -8,6 +9,11 @@ const db = getFirestore(app);
 const loginBtn = document.getElementById('btnLogin');
 const loginInput = document.getElementById('loginField');
 const passInput = document.getElementById('passwordField');
+
+// NOVOS ELEMENTOS CAPTURADOS
+const forgotPassBtn = document.getElementById('btnForgotPass');
+const pwaBtn = document.getElementById('btnInstallPWA');
+let deferredPrompt; 
 
 async function realizarLogin() {
     let usernameOrEmail = loginInput.value.trim();
@@ -18,14 +24,12 @@ async function realizarLogin() {
         return;
     }
 
-    // Feedback visual no botão
     loginBtn.innerText = "AUTENTICANDO...";
     loginBtn.disabled = true;
 
     try {
         let emailFinal = usernameOrEmail;
 
-        // Se NÃO for um e-mail (não tem @), buscamos o e-mail pelo username no Firestore
         if (!usernameOrEmail.includes("@")) {
             const q = query(collection(db, "users"), where("username", "==", usernameOrEmail.toUpperCase()));
             const querySnapshot = await getDocs(q);
@@ -36,16 +40,13 @@ async function realizarLogin() {
             emailFinal = querySnapshot.docs[0].data().email;
         }
 
-        // Login no Firebase Auth
         const userCred = await signInWithEmailAndPassword(auth, emailFinal, password);
         const uid = userCred.user.uid;
 
-        // Busca dados do perfil
         const userDoc = await getDoc(doc(db, "users", uid));
 
         if (userDoc.exists()) {
             const data = userDoc.data();
-            // Salva sessão local de forma organizada
             localStorage.setItem('nivelAcesso', data.nivelAcesso);
             localStorage.setItem('usuarioNome', data.nome);
             localStorage.setItem('username', data.username);
@@ -53,7 +54,6 @@ async function realizarLogin() {
             
             window.location.href = "inicial.html";
         } else {
-            // Se logou mas não tem documento, vai para o primeiro acesso
             window.location.href = "primeiro-acesso.html";
         }
 
@@ -65,6 +65,49 @@ async function realizarLogin() {
     }
 }
 
+// NOVA FUNÇÃO: Redefinição de senha nativa do Firebase
+async function recuperarSenha(e) {
+    e.preventDefault();
+    const emailOrUser = loginInput.value.trim();
+
+    if (!emailOrUser) {
+        alert("Por favor, digite seu e-mail no campo 'E-mail ou Usuário' para recuperar a senha.");
+        loginInput.focus();
+        return;
+    }
+
+    // Caso o usuário tenha digitado apenas o username corporativo, tentamos buscar o e-mail associado no Firestore
+    let emailFinal = emailOrUser;
+    
+    if (!emailOrUser.includes("@")) {
+        try {
+            const q = query(collection(db, "users"), where("username", "==", emailOrUser.toUpperCase()));
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                alert("Usuário não encontrado para recuperação.");
+                return;
+            }
+            emailFinal = querySnapshot.docs[0].data().email;
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao buscar usuário.");
+            return;
+        }
+    }
+
+    // Disparando o e-mail oficial do Firebase
+    try {
+        await sendPasswordResetEmail(auth, emailFinal);
+        alert(`E-mail de redefinição enviado com sucesso para: ${emailFinal}\nVerifique sua caixa de entrada ou spam.`);
+    } catch (error) {
+        console.error("Erro ao enviar e-mail de recuperação:", error);
+        alert("Erro ao tentar enviar o e-mail de recuperação. Verifique se o e-mail está correto.");
+    }
+}
+
+// Evento do botão esqueci a senha
+forgotPassBtn.addEventListener('click', recuperarSenha);
+
 // Evento de clique
 loginBtn.addEventListener('click', realizarLogin);
 
@@ -73,4 +116,40 @@ loginBtn.addEventListener('click', realizarLogin);
     field.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') realizarLogin();
     });
+});
+
+
+// ==========================================
+// LÓGICA DE INSTALAÇÃO DO PWA
+// ==========================================
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Impede que o navegador mostre o aviso padrão imediatamente
+    e.preventDefault();
+    // Guarda o evento para ser disparado quando o usuário clicar no botão
+    deferredPrompt = e;
+    // Mostra o botão de instalação customizado na tela
+    pwaBtn.style.display = 'block';
+});
+
+pwaBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    
+    // Mostra o prompt de instalação do sistema operacional
+    deferredPrompt.prompt();
+    
+    // Aguarda a resposta do usuário (Aceitou ou Recusou)
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    // Como o prompt já foi usado, limpamos a variável
+    deferredPrompt = null;
+    // Oculta o botão novamente
+    pwaBtn.style.display = 'none';
+});
+
+// Oculta o botão se o app já tiver sido instalado com sucesso
+window.addEventListener('appinstalled', () => {
+    console.log('PWA instalado com sucesso!');
+    pwaBtn.style.display = 'none';
+    deferredPrompt = null;
 });
