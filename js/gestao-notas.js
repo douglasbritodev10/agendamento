@@ -14,7 +14,7 @@ const usuarioNome = localStorage.getItem('username') || "Usuário";
 const nivelAcesso = nivelAcessoRaw.toUpperCase().trim();
 
 // 1. Verificação de Segurança
-const niveisPermitidos = ["ADM", "LOGISTICA", "LEITOR"];
+const niveisPermitidos = ["ADM", "LOGISTICA"];
 
 if (!nivelAcesso || !niveisPermitidos.includes(nivelAcesso)) {
     console.error("Acesso negado! Nível lido:", nivelAcesso);
@@ -228,45 +228,110 @@ function atualizarVisualFiltros() {
     });
 }
 
-// --- MODAL DE FILTRO INTELIGENTE ---
+// --- MODAL DE FILTRO INTELIGENTE (COM ÁRVORE DE DATAS PARA A COLUNA DATA) ---
 window.abrirFiltro = function(coluna, event) {
     event.stopPropagation();
     colunaFiltroAtual = coluna;
     const modal = document.getElementById('modalFiltro');
     const container = document.getElementById('opcoesFiltro');
     
-    // 1. Pegar todos os valores únicos possíveis da base original (para mostrar todos)
-    const todosValoresUnicos = [...new Set(dadosOriginais.map(item => {
-        let val = item[coluna] || '';
-        // Se for coluna de data, formatamos para o padrão Brasil
-        return coluna === 'data' ? formatarData(val) : String(val);
-    }))].sort();
+    // 1. COMPORTAMENTO EXCLUSIVO PARA A COLUNA "DATA" (Agrupamento estilo Excel)
+    if (coluna === 'data') {
+        // Mapeamento dos nomes dos meses em PT-BR
+        const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const estrutura = {};
 
-    // 2. Pegar os valores que estão atualmente visíveis (vinculados aos filtros ativos)
-    const valoresVivos = [...new Set(dadosFiltrados.map(item => {
-        let val = item[coluna] || '';
-        return coluna === 'data' ? formatarData(val) : String(val);
-    }))];
-    
-    container.innerHTML = todosValoresUnicos.map(valor => {
-        const estaVivo = valoresVivos.includes(valor);
-        const estaChecado = filtrosSelecionados[coluna]?.includes(valor);
+        // Organiza as datas originais em Anos e Meses
+        dadosOriginais.forEach(item => {
+            const dataBruta = item.data || '';
+            if (!dataBruta) return;
+            
+            const [ano, mes, dia] = dataBruta.split('-');
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+
+            if (!estrutura[ano]) estrutura[ano] = {};
+            if (!estrutura[ano][mes]) estrutura[ano][mes] = [];
+            
+            // Guarda a data formatada e o valor bruto para o checkbox
+            if (!estrutura[ano][mes].some(d => d.bruto === dataBruta)) {
+                estrutura[ano][mes].push({ bruto: dataBruta, formatada: dataFormatada });
+            }
+        });
+
+        let htmlArvore = `<div style="font-family: sans-serif; font-size: 13px; user-select: none;">`;
+
+        // Varre os Anos (Ordenado do mais recente para o mais antigo)
+        Object.keys(estrutura).sort((a, b) => b - a).forEach(ano => {
+            htmlArvore += `
+                <div style="margin-bottom: 5px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span onclick="this.parentElement.nextElementSibling.style.display = this.parentElement.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === '▶' ? '▼' : '▶';" style="cursor: pointer; width: 12px; font-size: 10px; color: #666;">▶</span>
+                        <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" class="chk-ano-arvore" onchange="const chks = this.parentElement.parentElement.nextElementSibling.querySelectorAll('.check-item-filtro'); chks.forEach(c => c.checked = this.checked);" checked>
+                            ${ano}
+                        </label>
+                    </div>
+                    <div class="meses-container" style="display: none; margin-left: 18px; margin-top: 4px;">`;
+
+            // Varre os Meses do Ano
+            Object.keys(estrutura[ano]).sort((a, b) => b - a).forEach(mes => {
+                const nomeMes = nomesMeses[parseInt(mes) - 1] || mes;
+                htmlArvore += `
+                    <div style="margin-bottom: 3px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span onclick="this.parentElement.nextElementSibling.style.display = this.parentElement.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === '▶' ? '▼' : '▶';" style="cursor: pointer; width: 12px; font-size: 10px; color: #666;">▶</span>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: 500;">
+                                <input type="checkbox" class="chk-mes-arvore" onchange="const chks = this.parentElement.parentElement.nextElementSibling.querySelectorAll('.check-item-filtro'); chks.forEach(c => c.checked = this.checked);" checked>
+                                ${nomeMes}
+                            </label>
+                        </div>
+                        <div class="dias-container" style="display: none; margin-left: 18px; margin-top: 2px;">`;
+
+                // Varre os Dias do Mes (Ordenados por dia)
+                estrutura[ano][mes].sort((a, b) => b.formatada.localeCompare(a.formatada)).forEach(dataObj => {
+                    const estaChecado = filtrosSelecionados['data']?.includes(dataObj.formatada);
+                    
+                    htmlArvore += `
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer; padding-left: 5px;">
+                            <input type="checkbox" 
+                                   value="${dataObj.formatada}" 
+                                   ${estaChecado || !filtrosSelecionados['data'] || filtrosSelecionados['data'].length === 0 ? 'checked' : ''} 
+                                   class="check-item-filtro"> 
+                            <span>${dataObj.formatada.split('/')[0]}</span>
+                        </label>
+                    `;
+                });
+
+                htmlArvore += `</div></div>`; // Fecha dias-container e bloco do mês
+            });
+
+            htmlArvore += `</div></div>`; // Fecha meses-container e bloco do ano
+        });
+
+        htmlArvore += `</div>`;
+        container.innerHTML = htmlArvore;
+
+    // 2. COMPORTAMENTO PADRÃO PARA AS OUTRAS COLUNAS (Mantém o seu original sem quebrar nada)
+    } else {
+        const todosValoresUnicos = [...new Set(dadosOriginais.map(item => String(item[coluna] || '')))].sort();
+        const valoresVivos = [...new Set(dadosFiltrados.map(item => String(item[coluna] || '')))];
         
-        // Estilização dinâmica: se não estiver nos dados filtrados, fica cinza
-        const estiloLabel = estaVivo 
-            ? 'color: #333; font-weight: 500;' 
-            : 'color: #ccc; cursor: not-allowed;';
+        container.innerHTML = todosValoresUnicos.map(valor => {
+            const estaVivo = valoresVivos.includes(valor);
+            const estaChecado = filtrosSelecionados[coluna]?.includes(valor);
+            const estiloLabel = estaVivo ? 'color: #333; font-weight: 500;' : 'color: #ccc; cursor: not-allowed;';
 
-        return `
-            <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer; ${estiloLabel}">
-                <input type="checkbox" 
-                       value="${valor}" 
-                       ${estaChecado ? 'checked' : ''} 
-                       class="check-item-filtro"> 
-                ${valor === '' || valor === '-/-/' ? '(Vazio)' : valor}
-            </label>
-        `;
-    }).join('');
+            return `
+                <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer; ${estiloLabel}">
+                    <input type="checkbox" 
+                           value="${valor}" 
+                           ${estaChecado ? 'checked' : ''} 
+                           class="check-item-filtro"> 
+                    ${valor === '' ? '(Vazio)' : valor}
+                </label>
+            `;
+        }).join('');
+    }
 
     modal.style.display = 'flex';
 };
