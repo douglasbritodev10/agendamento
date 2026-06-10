@@ -226,14 +226,20 @@
 
     /* RESPONSIVIDADE MOBILE */
     @media (max-width: 768px) {
+        /* Correção cirúrgica na Navbar do celular para manter o alinhamento perfeito nas extremidades */
+        .header-portal { 
+            flex-direction: row; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px 15px; 
+        }
+        
         .control-panel { flex-direction: column; align-items: stretch; }
         .search-group { flex-direction: column; align-items: stretch; }
         .export-actions { justify-content: space-between; gap: 5px; width: 100%; }
         .export-actions .btn-share, .export-actions .dropdown { flex: 1; }
         .export-actions .btn-share { justify-content: center; width: 100%; }
         .footer-table { flex-direction: column; gap: 15px; text-align: center; }
-        .header-portal { flex-direction: column; gap: 10px; text-align: center; }
-        .titulo-sistema { font-size: 1rem; }
     }
 </style>
 </head>
@@ -241,11 +247,8 @@
 
 <header class="header-portal">
     <div class="header-left">
-        <i class="fas fa-arrow-left btn-back" onclick="window.location.href='inicial.html'" style="cursor:pointer;"></i>
+        <i class="fas fa-arrow-left btn-back" onclick="window.location.href='inicial.html'" style="cursor:pointer; font-size: 18px; margin-right: 5px;"></i>
         <span style="font-size: 14px; font-weight: bold;">Olá, <span id="txtUser">USUÁRIO</span></span>
-    </div>
-    <div class="header-center">
-        <h1 class="titulo-sistema">Situação do Ajuste</h1>
     </div>
     <div class="header-right">
         <button class="btn-logout" onclick="localStorage.removeItem('usuarioLogado'); window.location.href='index.html'">Sair</button>
