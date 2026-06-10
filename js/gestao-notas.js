@@ -236,7 +236,7 @@ function atualizarVisualFiltros() {
     });
 }
 
-// --- MODAL DE FILTRO INTELIGENTE (COM ÁRVORE DE DATAS PARA A COLUNA DATA) ---
+// --- MODAL DE FILTRO INTELIGENTE (COM ÁRVORE DE DATAS CORRIGIDA) ---
 window.abrirFiltro = function(coluna, event) {
     event.stopPropagation();
     colunaFiltroAtual = coluna;
@@ -266,34 +266,55 @@ window.abrirFiltro = function(coluna, event) {
             }
         });
 
+        const temFiltroAtivo = filtrosSelecionados['data'] && filtrosSelecionados['data'].length > 0;
         let htmlArvore = `<div style="font-family: sans-serif; font-size: 13px; user-select: none;">`;
 
         // Varre os Anos (Ordenado do mais recente para o mais antigo)
         Object.keys(estrutura).sort((a, b) => b - a).forEach(ano => {
+            // Coleta todos os dias deste ano para validar o Ativo/Marcado
+            const todosDiasAno = [];
+            Object.keys(estrutura[ano]).forEach(m => {
+                estrutura[ano][m].forEach(d => todosDiasAno.push(d.formatada));
+            });
+
+            // Regras dinâmicas do Ano
+            const anoChecked = temFiltroAtivo ? todosDiasAno.every(d => filtrosSelecionados['data'].includes(d)) : true;
+            const temDiaMarcadoNoAno = temFiltroAtivo && todosDiasAno.some(d => filtrosSelecionados['data'].includes(d));
+            const displayAno = temDiaMarcadoNoAno ? 'block' : 'none';
+            const setaAno = temDiaMarcadoNoAno ? '▼' : '▶';
+
             htmlArvore += `
                 <div style="margin-bottom: 5px;">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                        <span onclick="this.parentElement.nextElementSibling.style.display = this.parentElement.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === '▶' ? '▼' : '▶';" style="cursor: pointer; width: 12px; font-size: 10px; color: #666;">▶</span>
+                        <span onclick="this.parentElement.nextElementSibling.style.display = this.parentElement.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === '▶' ? '▼' : '▶';" style="cursor: pointer; width: 12px; font-size: 10px; color: #666;">${setaAno}</span>
                         <label style="font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" class="chk-ano-arvore" onchange="const chks = this.parentElement.parentElement.nextElementSibling.querySelectorAll('.check-item-filtro'); chks.forEach(c => c.checked = this.checked);" checked>
+                            <input type="checkbox" class="chk-ano-arvore" onchange="const chks = this.parentElement.parentElement.nextElementSibling.querySelectorAll('.check-item-filtro'); chks.forEach(c => c.checked = this.checked);" ${anoChecked ? 'checked' : ''}>
                             ${ano}
                         </label>
                     </div>
-                    <div class="meses-container" style="display: none; margin-left: 18px; margin-top: 4px;">`;
+                    <div class="meses-container" style="display: ${displayAno}; margin-left: 18px; margin-top: 4px;">`;
 
             // Varre os Meses do Ano
             Object.keys(estrutura[ano]).sort((a, b) => b - a).forEach(mes => {
                 const nomeMes = nomesMeses[parseInt(mes) - 1] || mes;
+                const todosDiasMes = estrutura[ano][mes].map(d => d.formatada);
+
+                // Regras dinâmicas do Mês
+                const mesChecked = temFiltroAtivo ? todosDiasMes.every(d => filtrosSelecionados['data'].includes(d)) : true;
+                const temDiaMarcadoNoMes = temFiltroAtivo && todosDiasMes.some(d => filtrosSelecionados['data'].includes(d));
+                const displayMes = temDiaMarcadoNoMes ? 'block' : 'none';
+                const setaMes = temDiaMarcadoNoMes ? '▼' : '▶';
+
                 htmlArvore += `
                     <div style="margin-bottom: 3px;">
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <span onclick="this.parentElement.nextElementSibling.style.display = this.parentElement.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === '▶' ? '▼' : '▶';" style="cursor: pointer; width: 12px; font-size: 10px; color: #666;">▶</span>
+                            <span onclick="this.parentElement.nextElementSibling.style.display = this.parentElement.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.innerText = this.innerText === '▶' ? '▼' : '▶';" style="cursor: pointer; width: 12px; font-size: 10px; color: #666;">${setaMes}</span>
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-weight: 500;">
-                                <input type="checkbox" class="chk-mes-arvore" onchange="const chks = this.parentElement.parentElement.nextElementSibling.querySelectorAll('.check-item-filtro'); chks.forEach(c => c.checked = this.checked);" checked>
+                                <input type="checkbox" class="chk-mes-arvore" onchange="const chks = this.parentElement.parentElement.nextElementSibling.querySelectorAll('.check-item-filtro'); chks.forEach(c => c.checked = this.checked);" ${mesChecked ? 'checked' : ''}>
                                 ${nomeMes}
                             </label>
                         </div>
-                        <div class="dias-container" style="display: none; margin-left: 18px; margin-top: 2px;">`;
+                        <div class="dias-container" style="display: ${displayMes}; margin-left: 18px; margin-top: 2px;">`;
 
                 // Varre os Dias do Mes (Ordenados por dia)
                 estrutura[ano][mes].sort((a, b) => b.formatada.localeCompare(a.formatada)).forEach(dataObj => {
@@ -303,7 +324,7 @@ window.abrirFiltro = function(coluna, event) {
                         <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer; padding-left: 5px;">
                             <input type="checkbox" 
                                    value="${dataObj.formatada}" 
-                                   ${estaChecado || !filtrosSelecionados['data'] || filtrosSelecionados['data'].length === 0 ? 'checked' : ''} 
+                                   ${estaChecado || !temFiltroAtivo ? 'checked' : ''} 
                                    class="check-item-filtro"> 
                             <span>${dataObj.formatada.split('/')[0]}</span>
                         </label>
@@ -319,7 +340,7 @@ window.abrirFiltro = function(coluna, event) {
         htmlArvore += `</div>`;
         container.innerHTML = htmlArvore;
 
-    // 2. COMPORTAMENTO PADRÃO PARA AS OUTRAS COLUNAS (Mantém o seu original sem quebrar nada)
+    // 2. COMPORTAMENTO PADRÃO PARA AS OUTRAS COLUNAS (Mantém o original intacto)
     } else {
         const todosValoresUnicos = [...new Set(dadosOriginais.map(item => String(item[coluna] || '')))].sort();
         const valoresVivos = [...new Set(dadosFiltrados.map(item => String(item[coluna] || '')))];
