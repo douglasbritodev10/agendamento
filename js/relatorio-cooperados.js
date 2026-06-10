@@ -138,7 +138,7 @@ window.gerarRelatorio = async () => {
         );
         
         const querySnapshot = await getDocs(q);
-        const agendas Cruas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const agendasCruas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
         // Filtragem local complementar: valorDescarga > 0
         const agendasValidas = agendasCruas.filter(a => {
