@@ -141,7 +141,7 @@ function renderizarTabela() {
     atualizarControlesPaginacao();
 }
 
-// --- 4. MODAL FILTRO INTELIGENTE ---
+// --- 4. MODAL FILTRO INTELIGENTE (ESTILO EXCEL PARA DATA) ---
 window.abrirFiltro = (coluna) => {
     colunaFiltroAtual = coluna;
     document.getElementById('nomeColunaFiltro').innerText = `Filtrar: ${coluna.toUpperCase()}`;
@@ -158,33 +158,176 @@ window.abrirFiltro = (coluna) => {
     const todosValores = [...new Set(dadosMestres.map(d => String(d[coluna] || "")))].sort();
     const valoresDisponiveis = new Set(dadosParaOpcoes.map(d => String(d[coluna] || "")));
 
-    container.innerHTML = todosValores.map(val => {
-        const isDisponivel = valoresDisponiveis.has(val);
-        const isChecked = filtrosAtivos[coluna].includes(val);
-        
-        return `
-            <div style="padding:5px 0;" class="${!isDisponivel ? 'option-disabled' : ''}">
-                <label style="cursor:pointer; display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" class="chk-filtro" value="${val}" ${isChecked ? 'checked' : ''}> 
-                    <span>${coluna === 'data' ? val.split('-').reverse().join('/') : val}</span>
-                    ${!isDisponivel ? '<small>(Sem registros p/ filtros atuais)</small>' : ''}
-                </label>
-            </div>
-        `;
-    }).join('');
+    // --- SE FOR A COLUNA DE DATA: RENDERIZA EM ÁRVORE (ESTILO EXCEL) ---
+    if (coluna === 'data') {
+        // Objeto para estruturar Ano -> Mês -> Dia
+        const estrutura = {};
+
+        todosValores.forEach(dataIso => {
+            if (!dataIso || dataIso === "---") return;
+            
+            // Garantindo que a quebra da data respeite o fuso do Brasil
+            const [ano, mes, dia] = dataIso.split('-');
+            const nomeMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+            const mesNome = nomeMeses[parseInt(mes, 10) - 1];
+
+            if (!estrutura[ano]) estrutura[ano] = {};
+            if (!estrutura[ano][mesNome]) estrutura[ano][mesNome] = [];
+            
+            estrutura[ano][mesNome].push({ dia: parseInt(dia, 10).toString(), valorOriginal: dataIso });
+        });
+
+        let htmlArvore = `<div class="filter-tree-root">`;
+
+        // Loop dos Anos
+        Object.keys(estrutura).sort((a, b) => b - a).forEach(ano => {
+            const checkedAno = estrutura[ano];
+            htmlArvore += `
+                <div class="filter-tree-group">
+                    <div class="filter-tree-item">
+                        <span class="filter-tree-toggle" onclick="window.toggleNodeTree(this)"><i class="fas fa-chevron-right"></i></span>
+                        <label><input type="checkbox" class="chk-tree-ano" value="${ano}"> ${ano}</label>
+                    </div>
+                    <div class="filter-tree-node">`;
+
+            // Loop dos Meses
+            Object.keys(estrutura[ano]).forEach(mes => {
+                htmlArvore += `
+                    <div class="filter-tree-item" style="margin-left: 15px;">
+                        <span class="filter-tree-toggle" onclick="window.toggleNodeTree(this)"><i class="fas fa-chevron-right"></i></span>
+                        <label><input type="checkbox" class="chk-tree-mes" data-ano="${ano}" value="${mes}"> ${mes}</label>
+                    </div>
+                    <div class="filter-tree-node" style="margin-left: 15px;">`;
+
+                // Loop dos Dias
+                estrutura[ano][mes].sort((a,b) => b.dia - a.dia).forEach(itemDia => {
+                    const isDisponivel = valoresDisponiveis.has(itemDia.valorOriginal);
+                    const isChecked = filtrosAtivos.data.includes(itemDia.valorOriginal);
+
+                    htmlArvore += `
+                        <div class="filter-tree-item" style="margin-left: 30px; ${!isDisponivel ? 'opacity: 0.5; font-style: italic;' : ''}">
+                            <span class="filter-tree-toggle"></span>
+                            <label>
+                                <input type="checkbox" class="chk-filtro" data-ano="${ano}" data-mes="${mes}" value="${itemDia.valorOriginal}" ${isChecked ? 'checked' : ''}> 
+                                ${itemDia.dia} ${!isDisponivel ? '<small>(Sem registros)</small>' : ''}
+                            </label>
+                        </div>`;
+                });
+
+                htmlArvore += `</div>`; // Fecha nó do mês
+            });
+
+            htmlArvore += `</div></div>`; // Fecha nó do ano e grupo
+        });
+
+        htmlArvore += `</div>`;
+        container.innerHTML = htmlArvore;
+
+        // Atualiza os estados dos checkboxes pais (Ano/Mês) baseando-se nos filhos marcados
+        window.atualizarChecksPais();
+        window.configurarEventosArvore();
+
+    } else {
+        // --- COMPORTAMENTO PADRÃO DO SEU SISTEMA PARA AS OUTRAS COLUNAS ---
+        container.innerHTML = todosValores.map(val => {
+            const isDisponivel = valoresDisponiveis.has(val);
+            const isChecked = filtrosAtivos[coluna].includes(val);
+            
+            return `
+                <div style="padding:5px 0;" class="${!isDisponivel ? 'option-disabled' : ''}">
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:10px;">
+                        <input type="checkbox" class="chk-filtro" value="${val}" ${isChecked ? 'checked' : ''}> 
+                        <span>${val}</span>
+                        ${!isDisponivel ? '<small>(Sem registros p/ filtros atuais)</small>' : ''}
+                    </label>
+                </div>
+            `;
+        }).join('');
+    }
 
     document.getElementById('modalFiltro').style.display = "flex";
 };
 
+// Funções auxiliares para controle da Árvore de Data
+window.toggleNodeTree = (el) => {
+    const node = el.parentElement.nextElementSibling;
+    const icon = el.querySelector('i');
+    if (node && node.classList.contains('filter-tree-node')) {
+        if (node.style.display === 'block') {
+            node.style.display = 'none';
+            if(icon) icon.className = 'fas fa-chevron-right';
+        } else {
+            node.style.display = 'block';
+            if(icon) icon.className = 'fas fa-chevron-down';
+        }
+    }
+};
+
+window.configurarEventosArvore = () => {
+    // Evento ao clicar em um Ano
+    document.querySelectorAll('.chk-tree-ano').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+            const grupo = e.target.closest('.filter-tree-group');
+            grupo.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = e.target.checked);
+        });
+    });
+
+    // Evento ao clicar em um Mês
+    document.querySelectorAll('.chk-tree-mes').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+            const item = e.target.closest('.filter-tree-item');
+            const noFilho = item.nextElementSibling;
+            if (noFilho) {
+                noFilho.querySelectorAll('.chk-filtro').forEach(c => c.checked = e.target.checked);
+            }
+            window.atualizarChecksPais();
+        });
+    });
+
+    // Evento ao clicar em um Dia (chk-filtro)
+    document.querySelectorAll('.chk-filtro').forEach(chk => {
+        chk.addEventListener('change', () => {
+            window.atualizarChecksPais();
+        });
+    });
+};
+
+window.atualizarChecksPais = () => {
+    if (colunaFiltroAtual !== 'data') return;
+
+    // Verificar Meses com base nos Dias
+    document.querySelectorAll('.chk-tree-mes').forEach(chkMes => {
+        const noDias = chkMes.closest('.filter-tree-item').nextElementSibling;
+        const totalDias = noDias.querySelectorAll('.chk-filtro').length;
+        const marcadosDias = noDias.querySelectorAll('.chk-filtro:checked').length;
+        
+        chkMes.checked = (totalDias === marcadosDias && totalDias > 0);
+        chkMes.indeterminate = (marcadosDias > 0 && marcadosDias < totalDias);
+    });
+
+    // Verificar Anos com base nos Meses e Dias
+    document.querySelectorAll('.chk-tree-ano').forEach(chkAno => {
+        const grupo = chkAno.closest('.filter-tree-group');
+        const totalDias = grupo.querySelectorAll('.chk-filtro').length;
+        const marcadosDias = grupo.querySelectorAll('.chk-filtro:checked').length;
+
+        chkAno.checked = (totalDias === marcadosDias && totalDias > 0);
+        chkAno.indeterminate = (marcadosDias > 0 && marcadosDias < totalDias);
+    });
+};
+
 window.marcarTodosFiltro = (status) => {
-    document.querySelectorAll('.chk-filtro').forEach(chk => chk.checked = status);
+    document.querySelectorAll('#opcoesFiltro input[type="checkbox"]').forEach(chk => {
+        chk.checked = status;
+        chk.indeterminate = false;
+    });
 };
 
 window.aplicarFiltroColuna = () => {
+    // Pegamos os inputs com a classe 'chk-filtro' (que guardam os valores ISO reais das datas ou das outras colunas)
     const chks = document.querySelectorAll('.chk-filtro');
     const marcados = Array.from(document.querySelectorAll('.chk-filtro:checked')).map(c => c.value);
     
-    // Se marcou tudo ou nada, limpa o filtro dessa coluna
     if (marcados.length === 0 || marcados.length === chks.length) {
         filtrosAtivos[colunaFiltroAtual] = [];
     } else {
