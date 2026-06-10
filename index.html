@@ -79,7 +79,6 @@
             box-shadow: 0 0 0 4px rgba(211, 47, 47, 0.1);
         }
 
-        /* Ajuste do placeholder para o modo claro */
         .input-group input::placeholder {
             color: #999;
         }
@@ -110,7 +109,37 @@
             transform: translateY(0); 
         }
 
-        /* Estilo sutil para links ou rodapé de login se precisar futuramente */
+        /* ====== NOVOS ESTILOS ADICIONADOS ====== */
+        .forgot-password-container {
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        .forgot-password-container a {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .forgot-password-container a:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        button.btn-pwa {
+            background: #333333;
+            margin-top: 15px;
+            display: none; /* Escondido por padrão, JavaScript ativa se puder instalar */
+        }
+
+        button.btn-pwa:hover {
+            background: #111111;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        /* ======================================= */
+
         .footer-text {
             margin-top: 25px;
             font-size: 0.85rem;
@@ -133,7 +162,13 @@
             <input type="password" id="passwordField" placeholder="Senha" autocomplete="current-password">
         </div>
         
+        <div class="forgot-password-container">
+            <a href="#" id="btnForgotPass">Esqueceu a senha?</a>
+        </div>
+        
         <button id="btnLogin">Acessar Sistema</button>
+
+        <button id="btnInstallPWA" class="btn-pwa">Instalar Aplicativo</button>
 
         <div class="footer-text">
             &copy; 2026 Móveis Simonetti
