@@ -323,26 +323,37 @@ window.exportarExcel = async () => {
     const rowTitle1 = sheet.addRow(["1. Detalhamento de Lançamentos e Movimentações"]);
     rowTitle1.getCell(1).font = { bold: true, size: 12 };
     
-    const headersT1 = ["Data", "Fornecedor", "Valor Total Carga", "Líquido Rateio (70%)", "Participantes", "Equipe Escalada"];
+    const headersT1 = ["Data", "Fornecedor(es)", "Valor Total Carga", "Líquido Rateio (70%)", "Participantes", "Equipe Escalada"];
     const headerRowT1 = sheet.addRow(headersT1);
     headerRowT1.eachCell(c => {
         c.font = { bold: true, color: { argb: 'FFFFFF' } };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '424242' } };
     });
 
+    let totalT1Liquido = 0;
+
     dadosProcessadosReport.forEach(agenda => {
         const equipe = agenda.cooperadosArray || [];
+        const valorLiquido = agenda.valorDescarga * 0.7;
+        totalT1Liquido += valorLiquido;
+
         const r = sheet.addRow([
             window.formatarDataBR(agenda.data),
-            agenda.fornecedor,
+            agenda.fornecedor || 'N/A',
             agenda.valorDescarga,
-            agenda.valorDescarga * 0.7,
+            valorLiquido,
             equipe.length,
             equipe.join(', ')
         ]);
         r.getCell(3).numberFormat = '"R$"#,##0.00';
         r.getCell(4).numberFormat = '"R$"#,##0.00';
     });
+
+    // Linha de total para a Tabela 1 no Excel
+    const linhaTotalT1 = sheet.addRow(["TOTAL LÍQUIDO RATEIO:", "", "", totalT1Liquido]);
+    linhaTotalT1.getCell(1).font = { bold: true };
+    linhaTotalT1.getCell(4).font = { bold: true, color: { argb: 'B71C1C' } };
+    linhaTotalT1.getCell(4).numberFormat = '"R$"#,##0.00';
 
     sheet.addRow([]);
     sheet.addRow([]);
@@ -357,6 +368,8 @@ window.exportarExcel = async () => {
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1B5E20' } };
     });
 
+    let totalGeralBruto = 0;
+    let totalGeralInss = 0;
     let totalGeralRepasse = 0;
 
     Object.keys(totaisIndividuaisReport).sort().forEach(nome => {
@@ -371,12 +384,18 @@ window.exportarExcel = async () => {
         r.getCell(3).numberFormat = '"R$"#,##0.00';
         r.getCell(4).numberFormat = '"R$"#,##0.00';
         
+        totalGeralBruto += item.bruto;
+        totalGeralInss += item.inss;
         totalGeralRepasse += item.liquido;
     });
 
     sheet.addRow([]);
-    const linhaTotal = sheet.addRow(["TOTAL GERAL A SER PAGO:", "", "", totalGeralRepasse]);
+    const linhaTotal = sheet.addRow(["TOTAL GERAL A SER PAGO:", totalGeralBruto, totalGeralInss, totalGeralRepasse]);
     linhaTotal.getCell(1).font = { bold: true };
+    linhaTotal.getCell(2).font = { bold: true };
+    linhaTotal.getCell(2).numberFormat = '"R$"#,##0.00';
+    linhaTotal.getCell(3).font = { bold: true };
+    linhaTotal.getCell(3).numberFormat = '"R$"#,##0.00';
     linhaTotal.getCell(4).font = { bold: true, color: { argb: 'B71C1C' } };
     linhaTotal.getCell(4).numberFormat = '"R$"#,##0.00';
 
@@ -400,10 +419,17 @@ window.exportarExcel = async () => {
 // ==================== ENGINE DE EXPORTAÇÃO PDF ====================
 window.exportarPDF = () => {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'pt', 'a4');
+    // Configura o PDF para 'l' (Landscape / Horizontal)
+    const doc = new jsPDF('l', 'pt', 'a4'); 
 
+    // Função interna para formatar valores no padrão monetário do Brasil (R$ 1.234,56)
+    const formatarMoedaBR = (valor) => {
+        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+
+    // Header estendido para o formato horizontal (largura total 842 pontos)
     doc.setFillColor(211, 47, 47); 
-    doc.rect(0, 0, 595, 60, 'F');
+    doc.rect(0, 0, 842, 60, 'F');
     
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(14);
@@ -419,32 +445,43 @@ window.exportarPDF = () => {
     doc.setFont("Helvetica", "bold");
     doc.text(`Período de Apuração: ${window.formatarDataBR(document.getElementById('dataInicio').value)} até ${window.formatarDataBR(document.getElementById('dataFim').value)}`, 40, 90);
 
-    doc.text("1. Detalhamento das Movimentações de Descarga", 40, 115);
+    doc.text("1. Detalhamento das Movimentações e Lançamentos", 40, 115);
     
-    const columnsT1 = ["Data", "Fornecedor", "Total (R$)", "Líq 70% (R$)", "Qtd", "Equipe"];
+    // Removida a coluna de "Total Carga" a pedido
+    const columnsT1 = ["Data", "Fornecedor(es)", "Líq. Rateio (70%)", "Qtd. Coops", "Equipe Escalada"];
+
+    let sumT1Liquido = 0;
 
     const rowsT1 = dadosProcessadosReport.map(agenda => {
-        const vDescarga = agenda.valorDescarga;
+        const vLiquido = agenda.valorDescarga * 0.70;
+        sumT1Liquido += vLiquido;
         const equipe = agenda.cooperadosArray || [];
+
         return [
             window.formatarDataBR(agenda.data),
             agenda.fornecedor || 'N/A',
-            vDescarga.toFixed(2),
-            (vDescarga * 0.70).toFixed(2),
-            equipe.length,
+            formatarMoedaBR(vLiquido),
+            `${equipe.length} Coops.`,
             equipe.join(', ')
         ];
     });
+
+    // Rodapé com o totalizador da tabela 1
+    const footT1 = [["TOTAL GERAL LÍQUIDO", "", formatarMoedaBR(sumT1Liquido), "", ""]];
 
     doc.autoTable({
         startY: 125,
         head: [columnsT1],
         body: rowsT1,
+        foot: footT1,
         theme: 'striped',
         headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold' },
-        styles: { fontSize: 8 },
+        footStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' },
+        styles: { fontSize: 9 },
         columnStyles: {
-            5: { cellWidth: 200 } 
+            1: { cellWidth: 200 }, // Espaço otimizado para múltiplos fornecedores fracionados
+            2: { halign: 'right' },
+            4: { cellWidth: 320 }  
         },
         didParseCell: function(data) {
             if (data.section === 'body') {
@@ -465,36 +502,58 @@ window.exportarPDF = () => {
     });
 
     let currentY = doc.lastAutoTable.finalY + 30;
+    // Evita quebra de página feia se o título ficar isolado na borda de baixo
+    if (currentY > 530) { doc.addPage(); currentY = 60; }
+
     doc.setFont("Helvetica", "bold");
-    doc.text("2. Demonstrativo Líquido de Repasse Individual", 40, currentY);
+    doc.text("2. Demonstrativo de Repasse Líquido Individual", 40, currentY);
 
     const columnsT2 = ["Nome do Cooperado", "Quota Parte Rateio (R$)", "INSS Próprio +20% (R$)", "Líquido a Pagar (R$)"];
+    
+    let sumT2Bruto = 0;
+    let sumT2Inss = 0;
+    let sumT2Liquido = 0;
+
     const rowsT2 = Object.keys(totaisIndividuaisReport).sort().map(nome => {
         const item = totaisIndividuaisReport[nome];
+        sumT2Bruto += item.bruto;
+        sumT2Inss += item.inss;
+        sumT2Liquido += item.liquido;
+
         return [
             nome,
-            item.bruto.toFixed(2),
-            item.inss.toFixed(2),
-            item.liquido.toFixed(2)
+            formatarMoedaBR(item.bruto),
+            formatarMoedaBR(item.inss),
+            formatarMoedaBR(item.liquido)
         ];
     });
+
+    // Rodapé unificado contendo as somas de todas as colunas numéricas solicitadas
+    const footT2 = [[
+        "TOTAL GERAL DE REPASSES", 
+        formatarMoedaBR(sumT2Bruto), 
+        formatarMoedaBR(sumT2Inss), 
+        formatarMoedaBR(sumT2Liquido)
+    ]];
 
     doc.autoTable({
         startY: currentY + 10,
         head: [columnsT2],
         body: rowsT2,
+        foot: footT2,
         theme: 'grid',
         headStyles: { fillColor: [46, 125, 50], fontStyle: 'bold' }, 
+        footStyles: { fillColor: [27, 94, 32], textColor: [255, 255, 255], fontStyle: 'bold' },
         styles: { fontSize: 9 },
         columnStyles: {
             1: { halign: 'right' },
             2: { halign: 'right' },
-            3: { halign: 'right', fontStyle: 'bold' }
+            3: { halign: 'right' }
         }
     });
 
-    let finalY = doc.lastAutoTable.finalY + 50;
-    if(finalY > 750) { doc.addPage(); finalY = 60; }
+    let finalY = doc.lastAutoTable.finalY + 45;
+    if(finalY > 530) { doc.addPage(); finalY = 60; }
     
     doc.line(40, finalY, 240, finalY);
     doc.text("Assinatura do Conferente (ADM)", 40, finalY + 15);
