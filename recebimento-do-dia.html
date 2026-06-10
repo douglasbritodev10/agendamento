@@ -193,13 +193,59 @@
 
     .pagination { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-top: 1px solid #eee; }
 
-    /* Ajustes Exclusivos para Mobile (Celulares) */
+    /* ==========================================
+       ⚡ REGRAS DE ADAPTAÇÃO PARA CELULAR (MOBILE)
+       ========================================== */
     @media (max-width: 768px) {
         .navbar { grid-template-columns: auto 1fr auto; padding: 10px; }
         .user-info { display: none; }
         .navbar h2 { font-size: 13px; letter-spacing: 0; }
         .navbar button { padding: 4px 10px !important; font-size: 11px !important; }
-        .chart-container { width: 220px; height: 220px; }
+        
+        /* Ajuste do Painel Estatístico no celular: empilha verticalmente */
+        .painel-estatistico {
+            padding: 15px 10px;
+            margin: 10px;
+        }
+        .chart-section {
+            flex-direction: column; /* Faz o gráfico ficar em cima e os dados embaixo */
+            gap: 15px;
+        }
+        .chart-container { 
+            width: 200px; 
+            height: 200px; 
+        }
+        
+        /* Ajuste da grade de resumo para ocupar duas colunas bem distribuídas */
+        #resumoSituacoes {
+            width: 100%;
+            grid-template-columns: repeat(2, 1fr); /* Divide em 2 colunas perfeitas na tela do celular */
+            gap: 8px;
+        }
+        .legenda-item {
+            padding: 8px;
+            font-size: 10px; /* Reduz levemente a fonte para não quebrar texto */
+        }
+        .indicador-badge {
+            margin-top: 12px;
+            padding: 6px 16px;
+            font-size: 12px;
+        }
+
+        /* Ajuste na barra de busca e botões para não esmagar */
+        .acoes-barra {
+            flex-direction: column-reverse; /* Busca em cima, botão embaixo ou vice-versa */
+            align-items: stretch;
+            margin: 10px;
+            gap: 8px;
+        }
+        .busca-container {
+            width: 100%;
+        }
+        .btn-compartilhar {
+            width: 100%;
+            text-align: center;
+        }
         
         #modalComposicao .modal-glass { 
             width: 95%; 
@@ -207,6 +253,11 @@
         }
         .modal-body table {
             min-width: 600px; 
+        }
+        .pagination {
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
         }
     }
 
@@ -345,7 +396,7 @@
         <div class="modal-glass">
             <div class="modal-header">
                 <i class="fas fa-times" onclick="fecharModais()"></i>
-                <h2 id="tituloComp">Detalhes</h2>
+                <span id="tituloComp">Detalhes</span>
             </div>
             <div class="modal-body" id="detalhesItens"></div>
         </div>
