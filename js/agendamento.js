@@ -123,7 +123,7 @@ async function salvarAgenda(status) {
         // Salva a ação na coleção historico
         await addDoc(collection(db, "historico"), {
             usuario: usuarioUsername,
-            acao: status === "Rascunho" ? "SALVAR RASCUNHO AGENDA" : "AGENDAMENTO DEFINITIVO",
+            acao: status === "Rascunho" ? "SALVO COMO RASCUNHO" : "AGENDAMENTO DEFINITIVO",
             detalhe: `Fornecedor: ${fornecedor} | Cargas: ${dados.cargas} | Pedido: ${dados.pedido}`,
             senha: senha,
             dataHora: serverTimestamp()
@@ -509,7 +509,7 @@ window.finalizarDireto = async (senha) => {
         // Salva a ação na coleção historico
         await addDoc(collection(db, "historico"), {
             usuario: usuarioUsername,
-            acao: "FINALIZAR RASCUNHO DIRETO",
+            acao: "AGENDAMENTO DEFINITIVO",
             detalhe: `Carga alterada de Rascunho para definitivo (Agendada).`,
             senha: senha,
             dataHora: serverTimestamp()
