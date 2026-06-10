@@ -471,7 +471,7 @@ window.exportarExcel = async () => {
     });
 
     // Linha de totais acumulados da Tabela 1
-    const linhaTotalT1 = sheet.addRow(["TOTAL ACUMULADO:", "", "", "", totalT1Carga, totalT1Liquido, "", "", "", totalT1PagarInss]);
+    const linhaTotalT1 = sheet.addRow(["TOTAL:", "", "", "", totalT1Carga, totalT1Liquido, "", "", "", totalT1PagarInss]);
     linhaTotalT1.getCell(1).font = { bold: true };
     linhaTotalT1.getCell(5).font = { bold: true };
     linhaTotalT1.getCell(5).numberFormat = '"R$"#,##0.00';
@@ -612,7 +612,7 @@ window.exportarPDF = () => {
         ];
     });
 
-    const footT1 = [["TOTAL ACUMULADO", "", "", "", formatarMoedaBR(sumT1Liquido), "", "", "", formatarMoedaBR(sumT1TotalPagar)]];
+    const footT1 = [["TOTAL", "", "", "", formatarMoedaBR(sumT1Liquido), "", "", "", formatarMoedaBR(sumT1TotalPagar)]];
 
     doc.autoTable({
         startY: 125,
