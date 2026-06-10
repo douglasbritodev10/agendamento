@@ -137,6 +137,18 @@
             color: white;
             transform: scale(1.1);
         }
+        
+        /* Cor diferenciada para o caminhão do painel ADM */
+        .nav-card i.icone-adm {
+            color: #FF9800; /* Laranja Logístico */
+            background: rgba(255, 152, 0, 0.05);
+        }
+        
+        /* Efeito Hover do caminhão ADM para acompanhar a cor */
+        .nav-card:hover i.icone-adm {
+            background: #FF9800;
+            color: white;
+        }        
 
         @media (max-width: 768px) {
             .navbar { padding: 15px 20px; }
@@ -174,25 +186,25 @@
             </a>
             
             <a href="cargas-do-dia.html" class="nav-card acesso-adm" style="display: none;">
-                <i class="fas fa-file-contract"></i>
+                <i class="fas fa-truck icone-adm"></i>
                 <h3>Cargas do Dia</h3>
                 <p>Situação das cargas no CD - nível ADM</p>
             </a>
             
             <a href="cadastro-cooperados.html" class="nav-card acesso-adm" style="display: none;">
-                <i class="fas fa-list-ul"></i>
+                <i class="fas fa-users-cog"></i>
                 <h3>COOPERADOS</h3>
                 <p>Visualizar e Cadastrar - nível ADM</p>
             </a>
             
             <a href="relatorio-cooperados.html" class="nav-card acesso-adm" style="display: none;">
-                <i class="fas fa-list-ul"></i>
+                <i class="fas fa-hand-holding-usd"></i>
                 <h3>Relatório de Pagamento</h3>
                 <p>Visualizar dados de pagamento - nível ADM</p>
             </a>
 
             <a href="historico.html" class="nav-card acesso-adm" style="display: none;">
-                <i class="fas fa-list-ul"></i>
+                <i class="fas fa-atlas"></i>
                 <h3>Histórico</h3>
                 <p>Visualizar ações - nível ADM</p>
             </a>      
@@ -216,7 +228,7 @@
             </a>
             
             <a href="recebimento-do-dia.html" class="nav-card acesso-leitor" style="display: none;">
-                <i class="fas fa-file-contract"></i>
+                <i class="fas fa-truck"></i>
                 <h3>Cargas do Dia</h3>
                 <p>Situação das cargas no CD</p>
             </a>            
