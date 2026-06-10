@@ -505,12 +505,15 @@ window.exportarPDF = async (modo) => {
             if (currentY > 240) { docPdf.addPage(); currentY = 20; }
 
             docPdf.autoTable({
-                head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
+                head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'PEDIDO', 'NOTAS', 'SITUAÇÃO',  'FORNECEDOR', 'TIPO', 'LINHA']],
                 body: [[
                     ag.senhaAgendamento, 
                     ag.data.split('-').reverse().join('/'), 
                     ag.central, 
                     ag.cargas || '-', 
+                    ag.pedido, 
+                    ag.notas, 
+                    ag.situacao, 
                     ag.fornecedor, 
                     ag.tipoProduto,
                     ag.linhaSeparacao || 'N/A'
@@ -553,13 +556,16 @@ window.exportarPDF = async (modo) => {
             ag.data.split('-').reverse().join('/'),
             ag.central,
             ag.cargas || '-',
+            ag.pedido, 
+            ag.notas, 
+            ag.situacao,             
             ag.fornecedor,
             ag.tipoProduto,
             ag.linhaSeparacao || 'N/A'
         ]);
 
         docPdf.autoTable({
-            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'FORNECEDOR', 'TIPO', 'LINHA']],
+            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'PEDIDO', 'NOTAS', 'SITUAÇÃO', 'FORNECEDOR', 'TIPO', 'LINHA']],
             body: tableBody,
             startY: currentY,
             theme: 'grid',
@@ -602,6 +608,8 @@ window.exportarExcel = async (modo) => {
         { header: 'Central', key: 'Central', width: 15 },
         { header: 'Cargas', key: 'Cargas', width: 15 },
         { header: 'Pedido', key: 'Pedido', width: 15 },
+        { header: 'Notas', key: 'Notas', width: 15 },
+        { header: 'Situação', key: 'Situação', width: 15 },
         { header: 'Fornecedor', key: 'Fornecedor', width: 25 },
         { header: 'Tipo', key: 'Tipo', width: 20 },
         { header: 'Linha', key: 'linhaSeparacao', width: 15 }
@@ -645,6 +653,8 @@ window.exportarExcel = async (modo) => {
             Central: d.central,
             Cargas: d.cargas,
             Pedido: d.pedido,
+            Notas: d.notas,
+            Situação: d.situacao,
             Fornecedor: d.fornecedor,
             Tipo: d.tipoProduto,
             linhaSeparacao: d.linhaSeparacao || "N/A"
