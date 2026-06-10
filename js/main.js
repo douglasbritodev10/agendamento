@@ -15,14 +15,43 @@ onAuthStateChanged(auth, (user) => {
     // Carrega dados da sessão (localStorage salvos no login)
     const nome = localStorage.getItem('usuarioNome');
     const username = localStorage.getItem('username');
-    const nivel = localStorage.getItem('nivelAcesso');
+    
+    // Tratamento para garantir que o nível seja lido sem espaços e em letras maiúsculas
+    const nivelRaw = localStorage.getItem('nivelAcesso') || "";
+    const nivel = nivelRaw.trim().toUpperCase();
+
+    // EXCLUSÃO DE SEGURANÇA: Se não pertencer a nenhum dos 3 níveis válidos, desloga e redireciona
+    const niveisPermitidos = ['ADM', 'LOGISTICA', 'LEITOR'];
+    if (!niveisPermitidos.includes(nivel)) {
+        alert("Nível de acesso inválido ou não identificado. Você será redirecionado.");
+        localStorage.clear();
+        signOut(auth).then(() => {
+            window.location.href = "index.html";
+        });
+        return;
+    }
 
     document.getElementById('user-display').innerText = username || nome;
 
-    // Controle de Visibilidade do Card Admin
+    // --- CONTROLE DE VISIBILIDADE DOS CARDS BASEADO NAS CLASSES ---
+    
+    // 1. Se for ADM, ele tem acesso livre a absolutamente TUDO do painel
     if (nivel === 'ADM') {
-        const cardAdmin = document.getElementById('cardAdmin');
-        if (cardAdmin) cardAdmin.style.display = 'flex';
+        document.querySelectorAll('.acesso-adm, .acesso-logistica, .acesso-leitor').forEach(card => {
+            card.style.display = 'flex';
+        });
+    } 
+    // 2. Se for LOGISTICA, vê apenas as suas respectivas ferramentas + as ferramentas de leitura
+    else if (nivel === 'LOGISTICA') {
+        document.querySelectorAll('.acesso-logistica, .acesso-leitor').forEach(card => {
+            card.style.display = 'flex';
+        });
+    } 
+    // 3. Se for LEITOR, vê única e exclusivamente os cards designados para leitura
+    else if (nivel === 'LEITOR') {
+        document.querySelectorAll('.acesso-leitor').forEach(card => {
+            card.style.display = 'flex';
+        });
     }
 
     carregarIndicadores();
@@ -43,7 +72,7 @@ document.getElementById('btnSair').addEventListener('click', () => {
 async function carregarIndicadores() {
     try {
         const dataHoje = new Date().toISOString().split('T')[0];
-        const q = query(collection(db, "agendamentos"));
+        const q = query(collection(db, \"agendamentos\"));
         const snap = await getDocs(q);
         
         let total = 0, atrasadas = 0, progresso = 0;
@@ -58,9 +87,16 @@ async function carregarIndicadores() {
             }
         });
 
-        document.getElementById('resumoTotal').innerText = total;
-        document.getElementById('resumoAtrasadas').innerText = atrasadas;
-        document.getElementById('resumoProgresso').innerText = progresso;
+        // Verificação de segurança para não quebrar o código caso os elementos 
+        // dos resumos não estejam no HTML atual da sua Home
+        const txtTotal = document.getElementById('resumoTotal');
+        const txtAtrasadas = document.getElementById('resumoAtrasadas');
+        const txtProgresso = document.getElementById('resumoProgresso');
+
+        if(txtTotal) txtTotal.innerText = total;
+        if(txtAtrasadas) txtAtrasadas.innerText = atrasadas;
+        if(txtProgresso) txtProgresso.innerText = progresso;
+        
     } catch (e) {
         console.error("Erro indicadores:", e);
     }
