@@ -296,6 +296,57 @@ window.exportarPDF = async (modo) => {
     docPdf.save(`Relatorio_Simonetti_${modo.toUpperCase()}.pdf`);
 };
 
+// --- LISTENER PARA IMPORTAR APENAS A COMPOSIÇÃO DE UMA CARGA INDIVIDUAL ---
+const inputExcelIndividual = document.getElementById('inputExcel');
+if (inputExcelIndividual) {
+    inputExcelIndividual.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                const rows = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Limpa a composição anterior antes de carregar a nova
+                itensCargaTmp = [];
+
+                rows.forEach(row => {
+                    // Mapeia todas as variações possíveis de nomes de coluna que possam vir do Excel
+                    const codItem = row.Cod_Item || row['Cód. Item'] || row['Cód Item'] || row.Codigo || row.codigo;
+                    const descricao = row.Descricao || row['Descrição'] || row.DescricaoProduto || row.descricao;
+                    const qtd = row.Qtd || row.Quantidade || row['Qtd.'] || row.qtd;
+
+                    // Adiciona o item se houver código ou descrição válidos
+                    if (codItem || descricao) {
+                        itensCargaTmp.push({
+                            codigo: String(codItem || "N/A").trim(),
+                            descricao: String(descricao || "SEM DESCRIÇÃO").toUpperCase().trim(),
+                            qtd: parseInt(qtd || 0)
+                        });
+                    }
+                });
+
+                if (itensCargaTmp.length > 0) {
+                    alert(`Sucesso! ${itensCargaTmp.length} itens foram carregados na memória desta carga.\nClique em "FINALIZAR AGENDAMENTO" ou "SALVAR COMO RASCUNHO" para gravar definitivamente no banco.`);
+                } else {
+                    alert("Atenção: Nenhuns itens válidos foram localizados na planilha. Verifique os cabeçalhos.");
+                    e.target.value = "";
+                }
+            } catch (err) {
+                console.error("Erro ao ler composição individual:", err);
+                alert("Erro ao processar o arquivo Excel.");
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
 window.exportarExcel = async (modo) => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
