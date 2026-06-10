@@ -619,20 +619,21 @@ window.exportarPDF = () => {
         head: [columnsT1],
         body: rowsT1,
         foot: footT1,
-        theme: 'grid', // Alterado para Grid para exibir as linhas verticais separadoras
-        showFoot: 'lastPage', // Garante que o total só sai no final de todos os dados e não em cada página
+        theme: 'grid',
+        showFoot: 'lastPage',
+        rowPageBreak: 'avoid', // EVITA QUEBRA DE LINHA AO MEIO: Se a linha com muitos cooperados não couber, ela desce inteira para a próxima página
         headStyles: { fillColor: [66, 66, 66], fontStyle: 'bold', fontSize: 8, halign: 'center' },
         footStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 },
         styles: { 
             fontSize: 8,
             lineWidth: 0.5,
-            borderColor: [210, 210, 210] // Cor suave para as linhas verticais e horizontais
+            borderColor: [210, 210, 210]
         },
         columnStyles: {
             0: { halign: 'center', cellWidth: 55 },
             1: { halign: 'left', cellWidth: 110 }, 
             2: { halign: 'center', cellWidth: 35 },
-            3: { halign: 'left', cellWidth: 150 }, // Coluna dos nomes dos cooperados
+            3: { halign: 'left', cellWidth: 150 },
             4: { halign: 'right' },
             5: { halign: 'right' },
             6: { halign: 'right' },
@@ -640,7 +641,6 @@ window.exportarPDF = () => {
             8: { halign: 'right' }
         },
         didParseCell: function(data) {
-            // Mantém o preenchimento zebrado dinâmico por alteração de dia
             if (data.section === 'body') {
                 const dataRowIndex = data.row.index;
                 let refData = dadosProcessadosReport[dataRowIndex].data;
@@ -649,7 +649,6 @@ window.exportarPDF = () => {
                 let indiceData = listaDatasUnicas.indexOf(refData);
                 data.cell.styles.fillColor = (indiceData % 2 === 0) ? [255, 255, 255] : [240, 244, 250];
             }
-            // Força o alinhamento do rodapé de totais para bater com os dados numéricos acima
             if (data.section === 'foot') {
                 if (data.column.index >= 4 && data.column.index <= 8) {
                     data.cell.styles.halign = 'right';
@@ -658,9 +657,9 @@ window.exportarPDF = () => {
         }
     });
 
-    // SEPARAÇÃO E ISOLAMENTO: A segunda tabela agora vai SEMPRE começar numa página nova exclusiva
+    // SEPARAÇÃO E ISOLAMENTO: Segunda tabela sempre isolada de forma limpa
     doc.addPage(); 
-    let currentY = 60; // Reinicia o topo coordenado na nova página
+    let currentY = 60;
 
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(11);
@@ -699,8 +698,9 @@ window.exportarPDF = () => {
         head: [columnsT2],
         body: rowsT2,
         foot: footT2,
-        theme: 'grid', // Mantém as linhas separadoras verticais também na tabela 2
+        theme: 'grid',
         showFoot: 'lastPage',
+        rowPageBreak: 'avoid', // Aplica a mesma segurança na tabela de repasse individual
         headStyles: { fillColor: [46, 125, 50], fontStyle: 'bold', halign: 'center' }, 
         footStyles: { fillColor: [27, 94, 32], textColor: [255, 255, 255], fontStyle: 'bold' },
         styles: { 
@@ -715,7 +715,6 @@ window.exportarPDF = () => {
             3: { halign: 'right' }
         },
         didParseCell: function(data) {
-            // Garante alinhamento à direita dos valores de totais no rodapé da tabela 2
             if (data.section === 'foot') {
                 if (data.column.index >= 1) {
                     data.cell.styles.halign = 'right';
@@ -724,7 +723,6 @@ window.exportarPDF = () => {
         }
     });
 
-    // Define a posição da assinatura controlando o fim da última tabela gerada
     let finalY = doc.lastAutoTable.finalY + 45;
     if (finalY > 530) { 
         doc.addPage(); 
