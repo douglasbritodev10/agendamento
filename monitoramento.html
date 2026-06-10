@@ -156,7 +156,34 @@
         }
 
         .dropdown-content a:hover { background-color: #f8f9fa; color: var(--primary); }
-
+        
+        /* Estilos para a Árvore de Filtro estilo Excel (Coluna Data) */
+        .filter-tree-node {
+            margin-left: 15px;
+            display: none; /* Começam recolhidos */
+        }
+        .filter-tree-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 0;
+            user-select: none;
+        }
+        .filter-tree-toggle {
+            cursor: pointer;
+            width: 14px;
+            text-align: center;
+            color: #666;
+            font-size: 11px;
+        }
+        .filter-tree-item label {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        
         /* TABELA */
         .table-container { background: white; border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
         .scroll-area { overflow-x: auto; }
