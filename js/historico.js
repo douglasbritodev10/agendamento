@@ -50,18 +50,18 @@ async function consultarHistoricoNoBanco() {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 25px;"><i class="fas fa-spinner fa-spin"></i> Consultando registros no período...</td></tr>`;
 
     try {
-        // Prepara as strings no formato ISO estendido para bater com o padrão de gravação do banco
-        // Define o início do dia inicial (00:00:00) e o final do dia final (23:59:59)
-        const timestampInicio = new Date(dtInicialRaw + "T00:00:00").toISOString();
-        const timestampFim = new Date(dtFinalRaw + "T23:59:59").toISOString();
+        // CORREÇÃO: Converte as strings de data do HTML para objetos Date respeitando o fuso horário local,
+        // gerando objetos Date nativos do JS que o SDK do Firestore converte perfeitamente para comparar com ServerTimestamp
+        const dataInicioObj = new Date(dtInicialRaw + "T00:00:00");
+        const dataFimObj = new Date(dtFinalRaw + "T23:59:59");
 
         const colRef = collection(db, "historico");
         
-        // ECONOMIA DE DADOS EXTREMA: O Firestore já descarta na nuvem o que estiver fora das datas escolhidas
+        // ECONOMIA DE DADOS EXTREMA
         const q = query(
             colRef,
-            where("dataHora", ">=", timestampInicio),
-            where("dataHora", "<=", timestampFim),
+            where("dataHora", ">=", dataInicioObj),
+            where("dataHora", "<=", dataFimObj),
             orderBy("dataHora", "desc")
         );
 
@@ -76,8 +76,15 @@ async function consultarHistoricoNoBanco() {
         filtrarTextoERenderizar();
 
     } catch (error) {
-        console.error("Erro ao processar consulta:", error);
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #D32F2F; font-weight: bold; padding: 25px;">Erro ao ler o Firestore. Verifique os índices ou regras de segurança.</td></tr>`;
+        console.error("Erro detalhado ao processar consulta:", error);
+        
+        // CORREÇÃO DE AUXÍLIO: O erro do console vai te dar um LINK direto se o índice composto estiver faltando!
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align: center; color: #D32F2F; font-weight: bold; padding: 25px;">
+                    Erro ao ler o Firestore. Verifique o console do navegador (F12) para habilitar o índice composto requerido.
+                </td>
+            </tr>`;
     }
 }
 
@@ -102,10 +109,11 @@ function filtrarTextoERenderizar() {
 
     let html = "";
     dadosFinais.forEach(log => {
-        // Tratamento da data para exibição legível em formato brasileiro
+        // CORREÇÃO: Tratamento para ler o Timestamp nativo do Firebase e convertê-lo para formato brasileiro
         let dataExibicao = "---";
         if (log.dataHora) {
-            const dataObj = new Date(log.dataHora);
+            // Se vier do Firebase como objeto Timestamp, possui o método .toDate()
+            const dataObj = typeof log.dataHora.toDate === 'function' ? log.dataHora.toDate() : new Date(log.dataHora);
             dataExibicao = dataObj.toLocaleString('pt-BR');
         }
 
