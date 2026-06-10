@@ -119,6 +119,16 @@ async function salvarAgenda(status) {
 
     try {
         await setDoc(doc(db, "agendamentos", senha), dados, { merge: true });
+
+        // Salva a ação na coleção historico
+        await addDoc(collection(db, "historico"), {
+            usuario: usuarioUsername,
+            acao: status === "Rascunho" ? "SALVAR RASCUNHO AGENDA" : "AGENDAMENTO DEFINITIVO",
+            detalhe: `Fornecedor: ${fornecedor} | Cargas: ${dados.cargas} | Pedido: ${dados.pedido}`,
+            senha: senha,
+            dataHora: serverTimestamp()
+        });
+
         alert(status === "Rascunho" ? "Rascunho Atualizado!" : "Agendamento Finalizado com Sucesso!");
         resetaForm();
     } catch (error) {
@@ -492,10 +502,18 @@ function carregarDados() {
     });
 }
 
-// --- RESTANTE DAS FUNÇÕES AUXILIARES ---
 window.finalizarDireto = async (senha) => {
     if(confirm(`Confirmar agendamento definitivo da carga ${senha}?`)) {
         await updateDoc(doc(db, "agendamentos", senha), { status: "Agendada", timestamp: serverTimestamp() });
+
+        // Salva a ação na coleção historico
+        await addDoc(collection(db, "historico"), {
+            usuario: usuarioUsername,
+            acao: "FINALIZAR RASCUNHO DIRETO",
+            detalhe: `Carga alterada de Rascunho para definitivo (Agendada).`,
+            senha: senha,
+            dataHora: serverTimestamp()
+        });
     }
 };
 
@@ -573,6 +591,16 @@ window.confirmarEdicaoItens = async () => {
         await updateDoc(docRef, {
             composicao: window.tempComposicao
         });
+
+        // Salva a ação na coleção historico
+        await addDoc(collection(db, "historico"), {
+            usuario: usuarioUsername,
+            acao: "EDIÇÃO DE COMPOSIÇÃO DE ITENS",
+            detalhe: `Atualizada a composição de itens. Qtd de produtos diferentes: ${window.tempComposicao.length}`,
+            senha: senhaAbertaNoModal,
+            dataHora: serverTimestamp()
+        });
+
         alert("Composição atualizada com sucesso!");
         document.getElementById('modalComposicao').style.display = 'none';
     } catch (e) {
@@ -843,6 +871,16 @@ document.getElementById('inputExcelMassa').addEventListener('change', function(e
                 };
 
                 await setDoc(doc(db, "agendamentos", proximaSenha), dados);
+
+                // Salva o log individual para cada carga gerada na planilha em lote
+                await addDoc(collection(db, "historico"), {
+                    usuario: usuarioUsername,
+                    acao: "IMPORTAÇÃO EM MASSA (EXCEL)",
+                    detalhe: `Carga importada via planilha. Fornecedor: ${dados.fornecedor} | Cargas: ${dados.cargas}`,
+                    senha: proximaSenha,
+                    dataHora: serverTimestamp()
+                });
+
                 contador++;
             }
             alert(`${contador} agendamentos importados com sucesso como RASCUNHO!`);
