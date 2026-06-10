@@ -118,38 +118,44 @@ loginBtn.addEventListener('click', realizarLogin);
     });
 });
 
-
 // ==========================================
 // LÓGICA DE INSTALAÇÃO DO PWA
 // ==========================================
 window.addEventListener('beforeinstallprompt', (e) => {
-    // Impede que o navegador mostre o aviso padrão imediatamente
     e.preventDefault();
-    // Guarda o evento para ser disparado quando o usuário clicar no botão
     deferredPrompt = e;
-    // Mostra o botão de instalação customizado na tela
-    pwaBtn.style.display = 'block';
+    // Exibe o botão customizado se ele existir nesta página
+    if (pwaBtn) pwaBtn.style.display = 'block';
 });
 
-pwaBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    
-    // Mostra o prompt de instalação do sistema operacional
-    deferredPrompt.prompt();
-    
-    // Aguarda a resposta do usuário (Aceitou ou Recusou)
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    
-    // Como o prompt já foi usado, limpamos a variável
-    deferredPrompt = null;
-    // Oculta o botão novamente
-    pwaBtn.style.display = 'none';
-});
+if (pwaBtn) {
+    pwaBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        
+        deferredPrompt.prompt();
+        
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`Resposta do usuário ao prompt de instalação: ${outcome}`);
+        
+        deferredPrompt = null;
+        pwaBtn.style.display = 'none';
+    });
+}
 
-// Oculta o botão se o app já tiver sido instalado com sucesso
 window.addEventListener('appinstalled', () => {
-    console.log('PWA instalado com sucesso!');
-    pwaBtn.style.display = 'none';
+    console.log('LogPrime instalado com sucesso!');
+    if (pwaBtn) pwaBtn.style.display = 'none';
     deferredPrompt = null;
 });
+
+// ==========================================
+// O QUE ESTAVA FALTANDO: REGISTRO DO SERVICE WORKER
+// ==========================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        // Aponta para o sw.js que criamos no passo anterior localizado na raiz
+        navigator.serviceWorker.register('./sw.js')
+            .then((reg) => console.log('Service Worker do LogPrime registrado com sucesso no escopo:', reg.scope))
+            .catch((err) => console.error('Erro ao registrar o Service Worker:', err));
+    });
+}
