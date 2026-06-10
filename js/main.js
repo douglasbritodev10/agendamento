@@ -72,7 +72,7 @@ document.getElementById('btnSair').addEventListener('click', () => {
 async function carregarIndicadores() {
     try {
         const dataHoje = new Date().toISOString().split('T')[0];
-        const q = query(collection(db, \"agendamentos\"));
+        const q = query(collection(db, "agendamentos"));
         const snap = await getDocs(q);
         
         let total = 0, atrasadas = 0, progresso = 0;
