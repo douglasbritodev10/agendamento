@@ -276,7 +276,7 @@ window.renderizarTabelasTela = (cooperadosFiltrados) => {
         trAgrupado.innerHTML = `
             <td data-label="Data">${dataFormatada}</td>
             <td data-label="Fornecedor" class="text-nowrap">${stringFornecedores}</td>
-            <td data-label="Qtd. Colaboradores" class="fw-bold text-center">${qtdParticipantes} Coops.</td>
+            <td data-label="Qtd. Colaboradores" class="fw-bold text-center">${qtdParticipantes}</td>
             <td data-label="Nomes dos Cooperados">${listaEquipe.join(', ') || 'Nenhum'}</td>
             <td data-label="Valor Total (R$)" class="text-end text-nowrap">${formatarMoedaLocal(valorTotal)}</td>
             <td data-label="Líquido (70%)" class="text-end text-nowrap fw-bold">${formatarMoedaLocal(valorLíquidoSetenta)}</td>
