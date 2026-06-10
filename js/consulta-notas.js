@@ -476,6 +476,26 @@ window.exportarPDF = async (modo) => {
         return { rgb: [255, 255, 255], text: [0, 0, 0] };
     };
 
+    // --- NOVA FUNÇÃO DE CORES PARA SITUAÇÃO NO PDF (RGB) ---
+    const getCoresPorSituacao = (situacao) => {
+        const s = (situacao || 'AGUARDANDO').toUpperCase().trim();
+        const cores = {
+            'AGUARDANDO': { rgb: [66, 66, 66], text: [255, 255, 255] },
+            'OK NO AJUSTE': { rgb: [6, 107, 60], text: [255, 255, 255] },
+            'SEM NOTA': { rgb: [13, 71, 161], text: [255, 255, 255] },
+            'REAGENDADA': { rgb: [225, 190, 231], text: [74, 20, 140] },
+            'SOBRE AJUSTE': { rgb: [255, 224, 130], text: [95, 75, 0] },
+            'CANCELADA': { rgb: [183, 28, 28], text: [255, 255, 255] },
+            'OC PENDENTE': { rgb: [207, 216, 220], text: [55, 71, 79] },
+            'SEM TRIANGULACAO': { rgb: [255, 205, 210], text: [183, 28, 28] },
+            'VENCIMENTO ERRADO': { rgb: [183, 28, 28], text: [255, 255, 255] },
+            'FALTA CTE': { rgb: [81, 45, 168], text: [255, 255, 255] },
+            'NOTA ERRADA': { rgb: [255, 204, 188], text: [230, 74, 25] },
+            'CTE DIVERGENTE': { rgb: [121, 85, 72], text: [255, 255, 255] }
+        };
+        return cores[s] || { rgb: [66, 66, 66], text: [255, 255, 255] };
+    };
+
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked')).map(c => c.value);
     if (selecionados.length === 0) return alert("Selecione agendamentos!");
 
@@ -489,13 +509,13 @@ window.exportarPDF = async (modo) => {
     docPdf.rect(0, 0, 210, 25, 'F');
     docPdf.setFontSize(18);
     docPdf.setTextColor(255, 255, 255);
-    docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16); //
+    docPdf.text("MÓVEIS SIMONETTI - LOGÍSTICA", 14, 16); 
     
     docPdf.setFontSize(10);
     docPdf.setTextColor(0, 0, 0);
     docPdf.text(`TOTAL DE AGENDAS: ${agendas.length}`, 14, 32);
     docPdf.setTextColor(100);
-    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32); //
+    docPdf.text(`Emitido em: ${new Date().toLocaleString('pt-BR')}`, 145, 32); 
 
     let currentY = 38;
 
@@ -505,28 +525,36 @@ window.exportarPDF = async (modo) => {
             if (currentY > 240) { docPdf.addPage(); currentY = 20; }
 
             docPdf.autoTable({
-                head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'PEDIDO', 'NOTAS', 'SITUAÇÃO',  'FORNECEDOR', 'TIPO', 'LINHA']],
+                // Adicionado 'NOTAS' e 'SITUAÇÃO' no cabeçalho
+                head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'NOTAS', 'SITUAÇÃO', 'FORNECEDOR', 'TIPO', 'LINHA']],
                 body: [[
                     ag.senhaAgendamento, 
                     ag.data.split('-').reverse().join('/'), 
                     ag.central, 
                     ag.cargas || '-', 
-                    ag.pedido, 
-                    ag.notas, 
-                    ag.situacao, 
+                    ag.notas || '-',
+                    ag.situacao || 'AGUARDANDO',
                     ag.fornecedor, 
                     ag.tipoProduto,
                     ag.linhaSeparacao || 'N/A'
                 ]],
                 startY: currentY,
                 theme: 'grid',
-                headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
-                styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
+                headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 7, halign: 'center' },
+                styles: { fontSize: 7, halign: 'center', cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.1 },
                 didParseCell: (data) => {
-                    if (data.section === 'body' && data.column.index === 5) {
-                        const estilo = getCoresPorTipo(data.cell.raw);
-                        data.cell.styles.fillColor = estilo.rgb;
-                        data.cell.styles.textColor = estilo.text;
+                    // Posição 5 agora é a coluna SITUÇÃO, e Posição 7 é a coluna TIPO
+                    if (data.section === 'body') {
+                        if (data.column.index === 7) {
+                            const estilo = getCoresPorTipo(data.cell.raw);
+                            data.cell.styles.fillColor = estilo.rgb;
+                            data.cell.styles.textColor = estilo.text;
+                        }
+                        if (data.column.index === 5) {
+                            const estiloSituacao = getCoresPorSituacao(data.cell.raw);
+                            data.cell.styles.fillColor = estiloSituacao.rgb;
+                            data.cell.styles.textColor = estiloSituacao.text;
+                        }
                     }
                 }
             });
@@ -544,7 +572,7 @@ window.exportarPDF = async (modo) => {
                     styles: { fontSize: 7.5, cellPadding: 2 },
                     columnStyles: { 0: { cellWidth: 30 }, 2: { cellWidth: 20, halign: 'center' } }
                 });
-                currentY = docPdf.lastAutoTable.finalY + 10; // Espaço maior entre blocos
+                currentY = docPdf.lastAutoTable.finalY + 10; 
             } else {
                 currentY += 8;
             }
@@ -556,26 +584,34 @@ window.exportarPDF = async (modo) => {
             ag.data.split('-').reverse().join('/'),
             ag.central,
             ag.cargas || '-',
-            ag.pedido, 
-            ag.notas, 
-            ag.situacao,             
+            ag.notas || '-',
+            ag.situacao || 'AGUARDANDO',
             ag.fornecedor,
             ag.tipoProduto,
             ag.linhaSeparacao || 'N/A'
         ]);
 
         docPdf.autoTable({
-            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'PEDIDO', 'NOTAS', 'SITUAÇÃO', 'FORNECEDOR', 'TIPO', 'LINHA']],
+            // Adicionado 'NOTAS' e 'SITUAÇÃO' no cabeçalho
+            head: [['SENHA', 'DATA', 'CENTRAL', 'CARGAS', 'NOTAS', 'SITUAÇÃO', 'FORNECEDOR', 'TIPO', 'LINHA']],
             body: tableBody,
             startY: currentY,
             theme: 'grid',
-            headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 8, halign: 'center' },
-            styles: { fontSize: 8, halign: 'center', cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.1 },
+            headStyles: { fillColor: [192, 0, 0], textColor: 255, fontSize: 7, halign: 'center' },
+            styles: { fontSize: 7, halign: 'center', cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.1 },
             didParseCell: (data) => {
-                if (data.section === 'body' && data.column.index === 5) {
-                    const estilo = getCoresPorTipo(data.cell.raw);
-                    data.cell.styles.fillColor = estilo.rgb;
-                    data.cell.styles.textColor = estilo.text;
+                // Posição 5 agora é a coluna SITUÇÃO, e Posição 7 é a coluna TIPO
+                if (data.section === 'body') {
+                    if (data.column.index === 7) {
+                        const estilo = getCoresPorTipo(data.cell.raw);
+                        data.cell.styles.fillColor = estilo.rgb;
+                        data.cell.styles.textColor = estilo.text;
+                    }
+                    if (data.column.index === 5) {
+                        const estiloSituacao = getCoresPorSituacao(data.cell.raw);
+                        data.cell.styles.fillColor = estiloSituacao.rgb;
+                        data.cell.styles.textColor = estiloSituacao.text;
+                    }
                 }
             }
         });
@@ -602,14 +638,35 @@ window.exportarExcel = async (modo) => {
         return { fg: 'FFFFFF', txt: '000000' }; 
     };
 
+    // --- NOVA FUNÇÃO DE CORES PARA SITUAÇÃO NO EXCEL (Hexadecimal ARGB) ---
+    const getEstiloSituacaoExcel = (situacao) => {
+        const s = (situacao || 'AGUARDANDO').toUpperCase().trim();
+        const cores = {
+            'AGUARDANDO': { fg: 'FF424242', txt: 'FFFFFFFF' },
+            'OK NO AJUSTE': { fg: 'FF066B3C', txt: 'FFFFFFFF' },
+            'SEM NOTA': { fg: 'FF0D47A1', txt: 'FFFFFFFF' },
+            'REAGENDADA': { fg: 'FFE1BEE7', txt: 'FF4A148C' },
+            'SOBRE AJUSTE': { fg: 'FFFFE082', txt: 'FF5F4B00' },
+            'CANCELADA': { fg: 'FFB71C1C', txt: 'FFFFFFFF' },
+            'OC PENDENTE': { rgb: 'FFCFD8DC', txt: 'FF37474F' },
+            'SEM TRIANGULACAO': { fg: 'FFFFCDD2', txt: 'FFB71C1C' },
+            'VENCIMENTO ERRADO': { fg: 'FFB71C1C', txt: 'FFFFFFFF' },
+            'FALTA CTE': { fg: 'FF512DA8', txt: 'FFFFFFFF' },
+            'NOTA ERRADA': { fg: 'FFFFCCBC', txt: 'FFE64A19' },
+            'CTE DIVERGENTE': { fg: 'FF795548', txt: 'FFFFFFFF' }
+        };
+        return cores[s] || { fg: 'FF424242', txt: 'FFFFFFFF' };
+    };
+
+    // Estrutura de colunas expandida para Notas e Situação
     const columns = [
         { header: 'Senha', key: 'Senha', width: 25 },
         { header: 'Data', key: 'Data', width: 12 },
         { header: 'Central', key: 'Central', width: 15 },
         { header: 'Cargas', key: 'Cargas', width: 15 },
         { header: 'Pedido', key: 'Pedido', width: 15 },
-        { header: 'Notas', key: 'Notas', width: 15 },
-        { header: 'Situação', key: 'Situação', width: 15 },
+        { header: 'Notas', key: 'Notas', width: 25 },         // Adicionado
+        { header: 'Situação', key: 'Situacao', width: 20 },   // Adicionado
         { header: 'Fornecedor', key: 'Fornecedor', width: 25 },
         { header: 'Tipo', key: 'Tipo', width: 20 },
         { header: 'Linha', key: 'linhaSeparacao', width: 15 }
@@ -626,7 +683,6 @@ window.exportarExcel = async (modo) => {
 
     const snap = await getDocs(collection(db, "agendamentos"));
     
-    // Filtramos e ordenamos por data para a separação funcionar corretamente
     const agendamentosProcessados = [];
     snap.forEach(doc => {
         if (selecionados.includes(doc.id)) {
@@ -634,7 +690,6 @@ window.exportarExcel = async (modo) => {
         }
     });
     
-    // Ordenar por data (garante que agendamentos do mesmo dia fiquem juntos)
     agendamentosProcessados.sort((a, b) => a.data.localeCompare(b.data));
 
     let dataAnterior = null;
@@ -642,19 +697,19 @@ window.exportarExcel = async (modo) => {
     agendamentosProcessados.forEach(d => {
         const dataFormatada = d.data.split('-').reverse().join('/');
         
-        // Se a data mudou e não é a primeira linha, insere linha em branco
         if (dataAnterior && dataAnterior !== dataFormatada) {
             worksheet.addRow({}); 
         }
 
+        // Dados base alimentados com notas e situacao
         const base = {
             Senha: d.senhaAgendamento,
             Data: dataFormatada,
             Central: d.central,
             Cargas: d.cargas,
             Pedido: d.pedido,
-            Notas: d.notas,
-            Situação: d.situacao,
+            Notas: d.notas || '-',
+            Situacao: d.situacao || 'AGUARDANDO',
             Fornecedor: d.fornecedor,
             Tipo: d.tipoProduto,
             linhaSeparacao: d.linhaSeparacao || "N/A"
@@ -663,32 +718,29 @@ window.exportarExcel = async (modo) => {
         if (modo === 'completo' && d.composicao && d.composicao.length > 0) {
             d.composicao.forEach(item => {
                 const row = worksheet.addRow({ ...base, Cod_Item: item.codigo, Descricao: item.descricao, Qtd: item.qtd });
-                aplicarEstiloCelula(row, d.tipoProduto);
+                aplicarEstiloCelula(row, d.tipoProduto, d.situacao);
             });
         } else {
             const row = worksheet.addRow(base);
-            aplicarEstiloCelula(row, d.tipoProduto);
+            aplicarEstiloCelula(row, d.tipoProduto, d.situacao);
         }
 
         dataAnterior = dataFormatada;
     });
 
-    // Função para aplicar bordas e cores
-    function aplicarEstiloCelula(row, tipo) {
+    // Modificada para receber e processar a situação também
+    function aplicarEstiloCelula(row, tipo, situacao) {
         row.eachCell({ includeEmpty: false }, (cell) => {
-            // Aplicar bordas em todas as células com dados
             cell.border = {
                 top: { style: 'thin' },
                 left: { style: 'thin' },
                 bottom: { style: 'thin' },
                 right: { style: 'thin' }
             };
-            
-            // Centralizar dados (opcional, para ficar mais limpo)
             cell.alignment = { vertical: 'middle', horizontal: 'center' };
         });
 
-        // Aplicar cor na coluna Tipo
+        // Estilização da célula Tipo
         const estilo = getEstiloExcel(tipo);
         const cellTipo = row.getCell('Tipo');
         cellTipo.fill = {
@@ -697,6 +749,16 @@ window.exportarExcel = async (modo) => {
             fgColor: { argb: estilo.fg }
         };
         cellTipo.font = { color: { argb: estilo.txt }, bold: true };
+
+        // --- NOVA ESTILIZAÇÃO DA CÉLULA SITUAÇÃO NO EXCEL ---
+        const estiloSit = getEstiloSituacaoExcel(situacao);
+        const cellSit = row.getCell('Situacao');
+        cellSit.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: estiloSit.fg }
+        };
+        cellSit.font = { color: { argb: estiloSit.txt }, bold: true };
     }
 
     // Estilo do Cabeçalho Vermelho Simonetti
