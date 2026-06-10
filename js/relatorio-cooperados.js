@@ -1,6 +1,6 @@
 import { app } from './firebase-config.js';
 import { 
-    getFirestore, collection, query, where, getDocs, orderBy 
+    getFirestore, collection, query, where, getDocs 
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
 const db = getFirestore(app);
@@ -16,36 +16,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     if (usuarioLogin !== "SISTEMA") {
         try {
-            // Busca o documento do usuário na coleção 'users' para validar em tempo real
             const qUser = query(collection(db, "users"), where("username", "==", usuarioLogin.toUpperCase()));
             const querySnapshotUser = await getDocs(qUser);
             
             if (!querySnapshotUser.empty) {
                 const dadosUsuario = querySnapshotUser.docs[0].data();
-                
-                // Atualiza as variáveis e o localStorage com os dados reais do banco
                 userRole = dadosUsuario.nivelAcesso || "COLABORADOR";
                 localStorage.setItem('role', userRole);
-            } else {
-                console.warn("Usuário não encontrado na base de dados.");
             }
         } catch (error) {
             console.error("Erro ao validar credenciais no Firestore:", error);
-            // Se falhar a rede, mantém o que está no localStorage temporariamente para não deslogar injustamente
         }
     }
 
-    // Validação final do Nível de Acesso (Bloqueia se não for ADM)
+    // Validação final do Nível de Acesso
     if (userRole.toUpperCase() !== "ADM") {
         alert("Acesso restrito! Apenas administradores podem visualizar esta página.");
         window.location.href = "index.html";
         return;
     }
 
-    // Exibe o nome do usuário na tela (Ex: DBRITO)
+    // Exibe o nome do usuário na tela
     document.getElementById('user-display').textContent = usuarioLogin;
     
-    // Deixa os campos de data vazios por padrão na inicialização
+    // Inicializa campos de data vazios
     document.getElementById('dataInicio').value = "";
     document.getElementById('dataFim').value = "";
 
@@ -54,7 +48,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Fechar dropdown de checkboxes ao clicar fora
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.dropdown-checkbox')) {
-            document.getElementById('dropdownCooperados').classList.remove('show');
+            const drop = document.getElementById('dropdownCooperados');
+            if(drop) drop.classList.remove('show');
         }
     });
 });
@@ -64,15 +59,17 @@ let dadosProcessadosReport = [];
 let totaisIndividuaisReport = {};
 let todasAgendasDoPeriodo = [];
 
-// Carrega os nomes dos cooperados para compor o Dropdown Inteligente
+// Carrega os nomes dos cooperados para compor o Dropdown
 async function carregarListaFiltroCooperados() {
     try {
         const querySnapshot = await getDocs(collection(db, "cooperados"));
         listaCooperadosBanco = querySnapshot.docs
             .map(doc => doc.data().nome)
+            .filter(nome => nome)
             .sort((a, b) => a.localeCompare(b));
 
         const container = document.getElementById('listaCheckCooperados');
+        if (!container) return;
         
         container.innerHTML = listaCooperadosBanco.map(nome => `
             <div class="dropdown-item">
@@ -85,7 +82,7 @@ async function carregarListaFiltroCooperados() {
     }
 }
 
-// Funções expostas no Objeto window para os triggers de renderização e cliques
+// Funções expostas no Objeto window
 window.toggleDropdown = () => {
     document.getElementById('dropdownCooperados').classList.toggle('show');
 };
@@ -98,23 +95,26 @@ window.marcarTodosCooperados = (status) => {
 window.atualizarLabelDropdown = () => {
     const selecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked'));
     const label = document.getElementById('dropdownLabel');
+    const chkTodos = document.getElementById('chkTodos');
+    
+    if (!label) return;
+
     if (selecionados.length === 0) {
         label.textContent = "Todos os Cooperados";
     } else if (selecionados.length === listaCooperadosBanco.length) {
         label.textContent = "Todos Selecionados";
-        document.getElementById('chkTodos').checked = true;
+        if(chkTodos) chkTodos.checked = true;
     } else {
         label.textContent = `${selecionados.length} Cooperado(s) Selecionado(s)`;
-        document.getElementById('chkTodos').checked = false;
+        if(chkTodos) chkTodos.checked = false;
     }
 
-    // Dispara a atualização visual instantânea se já houver dados carregados
     if (todasAgendasDoPeriodo.length > 0) {
         window.aplicarFiltroEmTempoReal();
     }
 };
 
-// Gerador Matemático do Relatório Ajustado e Corrigido
+// Gerador do Relatório adaptado para a sua estrutura real
 window.gerarRelatorio = async () => {
     const dataInicioRaw = document.getElementById('dataInicio').value;
     const dataFimRaw = document.getElementById('dataFim').value;
@@ -124,57 +124,92 @@ window.gerarRelatorio = async () => {
         return;
     }
 
+    // Garante o formato YYYY-MM-DD para busca no Firestore
     const dataInicio = dataInicioRaw.split('T')[0];
     const dataFim = dataFimRaw.split('T')[0];
 
     try {
+        // Traz apenas o status "Agendada" direto do Banco de Dados
         const q = query(
             collection(db, "agendamentos"), 
             where("data", ">=", dataInicio), 
-            where("data", "<=", dataFim)
+            where("data", "<=", dataFim),
+            where("status", "==", "Agendada")
         );
         
         const querySnapshot = await getDocs(q);
-        const agendas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const agendas Cruas = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        todasAgendasDoPeriodo = agendas.map(a => {
-            let listaNomes = [];
-            if (a.cooperados && typeof a.cooperados === 'string') {
-                listaNomes = a.cooperados.split(',').map(nome => nome.trim()).filter(nome => nome.length > 0);
-            } else if (Array.isArray(a.cooperados)) {
-                listaNomes = a.cooperados;
-            } else if (a.NomeCooperados && typeof a.NomeCooperados === 'string') { 
-                listaNomes = a.NomeCooperados.split(',').map(nome => nome.trim()).filter(nome => nome.length > 0);
-            }
-            return { ...a, cooperadosArray: listaNomes };
+        // Filtragem local complementar: valorDescarga > 0
+        const agendasValidas = agendasCruas.filter(a => {
+            const valor = parseFloat(a.valorDescarga) || 0;
+            return valor > 0;
         });
 
-        // Chama a função globalizada para filtrar e renderizar na tela
+        // --- LÓGICA DE TRATAMENTO DE VEÍCULO AGRUPADO ---
+        const gruposVeiculo = {};
+
+        agendasValidas.forEach(a => {
+            // Se tiver veículo agrupado usa o identificador dele, senhas individuais usam o próprio ID da senha
+            const chaveGrupo = (a.veiculoAgrupado && a.veiculoAgrupado.trim() !== "") 
+                ? `GRP_${a.veiculoAgrupado.trim().toUpperCase()}` 
+                : `IND_${a.id}`;
+
+            // Tratamento da string de equipe para Array
+            let listaEquipe = [];
+            if (a.equipe && typeof a.equipe === 'string') {
+                listaEquipe = a.equipe.split(',').map(n => n.trim()).filter(n => n.length > 0);
+            } else if (Array.isArray(a.equipe)) {
+                listaEquipe = a.equipe;
+            }
+
+            if (!gruposVeiculo[chaveGrupo]) {
+                gruposVeiculo[chaveGrupo] = {
+                    data: a.data,
+                    fornecedor: a.fornecedor || "N/A",
+                    valorDescarga: 0,
+                    cooperadosArray: listaEquipe,
+                    senhas: [a.senhaAgendamento || "N/A"]
+                };
+            } else {
+                // Se for o mesmo veículo agrupado, vai somando o valor da descarga das senhas juntas
+                if (a.senhaAgendamento && !gruposVeiculo[chaveGrupo].senhas.includes(a.senhaAgendamento)) {
+                    gruposVeiculo[chaveGrupo].senhas.push(a.senhaAgendamento);
+                }
+                // Mescla os cooperados caso venham mapeados separados (garante nomes únicos)
+                listaEquipe.forEach(nome => {
+                    if (!gruposVeiculo[chaveGrupo].cooperadosArray.includes(nome)) {
+                        gruposVeiculo[chaveGrupo].cooperadosArray.push(nome);
+                    }
+                });
+            }
+            gruposVeiculo[chaveGrupo].valorDescarga += parseFloat(a.valorDescarga) || 0;
+        });
+
+        // Transforma o objeto de agrupamentos de volta em Array para o relatório
+        todasAgendasDoPeriodo = Object.values(gruposVeiculo);
+
+        // Chama a renderização dinâmica
         window.aplicarFiltroEmTempoReal();
 
     } catch (e) {
         console.error("Erro ao gerar relatório:", e);
-        alert("Erro ao buscar dados do banco de dados. Abra o console do navegador (F12) para detalhes.");
+        alert("Erro ao buscar dados do banco de dados. Verifique o console (F12).");
     }
 };
 
-// Tornada global para evitar erros de chamada interna cruzada em módulos
 window.aplicarFiltroEmTempoReal = () => {
     const cooperadosSelecionados = Array.from(document.querySelectorAll('.chk-cooperado-filtro:checked')).map(cb => cb.value);
 
     dadosProcessadosReport = todasAgendasDoPeriodo
         .filter(a => {
             const temCooperados = a.cooperadosArray && a.cooperadosArray.length > 0;
-            const valorDescargaNum = parseFloat(a.valorDescarga) || 0;
-            const valorValido = valorDescargaNum > 0;
-            const situacaoValida = a.agendasituacao !== "CANCELADA";
             
             if (cooperadosSelecionados.length > 0) {
-                const encontrou = a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
-                return temCooperados && valorValido && situacaoValida && encontrou;
+                // Filtra para exibir apenas se o cooperado selecionado participou daquela equipe
+                return temCooperados && a.cooperadosArray.some(nome => cooperadosSelecionados.includes(nome));
             }
-            
-            return temCooperados && valorValido && situacaoValida;
+            return temCooperados;
         })
         .sort((a, b) => (a.data || "").localeCompare(b.data || ""));
 
@@ -211,12 +246,13 @@ window.renderizarTabelasTela = () => {
             dataReferenciaAnterior = agenda.data;
         }
 
-        const valorTotal = parseFloat(agenda.valorDescarga) || 0;
+        const valorTotal = agenda.valorDescarga;
         const valorLíquidoSetenta = valorTotal * 0.70; 
         const listaEquipe = agenda.cooperadosArray || [];
         const qtdParticipantes = listaEquipe.length;
 
-        const quotaParteBruta = valorLíquidoSetenta / qtdParticipantes;
+        // Evita divisão por zero se a equipe estiver vazia no cadastro
+        const quotaParteBruta = qtdParticipantes > 0 ? (valorLíquidoSetenta / qtdParticipantes) : 0;
         const inssCalculado = quotaParteBruta * 0.20;
         const liquidoTotalIndividual = quotaParteBruta + inssCalculado;
 
@@ -228,7 +264,7 @@ window.renderizarTabelasTela = () => {
             <td data-label="Valor Total (R$)">R$ ${valorTotal.toFixed(2)}</td>
             <td data-label="Líquido (70%)">R$ ${valorLíquidoSetenta.toFixed(2)}</td>
             <td data-label="Qtd. Transbordo" class="fw-bold">${qtdParticipantes} Coops.</td>
-            <td data-label="Nomes dos Cooperados">${listaEquipe.join(', ')}</td>
+            <td data-label="Nomes dos Cooperados">${listaEquipe.join(', ') || 'Nenhum'}</td>
         `;
         corpoAgrupado.appendChild(trAgrupado);
 
@@ -299,8 +335,8 @@ window.exportarExcel = async () => {
         const r = sheet.addRow([
             window.formatarDataBR(agenda.data),
             agenda.fornecedor,
-            parseFloat(agenda.valorDescarga) || 0,
-            (parseFloat(agenda.valorDescarga) || 0) * 0.7,
+            agenda.valorDescarga,
+            agenda.valorDescarga * 0.7,
             equipe.length,
             equipe.join(', ')
         ]);
@@ -388,7 +424,7 @@ window.exportarPDF = () => {
     const columnsT1 = ["Data", "Fornecedor", "Total (R$)", "Líq 70% (R$)", "Qtd", "Equipe"];
 
     const rowsT1 = dadosProcessadosReport.map(agenda => {
-        const vDescarga = parseFloat(agenda.valorDescarga) || 0;
+        const vDescarga = agenda.valorDescarga;
         const equipe = agenda.cooperadosArray || [];
         return [
             window.formatarDataBR(agenda.data),
