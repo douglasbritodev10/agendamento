@@ -33,11 +33,16 @@ function init() {
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(item => item.status !== "Rascunho");
 
-        // Aplica filtro de hoje apenas se não houver outros filtros
-        const hoje = new Date().toISOString().split('T')[0];
-        if (dadosMestres.some(d => d.data === hoje) && Object.values(filtrosAtivos).every(v => v.length === 0)) {
+        // --- TRECHO AJUSTADO DAQUI ---
+        // Obtém a data de hoje ajustada perfeitamente ao fuso horário local (Brasil YYYY-MM-DD)
+        const offset = new Date().getTimezoneOffset() * 60000;
+        const hoje = new Date(Date.now() - offset).toISOString().split('T')[0];
+        
+        // Ativa o filtro se nenhum outro filtro de coluna estiver ativo no momento
+        if (Object.values(filtrosAtivos).every(v => v.length === 0)) {
             filtrosAtivos.data = [hoje];
         }
+        // --- ATÉ AQUI ---
 
         window.atualizarFiltros();
     });
