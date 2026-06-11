@@ -565,7 +565,28 @@ window.abrirModalSelecao = () => {
             <td>${a.tipoProduto}</td>
         </tr>`;
     }).join('');
+
+    // --- NOVO AJUSTE: Aplicar filtro prévio do dia seguinte ao abrir o modal ---
+    const inputDataModal = document.getElementById('filtroDataModal');
+    if (inputDataModal) {
+        // Obtém a data atual do fuso brasileiro e calcula o dia seguinte com precisão
+        const hojeLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+        hojeLocal.setDate(hojeLocal.getDate() + 1);
+        
+        // Formata para o padrão aceito pelo input do tipo date: YYYY-MM-DD
+        const ano = hojeLocal.getFullYear();
+        const mes = String(hojeLocal.getMonth() + 1).padStart(2, '0');
+        const dia = String(hojeLocal.getDate()).padStart(2, '0');
+        const dataAmanhaInput = `${ano}-${mes}-${dia}`;
+        
+        // Aplica o valor e chama o seu filtro nativo
+        inputDataModal.value = dataAmanhaInput;
+    }
+
     document.getElementById('modalSelecao').style.display = 'flex';
+
+    // Roda o filtro para esconder as cargas que não pertencem ao dia seguinte
+    window.filtrarModal();
 };
 
 window.atualizarCampo = async (id, campo, valor) => {
