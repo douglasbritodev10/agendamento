@@ -222,7 +222,7 @@ window.agruparEmCarga = async () => {
         for (let id of selecionados) {
             await updateDoc(doc(db, "agendamentos", id), { 
                 veiculoAgrupado: identificadorCarga.toUpperCase(),
-                agendasituacao: "NO PATIO" // Status automático ao identificar veículo
+                agendasituacao: "PENDENTE" // Status automático ao identificar veículo
             });
         }
         alert("Agendas unidas com sucesso!");
@@ -320,7 +320,7 @@ window.exportarPDF = async () => {
         ag.data ? ag.data.split('-').reverse().join('/') : '-',
         ag.central || '-',
         ag.cargas || '-',
-        ag.agendasituacao || 'NO PATIO',
+        ag.agendasituacao || 'PENDENTE',
         ag.box || '-',
         ag.fornecedor || '-',
         ag.tipoProduto || ag.tipo || '-',
@@ -355,7 +355,7 @@ window.exportarPDF = async () => {
 
     // --- TRECHO AJUSTADO: RESUMO POR SITUAÇÃO EM TABELA ---
     const resumoObj = agendas.reduce((acc, curr) => {
-        const s = curr.agendasituacao || 'NO PATIO';
+        const s = curr.agendasituacao || 'PENDENTE';
         acc[s] = (acc[s] || 0) + 1;
         return acc;
     }, {});
@@ -408,7 +408,7 @@ window.exportarExcel = async () => {
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
     agendas.forEach((ag) => {
-        const situ = ag.agendasituacao || "NO PATIO";
+        const situ = ag.agendasituacao || "PENDENTE";
         const configSitu = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
         const estiloTipo = getCoresPorTipoFull(ag.tipoProduto || ag.tipo);
 
