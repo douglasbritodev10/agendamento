@@ -175,7 +175,7 @@ function renderizarTabela() {
             <td>${item.cargas || 1}</td>
             <td>
                 <span style="background:#${confStatus.hex}; color:rgb(${confStatus.txt.join(',')}); padding:4px 8px; border-radius:4px; font-weight:bold; font-size:10px; display: block; text-align: center;">
-                    ${item.agendasituacao || 'NO PATIO'}
+                    ${item.agendasituacao || 'PENDENTE'}
                 </span>
             </td>
             <td>${item.fornecedor || '---'}</td>
@@ -200,7 +200,7 @@ function renderizarTabela() {
 
 function renderizarGrafico(dados) {
     const resumo = dados.reduce((acc, curr) => {
-        const s = curr.agendasituacao || 'NO PATIO';
+        const s = curr.agendasituacao || 'PENDENTE';
         acc[s] = (acc[s] || 0) + 1;
         return acc;
     }, {});
@@ -261,7 +261,7 @@ function renderizarGrafico(dados) {
 }
 
 window.abrirModalResumoGrafico = (situacao) => {
-    const lista = dadosFiltrados.filter(d => (d.agendasituacao || 'NO PATIO') === situacao);
+    const lista = dadosFiltrados.filter(d => (d.agendasituacao || 'PENDENTE') === situacao);
     const container = document.getElementById('detalhesItens'); // Reutilizando container de detalhes
     document.getElementById('tituloComp').innerText = `Lista: ${situacao}`;
 
@@ -468,7 +468,7 @@ window.exportarPDF = async () => {
         ag.data ? ag.data.split('-').reverse().join('/') : '-',
         ag.central || '-',
         ag.cargas || '-',
-        ag.agendasituacao || 'NO PATIO',
+        ag.agendasituacao || 'PENDENTE',
         ag.box || '-',
         ag.fornecedor || '-',
         ag.tipoProduto || ag.tipo || '-',
@@ -503,7 +503,7 @@ window.exportarPDF = async () => {
 
     // --- TRECHO AJUSTADO: RESUMO POR SITUAÇÃO EM TABELA ---
     const resumoObj = agendas.reduce((acc, curr) => {
-        const s = curr.agendasituacao || 'NO PATIO';
+        const s = curr.agendasituacao || 'PENDENTE';
         acc[s] = (acc[s] || 0) + 1;
         return acc;
     }, {});
@@ -556,7 +556,7 @@ window.exportarExcel = async () => {
     snap.forEach(d => { if(selecionados.includes(d.id)) agendas.push(d.data()); });
 
     agendas.forEach((ag) => {
-        const situ = ag.agendasituacao || "NO PATIO";
+        const situ = ag.agendasituacao || "PENDENTE";
         const configSitu = situacoesCoresMaster[situ] || situacoesCoresMaster['DEFAULT'];
         const estiloTipo = getCoresPorTipoFull(ag.tipoProduto || ag.tipo);
 
