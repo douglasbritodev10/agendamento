@@ -113,8 +113,11 @@ function renderizarPainelPrincipal() {
     }
     
     tbody.innerHTML = noPainel.map(c => {
+        // AJUSTE: Se o documento não tiver 'agendasituacao', define como 'PENDENTE' no front-end
+        const situacaoAtual = c.agendasituacao || 'PENDENTE';
+
         const options = Object.keys(situacoesCores).map(s => 
-            `<option value="${s}" ${c.agendasituacao === s ? 'selected' : ''}>${s}</option>`).join('');
+            `<option value="${s}" ${situacaoAtual === s ? 'selected' : ''}>${s}</option>`).join('');
 
         const tipoExibicao = c.tipo || c.tipoProduto || '';
         const infoCarga = c.veiculoAgrupado ? `<br><small style="color:blue;"><b>🚚 ${c.veiculoAgrupado}</b></small>` : '';
@@ -129,8 +132,9 @@ function renderizarPainelPrincipal() {
                 <td style="font-size:10px; max-width:200px;">${c.cargas || ''}</td>
                 <td style="width:180px;"> 
                     <select class="select-situacao" onchange="atualizarCampo('${c.id}', 'agendasituacao', this.value)" 
-                        style="background:${situacoesCores[c.agendasituacao] || '#999'};">
-                        <option value="">PENDENTE</option>${options}
+                        style="background:${situacoesCores[situacaoAtual] || '#999'};">
+                        <option value="PENDENTE" ${situacaoAtual === 'PENDENTE' ? 'selected' : ''}>PENDENTE</option>
+                        ${options}
                     </select>
                 </td>
                 <td>${c.fornecedor || ''}</td>
@@ -152,7 +156,7 @@ function renderizarPainelPrincipal() {
     }).join('');
 
     document.getElementById('totalAgendas').textContent = noPainel.length;
-    // Lógica para contar veículos: considera senhas únicas ou veículos agrupados
+    // Lógica para contender veículos: considera senhas únicas ou veículos agrupados
     const veiculosUnicos = new Set(noPainel.map(p => p.veiculoAgrupado || p.senhaAgendamento));
     document.getElementById('totalVeiculos').textContent = veiculosUnicos.size;
 }
