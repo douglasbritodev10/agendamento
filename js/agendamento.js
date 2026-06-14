@@ -745,9 +745,13 @@ window.editarAg = async (senha) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// --- FORNECEDORES ---
+// --- FORNECEDORES (Ajustado com Ordenação Alfabética de A a Z) ---
 async function carregarFornecedores() {
-    onSnapshot(collection(db, "fornecedores"), (snap) => {
+    // Importamos a função 'orderBy' necessária para classificar de A a Z
+    const { orderBy } = await import("https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js");
+    
+    // Adicionamos o query() com orderBy("nome", "asc") para classificar em ordem alfabética
+    onSnapshot(query(collection(db, "fornecedores"), orderBy("nome", "asc")), (snap) => {
         const select = document.getElementById('selectFornecedor');
         const lista = document.getElementById('listaForn');
         select.innerHTML = '<option value="">Selecione...</option>';
