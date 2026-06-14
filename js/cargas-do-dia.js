@@ -132,8 +132,7 @@ function renderizarPainelPrincipal() {
                 <td style="font-size:10px; max-width:200px;">${c.cargas || ''}</td>
                 <td style="width:180px;"> 
                     <select class="select-situacao" onchange="atualizarCampo('${c.id}', 'agendasituacao', this.value)" 
-                        style="background:${situacoesCores[situacaoAtual] || '#999'};">
-                        <option value="PENDENTE" ${situacaoAtual === 'PENDENTE' ? 'selected' : ''}>PENDENTE</option>
+                        style="background:${situacoesCores[situacaoAtual] || '#646464'};">
                         ${options}
                     </select>
                 </td>
