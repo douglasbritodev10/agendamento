@@ -110,6 +110,64 @@
         }
 
         .btn-logout { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+
+        /* ========================================================
+           MEDIAS QUERIES: AJUSTES EXCLUSIVOS PARA APARELHOS MÓVEIS
+           ======================================================== */
+        @media (max-width: 768px) {
+            /* Ajusta a barra superior para não empilhar feio */
+            .navbar h2 {
+                font-size: 1rem;
+                text-align: center;
+                margin: 0 5px;
+            }
+
+            /* Faz a área dos botões de ação se comportar como blocos empilhados */
+            .card-tabela > div:first-child {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                padding: 10px !important;
+            }
+
+            /* Força os containers internos de botões a ocuparem 100% da largura */
+            .card-tabela > div:first-child > div {
+                flex-direction: column !important;
+                width: 100% !important;
+                gap: 6px !important;
+            }
+
+            /* Ajusta os botões para preencherem o espaço e não cortarem texto */
+            .btn-puxar {
+                width: 100% !important;
+                justify-content: center;
+                font-size: 0.8rem !important;
+                padding: 12px 10px !important;
+                white-space: normal !important;
+                text-align: center;
+            }
+
+            /* Agrupa os botões de exportação (PDF, Excel, Copiar) em uma linha horizontal compacta */
+            .export-tools {
+                display: flex !important;
+                flex-direction: row !important;
+                width: 100% !important;
+                gap: 5px !important;
+                margin-top: 5px;
+            }
+
+            .export-tools .btn-puxar {
+                flex: 1 !important;
+                padding: 10px 5px !important;
+                font-size: 0.75rem !important;
+            }
+
+            /* Ajusta os filtros de busca dentro do modal */
+            .filter-bar {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 8px !important;
+            }
+        }
     </style>
 </head>
 <body>
