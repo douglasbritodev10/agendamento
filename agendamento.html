@@ -144,12 +144,98 @@
             width: 100%; 
             justify-content: space-between; 
             margin-top: 10px;
+            margin-left: 0;
         }
         .btn-exp { flex: 1; justify-content: center; }
 
         table {
-            min-width: 900px; /* Garante scroll lateral no celular para não amassar dados */
+            min-width: 1000px; /* Força um tamanho maior para a tabela criar o scroll lateral e os dados não ficarem amassados */
         }
+    }
+
+    /* AJUSTES EXCLUSIVOS E ROBUSTOS PARA CELULARES */
+    @media (max-width: 768px) {
+        .navbar {
+            padding: 10px 15px;
+        }
+        .navbar .logo {
+            font-size: 1rem;
+        }
+
+        /* Reformata os filtros para empilharem verticalmente e ocuparem espaço total */
+        .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .filter-bar .form-group, 
+        .filter-bar input[type="text"] {
+            width: 100% !important;
+            flex: none !important;
+        }
+
+        .filter-bar input[type="text"] {
+            height: 41px;
+        }
+
+        /* Garante que os botões de exportação e dropdown fiquem um ao lado do outro ou empilhem perfeitamente */
+        .export-actions {
+            flex-direction: column !important;
+            width: 100% !important;
+            gap: 8px !important;
+            margin-top: 5px;
+        }
+
+        .export-actions .btn-exp,
+        .export-actions .dropdown,
+        .export-actions .dropdown button {
+            width: 100% !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center;
+            padding: 12px 10px !important;
+            font-size: 0.85rem !important;
+        }
+
+        /* Corrige o menu flutuante de exportação para abrir de forma legível no mobile */
+        #menuExport {
+            width: 100% !important;
+            position: relative !important;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.1) !important;
+            margin-top: 2px !important;
+        }
+
+        /* Cabeçalho da seção de rascunhos em coluna no celular */
+        .secao-rascunho > div:first-child {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            margin-bottom: 12px !important;
+        }
+
+        .secao-rascunho .btn-exp {
+            width: 100% !important;
+            padding: 12px !important;
+        }
+
+        /* Ajustes nos Modais para Telas Pequenas */
+        .modal-content {
+            margin: 15% auto;
+            padding: 15px;
+            width: 95%;
+        }
+
+        /* Inputs de adição rápida de composição em linha ou bloco */
+        .modal-content div[style*="display:flex; gap:5px;"] {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+
+        #itemCod { width: 25% !important; }
+        #itemDesc { width: 45% !important; flex: none !important; }
+        #itemQtd { width: 20% !important; }
     }
 </style>
 </head>
