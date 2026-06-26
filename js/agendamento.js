@@ -153,14 +153,9 @@ window.copiarRascunhosSelecionados = () => {
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        // Se a sua primeira coluna do HTML original (tr.cells[0]) já for aquela chave grande, 
-        // ou se você quiser usar outra célula, pode ajustar o índice aqui. Peguei a senha para a Coluna 1 e 2 baseada no seu padrão.
         
         html += `
             <tr>
-                <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #f2f2f2; text-align: center; font-weight: bold;">
-                    ${senha}
-                </td>
                 <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #b4c6e7; text-align: center;">
                     ${senha}
                 </td>
@@ -1021,8 +1016,8 @@ window.onclick = function(event) {
 
 // --- COPIAR RASCUNHOS (VERSÃO TABELA EMAIL - SEM ALTERAR DADOS) ---
 window.copiarAgendamentosSelecionados = () => {
-    const selecionados = Array.from(document.querySelectorAll('.check-copy-rascunho:checked'));
-    if (selecionados.length === 0) return alert("Selecione os rascunhos!");
+    const selecionados = Array.from(document.querySelectorAll('.check-export:checked'));
+    if (selecionados.length === 0) return alert("Selecione os agendamentos na tabela!");
 
     let html = `
         <table style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px; color: #000000; width: auto;">
@@ -1035,14 +1030,9 @@ window.copiarAgendamentosSelecionados = () => {
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        // Se a sua primeira coluna do HTML original (tr.cells[0]) já for aquela chave grande, 
-        // ou se você quiser usar outra célula, pode ajustar o índice aqui. Peguei a senha para a Coluna 1 e 2 baseada no seu padrão.
         
         html += `
             <tr>
-                <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #f2f2f2; text-align: center; font-weight: bold;">
-                    ${senha}
-                </td>
                 <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #b4c6e7; text-align: center;">
                     ${senha}
                 </td>
