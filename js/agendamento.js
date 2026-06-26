@@ -1020,7 +1020,7 @@ window.onclick = function(event) {
 };
 
 // --- COPIAR RASCUNHOS (VERSÃO TABELA EMAIL - SEM ALTERAR DADOS) ---
-window.copiarRascunhosSelecionados = () => {
+window.copiarAgendamentosSelecionados = () => {
     const selecionados = Array.from(document.querySelectorAll('.check-copy-rascunho:checked'));
     if (selecionados.length === 0) return alert("Selecione os rascunhos!");
 
