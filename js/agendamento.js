@@ -933,7 +933,7 @@ document.getElementById('inputExcelMassa').addEventListener('change', function(e
                     pedido: info.pedido || "",
                     tipoProduto: info.tipo ? info.tipo.toUpperCase() : "DIVERSOS",
                     linhaSeparacao: info.linhaSeparacao ? info.linhaSeparacao.toUpperCase() : "EMBALADO",
-                    status: "Agendada",
+                    status: "Rascunho",
                     composicao: info.composicao,
                     timestamp: serverTimestamp(),
                     usuario: usuarioUsername
