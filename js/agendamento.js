@@ -137,12 +137,16 @@ async function salvarAgenda(status) {
     }
 }
 
-// --- COPIAR RASCUNHOS (VERSÃO COMPRIMIDA) ---
+// --- COPIAR RASCUNHOS (VERSÃO TABELA EMAIL - IGUAL AO PRINT) ---
 window.copiarRascunhosSelecionados = () => {
     const selecionados = Array.from(document.querySelectorAll('.check-copy-rascunho:checked'));
     if (selecionados.length === 0) return alert("Selecione os rascunhos!");
 
-    let html = `<div style="font-family: Arial, sans-serif; max-width: 400px;">`;
+    // Iniciando a tabela com estilos de borda colapsada idênticos ao print
+    let html = `
+        <table style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px; color: #000000; width: auto;">
+            <tbody>
+    `;
 
     selecionados.forEach(cb => {
         const tr = cb.closest('tr');
@@ -150,27 +154,46 @@ window.copiarRascunhosSelecionados = () => {
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        const fornecedor = tr.cells[6].innerText;
-        const tipo = tr.cells[7].innerText;
-        const cores = getCoresPorTipo(tipo);
+        const tipo = tr.cells[7].innerText; // Mantido caso precise para alguma lógica futura
+
+        // Montando a chave composta (4500083733-SENHA-26) igual ao print
+        const chaveComposta = `4500083733-${senha}-26`;
 
         html += `
-            <div style="background: ${cores.bg}; color: ${cores.text}; padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #ccc;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 4px; margin-bottom: 4px;">
-                    <b>SENHA: ${senha}</b> <span>DATA: ${data}</span>
-                </div>
-                <div style="font-size: 13px;">
-                    <b>FORNECEDOR:</b> ${fornecedor}<br>
-                    <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
-                    <b>REFERENTE:</b> ${cargas}
-                </div>
-            </div>`;
+            <tr>
+                <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #f2f2f2; text-align: center; font-weight: bold;">
+                    ${chaveComposta}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #b4c6e7; text-align: center;">
+                    ${senha}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center;">
+                    ${data}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center; text-transform: uppercase;">
+                    ${central}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center; text-transform: uppercase;">
+                    CARGA : ${cargas}
+                </td>
+            </tr>
+        `;
     });
-    html += `</div>`;
+
+    html += `
+            </tbody>
+        </table>
+    `;
 
     const blob = new Blob([html], { type: 'text/html' });
-    const data = [new ClipboardItem({ 'text/html': blob })];
-    navigator.clipboard.write(data).then(() => alert("Copiado em formato comprimido!"));
+    const clipboardData = [new ClipboardItem({ 'text/html': blob })];
+    
+    navigator.clipboard.write(clipboardData).then(() => {
+        alert("Copiado no formato do e-mail!");
+    }).catch(err => {
+        console.error("Erro ao copiar: ", err);
+        alert("Erro ao copiar para a área de transferência.");
+    });
 };
 
 window.toggleSelectAll = (el) => {
@@ -1000,12 +1023,16 @@ window.onclick = function(event) {
     }
 };
 
-// Nova função para copiar agendamentos salvos (Tabela Principal)
-window.copiarAgendamentosSelecionados = () => {
-    const selecionados = Array.from(document.querySelectorAll('.check-export:checked'));
-    if (selecionados.length === 0) return alert("Selecione os agendamentos na tabela!");
+// --- COPIAR RASCUNHOS (VERSÃO TABELA EMAIL - IGUAL AO PRINT) ---
+window.copiarRascunhosSelecionados = () => {
+    const selecionados = Array.from(document.querySelectorAll('.check-copy-rascunho:checked'));
+    if (selecionados.length === 0) return alert("Selecione os rascunhos!");
 
-    let html = `<div style="font-family: Arial, sans-serif; max-width: 400px;">`;
+    // Iniciando a tabela com estilos de borda colapsada idênticos ao print
+    let html = `
+        <table style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px; color: #000000; width: auto;">
+            <tbody>
+    `;
 
     selecionados.forEach(cb => {
         const tr = cb.closest('tr');
@@ -1013,27 +1040,44 @@ window.copiarAgendamentosSelecionados = () => {
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        const fornecedor = tr.cells[6].innerText;
-        const tipo = tr.cells[7].innerText;
-        
-        // Buscamos as cores originais baseadas no tipo para manter o padrão visual
-        const cores = getCoresPorTipo(tipo);
+        const tipo = tr.cells[7].innerText; // Mantido caso precise para alguma lógica futura
+
+        // Montando a chave composta (4500083733-SENHA-26) igual ao print
+        const chaveComposta = `4500083733-${senha}-26`;
 
         html += `
-            <div style="background: ${cores.bg}; color: ${cores.text}; padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #ccc;">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 4px; margin-bottom: 4px;">
-                    <b>SENHA: ${senha}</b> <span>DATA: ${data}</span>
-                </div>
-                <div style="font-size: 13px;">
-                    <b>FORNECEDOR:</b> ${fornecedor}<br>
-                    <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
-                    <b>REFERENTE:</b> ${cargas}
-                </div>
-            </div>`;
+            <tr>
+                <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #f2f2f2; text-align: center; font-weight: bold;">
+                    ${chaveComposta}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #b4c6e7; text-align: center;">
+                    ${senha}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center;">
+                    ${data}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center; text-transform: uppercase;">
+                    ${central}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center; text-transform: uppercase;">
+                    CARGA : ${cargas}
+                </td>
+            </tr>
+        `;
     });
-    html += `</div>`;
+
+    html += `
+            </tbody>
+        </table>
+    `;
 
     const blob = new Blob([html], { type: 'text/html' });
-    const data = [new ClipboardItem({ 'text/html': blob })];
-    navigator.clipboard.write(data).then(() => alert("Agendamentos copiados!"));
+    const clipboardData = [new ClipboardItem({ 'text/html': blob })];
+    
+    navigator.clipboard.write(clipboardData).then(() => {
+        alert("Copiado no formato do e-mail!");
+    }).catch(err => {
+        console.error("Erro ao copiar: ", err);
+        alert("Erro ao copiar para a área de transferência.");
+    });
 };
