@@ -919,7 +919,7 @@ document.getElementById('inputExcelMassa').addEventListener('change', function(e
                     pedido: info.pedido || "",
                     tipoProduto: info.tipo ? info.tipo.toUpperCase() : "DIVERSOS",
                     linhaSeparacao: info.linhaSeparacao ? info.linhaSeparacao.toUpperCase() : "EMBALADO",
-                    status: "Rascunho",
+                    status: "Agendada",
                     composicao: info.composicao,
                     timestamp: serverTimestamp(),
                     usuario: usuarioUsername
@@ -927,7 +927,7 @@ document.getElementById('inputExcelMassa').addEventListener('change', function(e
 
                 await setDoc(doc(db, "agendamentos", proximaSenha), dados);
 
-                // Salva o log individual para cada carga gerada na planilha em lote
+                // Salva o log individual para cada carga gerada na planilha em loteee
                 await addDoc(collection(db, "historico"), {
                     usuario: usuarioUsername,
                     acao: "IMPORTAÇÃO EM MASSA (EXCEL)",
