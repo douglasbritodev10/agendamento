@@ -928,50 +928,53 @@ const getCoresPorTipoCard = (tipo) => {
     return { bg: '#f5f5f5', text: '#424242' };     // Cinza padrão
 };
 
-// --- FUNÇÃO DE COPIAR AGENDAMENTOS (ESTILO CARD HTML) ---
+// --- FUNÇÃO DE COPIAR AGENDAMENTOS
 window.copiarAgendamentosSelecionados = () => {
     const selecionados = Array.from(document.querySelectorAll('.check-export:checked'));
     if (selecionados.length === 0) return alert("Selecione os agendamentos na tabela!");
 
-    let html = `<div style="font-family: Arial, sans-serif; max-width: 450px;">`;
+    let html = `
+        <table style="border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px; color: #000000; width: auto;">
+            <tbody>
+    `;
 
     selecionados.forEach(cb => {
         const tr = cb.closest('tr');
-        
-        // Ajuste dos índices conforme seu renderizarTabela:
-        // cells[1]=Senha, [2]=Data, [3]=Central, [4]=Cargas, [8]=Fornecedor, [9]=Tipo
         const senha = tr.cells[1].innerText;
         const data = tr.cells[2].innerText;
         const central = tr.cells[3].innerText;
         const cargas = tr.cells[4].innerText;
-        const fornecedor = tr.cells[8].innerText; 
-        const tipo = tr.cells[9].innerText;       
         
-        const cores = getCoresPorTipoCard(tipo);
-
         html += `
-            <div style="background: ${cores.bg}; color: ${cores.text}; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.1); box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 5px; margin-bottom: 8px; font-size: 14px;">
-                    <b style="color:#c00000;">SENHA: ${senha}</b> <span style="font-size: 12px;">DATA: ${data}</span>
-                </div>
-                <div style="font-size: 13px; line-height: 1.5;">
-                    <b>FORNECEDOR:</b> ${fornecedor}<br>
-                    <b>CENTRAL:</b> ${central} | <b>TIPO:</b> ${tipo}<br>
-                    <b>REFERENTE:</b> ${cargas}
-                </div>
-            </div>`;
+            <tr>
+                <td style="border: 1px solid #000000; padding: 6px 12px; background-color: #b4c6e7; text-align: center;">
+                    ${senha}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center;">
+                    ${data}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center; text-transform: uppercase;">
+                    ${central}
+                </td>
+                <td style="border: 1px solid #000000; padding: 6px 12px; text-align: center; text-transform: uppercase;">
+                    CARGA : ${cargas}
+                </td>
+            </tr>
+        `;
     });
-    
-    html += `</div>`;
+
+    html += `
+            </tbody>
+        </table>
+    `;
 
     const blob = new Blob([html], { type: 'text/html' });
-    const clipboardItem = new ClipboardItem({ 'text/html': blob });
+    const clipboardData = [new ClipboardItem({ 'text/html': blob })];
     
-    navigator.clipboard.write([clipboardItem]).then(() => {
-        alert("Agendamentos copiados com sucesso!");
+    navigator.clipboard.write(clipboardData).then(() => {
+        alert("Copiado no formato do e-mail!");
     }).catch(err => {
-        console.error("Erro ao copiar:", err);
-        alert("Erro ao copiar. Tente novamente.");
+        console.error("Erro ao copiar: ", err);
     });
 };
 
